@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+.serverless/
+.fusebox/
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# MongoDB
+data/
+mongod.log
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Testing
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Certificate files
+*.pem
+*.key
+*.crt
+
+# Database backups
+*.dump
+*.backup
+
+# Cloudinary/S3 uploads (local development)
+uploads/
+temp-uploads/
+
+# TypeScript
+*.tsbuildinfo
