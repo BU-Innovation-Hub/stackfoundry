@@ -24,7 +24,7 @@ if errorlevel 1 (
 REM Navigate to project directory
 pushd stackfoundry
 if errorlevel 1 (
-    echo ERROR: Failed to navigate to botho-innovation-hub directory.
+    echo ERROR: Failed to navigate to stackfoundry directory.
     echo The clone may have failed or the directory was not created.
     pause
     exit /b 1
@@ -55,8 +55,15 @@ echo Starting MongoDB...
 net start MongoDB
 if errorlevel 1 (
     echo ERROR: Failed to start MongoDB service.
-    echo Make sure MongoDB is installed and the service is registered.
-    echo You may need to run this script as Administrator.
+    echo Possible causes:
+    echo   - MongoDB service may not be registered with Windows
+    echo   - MongoDB service may already be running
+    echo   - MongoDB installation may be incomplete
+    echo.
+    echo To diagnose:
+    echo   - Run: sc query MongoDB
+    echo   - Check Service details in Task Manager ^(Services tab^)
+    echo   - Review MongoDB logs in Program Files/MongoDB/Server/logs/
     pause
     exit /b 1
 )
