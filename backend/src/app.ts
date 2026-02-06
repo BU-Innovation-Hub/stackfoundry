@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import apiRouter from "./routes";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -17,22 +19,13 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ message: "We are looking healthy" });
 });
 
-// API routes (replace with your actual routes)
-app.get("/api", (_req, res) => {
-  res.status(200).json({ message: "API is running" });
-});
+// API routes
+app.use("/api", apiRouter);
 
 // 404 handler
-app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
-});
+app.use(notFoundHandler);
 
 // Error handler
-app.use(
-  (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-);
+app.use(errorHandler);
 
 export default app;

@@ -1,41 +1,50 @@
 import app from "./app";
 import dotenv from "dotenv";
+import { loadEnv } from "./config/env";
+import { connectDatabase } from "./config/database";
 
 // Load environment variables
 dotenv.config();
+const env = loadEnv();
 
-const PORT = process.env.PORT || 5000;
-const NODE_ENV = process.env.NODE_ENV || "development";
+let server: ReturnType<typeof app.listen> | undefined;
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(` Server running in ${NODE_ENV} mode on port ${PORT}`);
-  console.log(` Health check: http://localhost:${PORT}/health`);
-  console.log(` API endpoint: http://localhost:${PORT}/api`);
-});
+// Try to connect DB, but start server regardless
+connectDatabase(env.MONGO_URI)
+  .then(() => {
+    console.log(" Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.error(" Failed to connect to MongoDB:", err);
+    console.warn(" Starting server without database connection...");
+  })
+  .finally(() => {
+    server = app.listen(env.PORT, () => {
+      console.log(` Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+      console.log(` Health check: http://localhost:${env.PORT}/health`);
+      console.log(` API endpoint: http://localhost:${env.PORT}/api/v1/health`);
+    });
 
-// Graceful shutdown
-const gracefulShutdown = (signal: string) => {
-  console.log(`\n${signal} received. Closing server gracefully...`);
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
+    const gracefulShutdown = (signal: string) => {
+      console.log(`\n${signal} received. Closing server gracefully...`);
+      server?.close(() => {
+        console.log("Server closed");
+        process.exit(0);
+      });
+
+      setTimeout(() => {
+        console.error(" Forced shutdown");
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+    process.on("unhandledRejection", (reason: Error) => {
+      console.error(" Unhandled Rejection:", reason);
+      gracefulShutdown("UNHANDLED_REJECTION");
+    });
   });
 
-  // Force close after 10 seconds
-  setTimeout(() => {
-    console.error(" Forced shutdown");
-    process.exit(1);
-  }, 10000);
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-// Handle unhandled rejections
-process.on("unhandledRejection", (reason: Error) => {
-  console.error(" Unhandled Rejection:", reason);
-  gracefulShutdown("UNHANDLED_REJECTION");
-});
-
-export default server;
+export {};
