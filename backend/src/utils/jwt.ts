@@ -114,6 +114,14 @@ export const verifyAccessToken = (token: string): AccessTokenPayload => {
       audience: "innovation-hub-client",
     }) as JwtPayload & AccessTokenPayload;
 
+    // Validate required claims are present and non-empty
+    if (!decoded.sub || typeof decoded.sub !== "string" || decoded.sub.trim() === "") {
+      throw new Error("Invalid access token: missing subject claim");
+    }
+    if (!decoded.role || typeof decoded.role !== "string" || decoded.role.trim() === "") {
+      throw new Error("Invalid access token: missing role claim");
+    }
+
     return {
       sub: decoded.sub,
       role: decoded.role,
@@ -144,6 +152,14 @@ export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
       issuer: "innovation-hub",
       audience: "innovation-hub-client",
     }) as JwtPayload & RefreshTokenPayload;
+
+    // Validate required claims are present and non-empty
+    if (!decoded.sub || typeof decoded.sub !== "string" || decoded.sub.trim() === "") {
+      throw new Error("Invalid refresh token: missing subject claim");
+    }
+    if (!decoded.tokenId || typeof decoded.tokenId !== "string" || decoded.tokenId.trim() === "") {
+      throw new Error("Invalid refresh token: missing tokenId claim");
+    }
 
     return {
       sub: decoded.sub,

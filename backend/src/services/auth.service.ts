@@ -79,14 +79,12 @@ export const registerStudent = async (
     throw new ApiError(409, "Student ID already registered");
   }
 
-  // Get or create student role
-  let studentRole = await Role.findOne({ name: "student" });
-  if (!studentRole) {
-    studentRole = await Role.create({
-      name: "student",
-      description: "Regular student with basic access",
-    });
-  }
+  // Get or create student role (atomic upsert to prevent duplicate key errors)
+  const studentRole = await Role.findOneAndUpdate(
+    { name: "student" },
+    { $setOnInsert: { name: "student", description: "Regular student with basic access" } },
+    { upsert: true, new: true }
+  );
 
   // Hash password
   const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
@@ -119,14 +117,15 @@ export const registerStudent = async (
   const studentWithTokens = await Student.findById(student._id).select(
     "+refreshTokens"
   );
-  if (studentWithTokens) {
-    await studentWithTokens.addRefreshToken(
-      refreshTokenHash,
-      tokenId,
-      expiresAt,
-      meta
-    );
+  if (!studentWithTokens) {
+    throw new ApiError(500, "Failed to persist refresh token: user not found after creation");
   }
+  await studentWithTokens.addRefreshToken(
+    refreshTokenHash,
+    tokenId,
+    expiresAt,
+    meta
+  );
 
   // Update last login
   await Student.findByIdAndUpdate(student._id, { lastLogin: new Date() });
@@ -297,14 +296,15 @@ export const refreshTokens = async (
   const freshStudent = await Student.findById(student._id).select(
     "+refreshTokens"
   );
-  if (freshStudent) {
-    await freshStudent.addRefreshToken(
-      newRefreshTokenHash,
-      newTokenId,
-      expiresAt,
-      meta
-    );
+  if (!freshStudent) {
+    throw new ApiError(500, "Failed to persist refresh token: user not found during token rotation");
   }
+  await freshStudent.addRefreshToken(
+    newRefreshTokenHash,
+    newTokenId,
+    expiresAt,
+    meta
+  );
 
   return {
     user: {
