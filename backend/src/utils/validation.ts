@@ -50,8 +50,8 @@ export const registerValidation: ValidationChain[] = [
     .withMessage("Name is required")
     .isLength({ min: 2, max: 50 })
     .withMessage("Name must be between 2 and 50 characters")
-    .matches(/^[A-Za-z\s'-]+$/)
-    .withMessage("Name can only contain letters, spaces, hyphens, and apostrophes"),
+    .matches(/^[A-Za-z\s-]+$/)
+    .withMessage("Name can only contain letters, spaces, and hyphens"),
 
   body("surname")
     .trim()
@@ -60,7 +60,7 @@ export const registerValidation: ValidationChain[] = [
     .isLength({ min: 2, max: 50 })
     .withMessage("Surname must be between 2 and 50 characters")
     .matches(/^[A-Za-z\s'-]+$/)
-    .withMessage("Surname can only contain letters, spaces, hyphens, and apostrophes"),
+    .withMessage("Surname can only contain letters, spaces, and hyphens"),
 ];
 
 /**

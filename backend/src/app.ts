@@ -18,6 +18,9 @@ const app = express();
 // Load environment config
 const env = getEnv();
 
+// Trust first proxy (needed for rate-limiter behind reverse proxy / CRA proxy)
+app.set("trust proxy", 1);
+
 // ============================================
 // Security Middleware
 // ============================================

@@ -1,0 +1,309 @@
+.vision {
+  position: relative;
+  background: #D64A2A;
+  color: #ffffff;
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--spacing-xl);
+}
+
+.header {
+  text-align: center;
+  padding: var(--spacing-2xl) 0 var(--spacing-lg);
+}
+
+.headerInner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--spacing-xl);
+}
+
+.label {
+  display: inline-block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.title {
+  font-size: var(--font-size-4xl);
+  margin-top: var(--spacing-sm);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.highlight {
+  color: #ffffff;
+}
+
+/* ScrollStack wrapper */
+.stackWrapper {
+  width: 100%;
+  position: relative;
+}
+
+/* Reduce top padding from ScrollStack's inner just for this section */
+.stackWrapper :global(.scroll-stack-inner) {
+  padding-top: 2vh;
+}
+
+/* Individual stack card styling */
+.stackCard {
+  background: #ffffff !important;
+  border-radius: 32px !important;
+  padding: 0 !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+  height: 28rem !important;
+  overflow: hidden;
+}
+
+.stackCardInner {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  width: 100%;
+}
+
+.stackCardAccent {
+  background: linear-gradient(135deg, #D64A2A 0%, #B83D1F 100%);
+  border-radius: 32px;
+  height: 100%;
+}
+
+.stackCardAccent h3 {
+  color: #ffffff;
+}
+
+.stackCardAccent p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.stackCardLeft {
+  flex-shrink: 0;
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2.5rem 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.stackCardAccent .stackCardLeft {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cardNumber {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: rgba(214, 74, 42, 0.12);
+  line-height: 1;
+}
+
+.cardNumberAccent {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.cardIcon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #D64A2A;
+  border-radius: 14px;
+}
+
+.cardIconAccent {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.cardIcon svg {
+  width: 26px;
+  height: 26px;
+  color: #ffffff;
+}
+
+.stackCardContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 3.5rem;
+}
+.stackCardContents {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 3.5rem;
+}
+.stackCardContent h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #1a1a2e;
+}
+
+.stackCardContent p {
+  font-size: 1.15rem;
+  color: #555;
+  line-height: 1.9;
+  max-width: 560px;
+}.stackCardContents h3 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #1a1a2e;
+}
+.stackCardContents p {
+  font-size: 1.15rem;
+  color: #ffffff;
+  line-height: 1.9;
+  max-width: 560px;
+}
+/* Pillars */
+.pillars {
+  text-align: center;
+  padding: var(--spacing-4xl) 0;
+}
+
+.pillarsTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-2xl);
+  color: #ffffff;
+}
+
+.pillarsList {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.pillar {
+  padding: var(--spacing-xl);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.pillar:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.pillarIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 2.5rem; /* kept for fallback, SVG uses size prop */
+  margin-bottom: var(--spacing-md);
+}
+
+.pillar h4 {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+  color: #ffffff;
+}
+
+.pillar p {
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+  .stackCard {
+    height: 24rem !important;
+  }
+
+  .stackCardLeft {
+    width: 80px;
+  }
+
+  .cardNumber {
+    font-size: 2rem;
+  }
+
+  .stackCardContent {
+    padding: 2rem;
+  }
+
+  .pillarsList {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: var(--font-size-3xl);
+  }
+
+  .stackCard {
+    height: 20rem !important;
+    border-radius: 20px !important;
+  }
+
+  .stackCardInner {
+    flex-direction: column;
+  }
+
+  .stackCardLeft {
+    width: 100%;
+    flex-direction: row;
+    padding: 1rem 1.5rem;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .stackCardAccent .stackCardLeft {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .cardNumber {
+    font-size: 1.5rem;
+  }
+
+  .cardIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .cardIcon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .stackCardContent {
+    padding: 1rem 1.5rem;
+  }
+
+  .stackCardContent h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stackCardContent p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .pillarsList {
+    grid-template-columns: 1fr;
+  }
+}

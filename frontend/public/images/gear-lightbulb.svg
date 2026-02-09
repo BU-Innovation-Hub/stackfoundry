@@ -1,0 +1,68 @@
+<svg viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="neonGlow">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Top small gears -->
+  <circle cx="85" cy="45" r="8" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none"/>
+  <circle cx="85" cy="45" r="5" stroke="rgba(255,255,255,0.5)" stroke-width="1" fill="none"/>
+  
+  <circle cx="115" cy="50" r="10" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" fill="none"/>
+  <path d="M115 40 L115 60 M105 50 L125 50" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+  
+  <!-- Large left gear -->
+  <circle cx="70" cy="85" r="22" stroke="#ffffff" stroke-width="2.5" fill="none" filter="url(#neonGlow)"/>
+  <circle cx="70" cy="85" r="15" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+  <path d="M70 63 L70 77 M70 93 L70 107 M48 85 L62 85 M78 85 L92 85 M54 69 L62 77 M78 93 L86 101 M54 101 L62 93 M78 77 L86 69" 
+        stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Large right gear -->
+  <circle cx="130" cy="90" r="24" stroke="#ffffff" stroke-width="2.5" fill="none" filter="url(#neonGlow)"/>
+  <circle cx="130" cy="90" r="16" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+  <path d="M130 66 L130 80 M130 100 L130 114 M106 90 L120 90 M140 90 L154 90" 
+        stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Center top gear -->
+  <circle cx="100" cy="75" r="18" stroke="rgba(255,255,255,0.8)" stroke-width="2" fill="none"/>
+  <circle cx="100" cy="75" r="12" stroke="rgba(255,255,255,0.8)" stroke-width="1.5" fill="none"/>
+  <path d="M100 57 L100 69 M100 81 L100 93 M82 75 L94 75 M106 75 L118 75" 
+        stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+  
+  <!-- Middle gears -->
+  <circle cx="55" cy="120" r="15" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none"/>
+  <circle cx="55" cy="120" r="10" stroke="rgba(255,255,255,0.7)" stroke-width="1.2" fill="none"/>
+  
+  <circle cx="100" cy="115" r="20" stroke="#ffffff" stroke-width="2.5" fill="none" filter="url(#neonGlow)"/>
+  <circle cx="100" cy="115" r="14" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+  <path d="M88 103 L96 111 M104 119 L112 127 M88 127 L96 119 M104 111 L112 103" 
+        stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  
+  <circle cx="145" cy="125" r="16" stroke="rgba(255,255,255,0.75)" stroke-width="2" fill="none"/>
+  <path d="M145 109 L145 120 M145 130 L145 141 M129 125 L140 125 M150 125 L161 125" 
+        stroke="rgba(255,255,255,0.75)" stroke-width="1.8"/>
+  
+  <!-- Bottom gears -->
+  <circle cx="75" cy="155" r="14" stroke="rgba(255,255,255,0.65)" stroke-width="2" fill="none"/>
+  <circle cx="75" cy="155" r="9" stroke="rgba(255,255,255,0.65)" stroke-width="1.2" fill="none"/>
+  
+  <circle cx="115" cy="150" r="12" stroke="rgba(255,255,255,0.6)" stroke-width="1.8" fill="none"/>
+  <circle cx="115" cy="150" r="8" stroke="rgba(255,255,255,0.6)" stroke-width="1" fill="none"/>
+  
+  <circle cx="90" cy="170" r="10" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" fill="none"/>
+  <circle cx="125" cy="170" r="8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" fill="none"/>
+  
+  <!-- Base screw threads -->
+  <rect x="70" y="185" width="60" height="8" rx="3" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.95"/>
+  <rect x="70" y="197" width="60" height="7" rx="3" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.9"/>
+  <rect x="70" y="208" width="60" height="7" rx="3" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.85"/>
+  <rect x="75" y="219" width="50" height="6" rx="3" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.8"/>
+  
+  <!-- Bottom cap -->
+  <rect x="80" y="230" width="40" height="12" rx="5" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.9"/>
+</svg>

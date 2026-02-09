@@ -1,0 +1,75 @@
+:root {
+  /* Colors */
+  --color-bg-primary: #0f1419;
+  --color-bg-secondary: #1a1f2e;
+  --color-bg-card: rgba(26, 31, 46, 0.9);
+  --color-bg-glass: rgba(255, 255, 255, 0.05);
+  
+  /* Light sections */
+  --color-bg-light: #f8f9fc;
+  --color-bg-light-alt: #ffffff;
+  --color-text-dark: #1a1f2e;
+  --color-text-dark-secondary: #4a5568;
+  
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0aec0;
+  --color-text-muted: #718096;
+  
+  --color-accent-primary: #D64A2A;
+  --color-accent-secondary: #B83D1F;
+  --color-accent-gold: #f59e0b;
+  --color-accent-teal: #0d9488;
+  
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-accent: rgba(214, 74, 42, 0.4);
+  --color-border-light: rgba(0, 0, 0, 0.1);
+  
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --font-size-4xl: 2.5rem;
+  --font-size-5xl: 3.5rem;
+  --font-size-6xl: 4.5rem;
+  --font-size-hero: clamp(3rem, 10vw, 7rem);
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  --spacing-4xl: 6rem;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 30px rgba(214, 74, 42, 0.3);
+  --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.08);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  
+  /* Layout */
+  --max-width: 1280px;
+  --header-height: 80px;
+}

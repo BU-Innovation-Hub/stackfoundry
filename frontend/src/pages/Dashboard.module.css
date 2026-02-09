@@ -1,0 +1,81 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-bg-light);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: #D64A2A;
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.greeting {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dark-secondary);
+  font-weight: 500;
+}
+
+.logoutBtn {
+  padding: 8px 20px;
+  background: transparent;
+  color: #D64A2A;
+  border: 1px solid #D64A2A;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.logoutBtn:hover {
+  background: #D64A2A;
+  color: #ffffff;
+}
+
+.main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--spacing-3xl) var(--spacing-2xl);
+}
+
+.welcome {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-3xl);
+  text-align: center;
+}
+
+.welcome h2 {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--color-text-dark);
+  margin-bottom: var(--spacing-md);
+}
+
+.welcome p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-dark-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.studentId {
+  color: var(--color-text-muted) !important;
+  font-size: var(--font-size-sm) !important;
+}
