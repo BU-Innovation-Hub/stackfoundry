@@ -1,0 +1,705 @@
+{
+  "info": {
+    "_postman_id": "innovation-hub-auth",
+    "name": "Innovation Hub - Authentication API",
+    "description": "Cookie-based authentication with JWT tokens and role-based authorization",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Server Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "API v1 Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "});",
+                  "",
+                  "pm.test('Cookies are set', function () {",
+                  "    pm.expect(pm.cookies.has('access_token')).to.be.true;",
+                  "    pm.expect(pm.cookies.has('refresh_token')).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"studentId\": \"STU-2024-001\",\n    \"email\": \"john.doe@student.botho.ac.bw\",\n    \"password\": \"SecurePass123\",\n    \"name\": \"John\",\n    \"surname\": \"Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Register a new student account. Sets access_token and refresh_token cookies."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.user).to.have.property('role');",
+                  "});",
+                  "",
+                  "pm.test('Cookies are set', function () {",
+                  "    pm.expect(pm.cookies.has('access_token')).to.be.true;",
+                  "    pm.expect(pm.cookies.has('refresh_token')).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.doe@student.botho.ac.bw\",\n    \"password\": \"SecurePass123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login with email and password. Sets access_token and refresh_token cookies."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('User is admin', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.user.role).to.equal('admin');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@botho.ac.bw\",\n    \"password\": \"Admin@123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login as admin user (run seed script first)"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('New tokens are set', function () {",
+                  "    pm.expect(pm.cookies.has('access_token')).to.be.true;",
+                  "    pm.expect(pm.cookies.has('refresh_token')).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token cookie. Implements token rotation - old refresh token is invalidated."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has user data', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Get currently authenticated user. Requires valid access_token cookie."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Success message', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('Logout');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Logout from current device. Clears cookies and revokes refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout All Devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('All devices logged out', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.include('all devices');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout-all"]
+            },
+            "description": "Logout from all devices. Revokes all refresh tokens. Requires authentication."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Student Routes (Protected)",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has student data', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('studentId');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/students/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "students", "me"]
+            },
+            "description": "Get current student's profile. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Student Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has welcome message', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.welcome).to.include('Welcome');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/students/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "students", "dashboard"]
+            },
+            "description": "Get student dashboard data. Requires authentication."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Routes (Admin Only)",
+      "item": [
+        {
+          "name": "Get Admin Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has stats', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.stats).to.have.property('totalUsers');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "dashboard"]
+            },
+            "description": "Get admin dashboard with statistics. Requires admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "List All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has users array', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.data.users).to.be.an('array');",
+                  "    pm.expect(json.data.pagination).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "List all users with pagination. Requires admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "users", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "USER_ID_HERE"
+                }
+              ]
+            },
+            "description": "Get single user details by ID. Requires admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle User Active Status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/:userId/toggle-active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "users", ":userId", "toggle-active"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "USER_ID_HERE"
+                }
+              ]
+            },
+            "description": "Activate/deactivate a user. Requires admin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Register - Invalid Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Has validation error', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error).to.include('Validation');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"studentId\": \"STU-001\",\n    \"email\": \"invalid-email\",\n    \"password\": \"Secure123\",\n    \"name\": \"Test\",\n    \"surname\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Test validation error for invalid email"
+          },
+          "response": []
+        },
+        {
+          "name": "Register - Weak Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"studentId\": \"STU-001\",\n    \"email\": \"test@test.com\",\n    \"password\": \"weak\",\n    \"name\": \"Test\",\n    \"surname\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Test validation error for weak password"
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Wrong Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Generic error message', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error).to.include('Invalid email or password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@botho.ac.bw\",\n    \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Test error for wrong password"
+          },
+          "response": []
+        },
+        {
+          "name": "Protected Route - No Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/students/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "students", "me"]
+            },
+            "description": "Test accessing protected route without authentication"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Route - Student Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Access denied message', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.error).to.include('Access denied');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "dashboard"]
+            },
+            "description": "Test accessing admin route with student token (login as student first)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ]
+}
