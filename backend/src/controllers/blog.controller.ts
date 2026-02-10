@@ -55,10 +55,10 @@ export const createBlog = async (
     handleValidationErrors(req);
 
     const user = (req as RequestWithUser).user;
-    const { title, excerpt, content, category, coverImage, tags, status } = req.body;
+    const { title, excerpt, content, category, featuredImage, tags, status } = req.body;
 
     const blog = await BlogService.createBlog(
-      { title, excerpt, content, category, coverImage, tags, status },
+      { title, excerpt, content, category, featuredImage, tags, status },
       { id: user.id, name: user.name, surname: user.surname }
     );
 
@@ -107,14 +107,14 @@ export const updateBlog = async (
   try {
     handleValidationErrors(req);
 
-    const { title, excerpt, content, category, coverImage, tags, status } = req.body;
+    const { title, excerpt, content, category, featuredImage, tags, status } = req.body;
 
     const blog = await BlogService.updateBlog(req.params.id, {
       title,
       excerpt,
       content,
       category,
-      coverImage,
+      featuredImage,
       tags,
       status,
     });
@@ -256,7 +256,17 @@ export const getFeaturedBlogs = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 3;
+    const DEFAULT_LIMIT = 3;
+    const MAX_LIMIT = 10;
+    
+    let limit = DEFAULT_LIMIT;
+    if (req.query.limit) {
+      const parsed = parseInt(req.query.limit as string, 10);
+      if (!Number.isNaN(parsed) && parsed > 0 && parsed <= MAX_LIMIT) {
+        limit = parsed;
+      }
+    }
+    
     const blogs = await BlogService.getFeaturedBlogs(limit);
 
     res.status(200).json({

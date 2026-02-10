@@ -82,7 +82,7 @@ The funding landscape in Africa has matured significantly:
 
 Building a tech startup in Africa requires resilience, adaptability, and a deep understanding of local markets. The rewards, however, can be transformative.
     `,
-    category: "Entrepreneurship" as const,
+    category: "entrepreneurship" as const,
     tags: ["startup", "africa", "entrepreneurship", "funding"],
     status: "published" as const,
   },
@@ -124,7 +124,7 @@ While AI presents immense opportunities, there are challenges:
 
 African innovators are uniquely positioned to develop AI solutions that address local challenges while contributing to global knowledge.
     `,
-    category: "Workshops" as const,
+    category: "technology" as const,
     tags: ["AI", "machine learning", "innovation", "africa"],
     status: "published" as const,
   },
@@ -161,7 +161,7 @@ The teams that enjoyed the process performed better. They took breaks, celebrate
 
 Hackathons are about more than winning—they're about learning, networking, and pushing boundaries.
     `,
-    category: "Conferences" as const,
+    category: "events" as const,
     tags: ["hackathon", "learning", "teamwork", "competition"],
     status: "published" as const,
   },

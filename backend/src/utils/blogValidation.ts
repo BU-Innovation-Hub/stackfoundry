@@ -4,6 +4,7 @@
  */
 
 import { body, param, query } from "express-validator";
+import { CATEGORIES } from "../models/blog.model";
 
 // ============================================
 // Validation Rules
@@ -35,14 +36,14 @@ export const createBlogValidation = [
     .trim()
     .notEmpty()
     .withMessage("Category is required")
-    .isIn(["technology", "entrepreneurship", "events", "tutorials", "news", "community"])
+    .isIn([...CATEGORIES])
     .withMessage("Invalid category"),
 
-  body("coverImage")
+  body("featuredImage")
     .optional()
     .trim()
     .isURL()
-    .withMessage("Cover image must be a valid URL"),
+    .withMessage("Featured image must be a valid URL"),
 
   body("tags")
     .optional()
@@ -93,14 +94,14 @@ export const updateBlogValidation = [
   body("category")
     .optional()
     .trim()
-    .isIn(["technology", "entrepreneurship", "events", "tutorials", "news", "community"])
+    .isIn([...CATEGORIES])
     .withMessage("Invalid category"),
 
-  body("coverImage")
+  body("featuredImage")
     .optional()
     .trim()
     .isURL()
-    .withMessage("Cover image must be a valid URL"),
+    .withMessage("Featured image must be a valid URL"),
 
   body("tags")
     .optional()
@@ -139,7 +140,7 @@ export const listBlogsValidation = [
 
   query("category")
     .optional()
-    .isIn(["technology", "entrepreneurship", "events", "tutorials", "news", "community"])
+    .isIn([...CATEGORIES])
     .withMessage("Invalid category"),
 
   query("status")

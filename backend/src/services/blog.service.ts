@@ -22,7 +22,7 @@ export interface CreateBlogData {
   excerpt: string;
   content: string;
   category: BlogCategory;
-  coverImage?: string;
+  featuredImage?: string;
   tags?: string[];
   status?: BlogStatus;
 }
@@ -32,7 +32,7 @@ export interface UpdateBlogData {
   excerpt?: string;
   content?: string;
   category?: BlogCategory;
-  coverImage?: string;
+  featuredImage?: string;
   tags?: string[];
   status?: BlogStatus;
 }
@@ -80,6 +80,8 @@ export const createBlog = async (
     author: new Types.ObjectId(author.id),
     authorName: `${author.name} ${author.surname}`,
     tags: data.tags?.map(tag => tag.toLowerCase().trim()) || [],
+    // Set publishedAt if creating as published (also handled by pre-save middleware)
+    publishedAt: data.status === "published" ? new Date() : undefined,
   });
 
   return blog;

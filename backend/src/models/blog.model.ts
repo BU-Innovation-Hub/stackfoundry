@@ -16,16 +16,19 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 // ============================================
 
 const CATEGORIES = [
-  "Entrepreneurship",
-  "Community",
-  "Workshops",
-  "Meetups",
-  "Webinars",
-  "Conferences",
+  "technology",
+  "entrepreneurship",
+  "events",
+  "tutorials",
+  "news",
+  "community",
 ] as const;
 
 type BlogCategory = (typeof CATEGORIES)[number];
 type BlogStatus = "draft" | "published" | "archived";
+
+// Export for use in other files
+export { BlogCategory, BlogStatus, CATEGORIES };
 
 // ============================================
 // Interface
@@ -44,6 +47,7 @@ export interface IBlog extends Document {
   readTime: string;
   featuredImage?: string;
   tags: string[];
+  views: number; // View count for analytics
   publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -55,15 +59,24 @@ export interface IBlog extends Document {
 
 /**
  * Generate URL-friendly slug from title
+ * Ensures non-empty result with fallback for edge cases
  */
 const generateSlug = (title: string): string => {
-  return title
+  const slug = title
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, "") // Remove special characters
     .replace(/\s+/g, "-") // Replace spaces with hyphens
     .replace(/-+/g, "-") // Remove consecutive hyphens
+    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
     .substring(0, 100); // Limit length
+
+  // Fallback for empty slugs (e.g., titles with only special chars)
+  if (!slug) {
+    return `untitled-${Date.now().toString(36)}`.substring(0, 100);
+  }
+
+  return slug;
 };
 
 /**
@@ -148,6 +161,12 @@ const BlogSchema: Schema<IBlog> = new Schema(
       default: null,
       index: true,
     },
+    views: {
+      type: Number,
+      default: 0,
+      required: true,
+      min: [0, "Views cannot be negative"],
+    },
   },
   {
     timestamps: true,
@@ -170,19 +189,27 @@ BlogSchema.index({ title: "text", excerpt: "text", content: "text" });
 // ============================================
 
 BlogSchema.pre("save", async function () {
-  // Generate slug from title
+  // Generate slug from title with uniqueness suffix
+  // Applies to both new documents and title updates to prevent collisions
   if (this.isModified("title") || !this.slug) {
-    this.slug = generateSlug(this.title);
-    
-    // Add timestamp for uniqueness on new documents
-    if (this.isNew) {
-      this.slug += `-${Date.now().toString(36)}`;
-    }
+    const baseSlug = generateSlug(this.title);
+    // Always append timestamp suffix for uniqueness (new or renamed)
+    this.slug = `${baseSlug}-${Date.now().toString(36)}`.substring(0, 100);
   }
 
   // Calculate read time from content
   if (this.isModified("content")) {
     this.readTime = calculateReadTime(this.content);
+  }
+
+  // Set publishedAt when status becomes "published"
+  if (this.status === "published" && !this.publishedAt) {
+    this.publishedAt = new Date();
+  }
+
+  // Clear publishedAt if status changes away from "published"
+  if (this.isModified("status") && this.status !== "published") {
+    this.publishedAt = undefined;
   }
 });
 
@@ -193,6 +220,7 @@ BlogSchema.pre("save", async function () {
 interface BlogModel extends Model<IBlog> {
   findPublished(options?: { limit?: number; skip?: number; category?: string }): Promise<IBlog[]>;
   findBySlug(slug: string): Promise<IBlog | null>;
+  incrementViews(id: string): Promise<IBlog | null>;
 }
 
 /**
@@ -221,6 +249,17 @@ BlogSchema.statics.findBySlug = function (slug: string) {
   return this.findOne({ slug, status: "published" })
     .populate("author", "name surname")
     .lean();
+};
+
+/**
+ * Increment view count for a blog post
+ */
+BlogSchema.statics.incrementViews = function (id: string) {
+  return this.findByIdAndUpdate(
+    id,
+    { $inc: { views: 1 } },
+    { new: true }
+  );
 };
 
 // ============================================
