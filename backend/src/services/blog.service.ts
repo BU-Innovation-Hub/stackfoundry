@@ -108,8 +108,8 @@ export const getBlogById = async (id: string): Promise<IBlog> => {
  * Get blog by slug (public view - only published)
  */
 export const getBlogBySlug = async (slug: string): Promise<IBlog> => {
-  const blog = await Blog.findBySlug(slug)
-    .populate("author", "name surname");
+  // Note: findBySlug already populates author and returns lean document
+  const blog = await Blog.findBySlug(slug);
 
   if (!blog) {
     throw new ApiError(404, "Blog not found");
