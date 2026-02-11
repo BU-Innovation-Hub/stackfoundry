@@ -28,7 +28,7 @@ type BlogCategory = (typeof CATEGORIES)[number];
 type BlogStatus = "draft" | "published" | "archived";
 
 // Export for use in other files
-export { BlogCategory, BlogStatus, CATEGORIES };
+// export { BlogCategory, BlogStatus, CATEGORIES };
 
 // ============================================
 // Interface
@@ -189,11 +189,12 @@ BlogSchema.index({ title: "text", excerpt: "text", content: "text" });
 // ============================================
 
 BlogSchema.pre("save", async function () {
-  // Generate slug from title with uniqueness suffix
-  // Applies to both new documents and title updates to prevent collisions
-  if (this.isModified("title") || !this.slug) {
+  // Generate slug only for new documents without an existing slug
+  // Preserves existing slugs to maintain URL stability for bookmarks, shared links, and SEO
+  // Note: If slug regeneration is needed, do it explicitly via a separate update operation
+  if (!this.slug) {
     const baseSlug = generateSlug(this.title);
-    // Always append timestamp suffix for uniqueness (new or renamed)
+    // Append timestamp suffix for uniqueness
     this.slug = `${baseSlug}-${Date.now().toString(36)}`.substring(0, 100);
   }
 
