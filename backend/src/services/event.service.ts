@@ -141,19 +141,29 @@ export const updateEvent = async (
         throw new ApiError(400, "Invalid event ID");
     }
 
-    const updateData: UpdateEventData & { publishedAt?: Date } = { ...data };
+    let event: IEvent | null = null;
     if (data.status === "published") {
-        const existing = await Event.findById(id).select("status publishedAt").lean();
-        if (existing && existing.status !== "published" && !existing.publishedAt) {
-            updateData.publishedAt = new Date();
+        // Atomically set publishedAt only if not already published and publishedAt is not set
+        event = await Event.findOneAndUpdate(
+            { _id: id, status: { $ne: "published" }, publishedAt: { $exists: false } },
+            { $set: { ...data, publishedAt: new Date() } },
+            { new: true, runValidators: true }
+        ).populate("author", "name surname email");
+        // If not matched, fall back to normal update (for already published or other updates)
+        if (!event) {
+            event = await Event.findByIdAndUpdate(
+                id,
+                { $set: data },
+                { new: true, runValidators: true }
+            ).populate("author", "name surname email");
         }
+    } else {
+        event = await Event.findByIdAndUpdate(
+            id,
+            { $set: data },
+            { new: true, runValidators: true }
+        ).populate("author", "name surname email");
     }
-
-    const event = await Event.findByIdAndUpdate(
-        id,
-        { $set: updateData },
-        { new: true, runValidators: true }
-    ).populate("author", "name surname email");
 
     if (!event) {
         throw new ApiError(404, "Event not found");
