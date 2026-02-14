@@ -141,35 +141,30 @@ export const updateEvent = async (
         throw new ApiError(400, "Invalid event ID");
     }
 
-    let event: IEvent | null = null;
-    if (data.status === "published") {
-        // Atomically set publishedAt only if not already published and publishedAt is not set
-        event = await Event.findOneAndUpdate(
-            { _id: id, status: { $ne: "published" }, publishedAt: { $exists: false } },
-            { $set: { ...data, publishedAt: new Date() } },
-            { new: true, runValidators: true }
-        ).populate("author", "name surname email");
-        // If not matched, fall back to normal update (for already published or other updates)
-        if (!event) {
-            event = await Event.findByIdAndUpdate(
-                id,
-                { $set: data },
-                { new: true, runValidators: true }
-            ).populate("author", "name surname email");
-        }
-    } else {
-        event = await Event.findByIdAndUpdate(
-            id,
-            { $set: data },
-            { new: true, runValidators: true }
-        ).populate("author", "name surname email");
-    }
-
-    if (!event) {
+    // Load the document to ensure pre-save hooks run
+    const eventDoc = await Event.findById(id);
+    if (!eventDoc) {
         throw new ApiError(404, "Event not found");
     }
 
-    return event;
+    // Detect status transition to published
+    if (
+        data.status === "published" &&
+        eventDoc.status !== "published"
+    ) {
+        eventDoc.publishedAt = new Date();
+    }
+
+    // Apply other updatable fields
+    for (const key of Object.keys(data)) {
+        // @ts-ignore
+        eventDoc[key] = data[key];
+    }
+
+    await eventDoc.save();
+    // Populate author for response consistency
+    await eventDoc.populate("author", "name surname email");
+    return eventDoc;
 };
 
 /**
