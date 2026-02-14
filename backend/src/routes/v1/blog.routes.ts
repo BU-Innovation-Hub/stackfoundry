@@ -13,6 +13,9 @@
  * GET    /api/v1/blogs/:id        - Get blog by ID
  * PUT    /api/v1/blogs/:id        - Update blog
  * DELETE /api/v1/blogs/:id        - Delete blog
+ * 
+ * IMPORTANT: Static routes must be defined before parameterized routes
+ * to prevent route conflicts (e.g., /featured before /:id)
  */
 
 import { Router } from "express";
@@ -29,7 +32,7 @@ import {
 const router = Router();
 
 // ============================================
-// Admin Routes - All require auth + admin role
+// Static Routes First (to avoid /:id conflicts)
 // ============================================
 
 /**
@@ -44,6 +47,13 @@ router.post(
   createBlogValidation,
   BlogController.createBlog
 );
+
+/**
+ * @route   GET /api/v1/blogs
+ * @desc    List published blogs with pagination
+ * @access  Public
+ */
+router.get("/", listBlogsValidation, BlogController.listBlogsPublic);
 
 /**
  * @route   GET /api/v1/blogs/admin
@@ -70,6 +80,23 @@ router.get(
   BlogController.getBlogStats
 );
 
+/**
+ * @route   GET /api/v1/blogs/featured
+ * @desc    Get featured blogs for homepage
+ * @access  Public
+ */
+router.get("/featured", BlogController.getFeaturedBlogs);
+
+/**
+ * @route   GET /api/v1/blogs/slug/:slug
+ * @desc    Get a single blog by slug
+ * @access  Public
+ */
+router.get("/slug/:slug", blogSlugValidation, BlogController.getBlogBySlug);
+
+// ============================================
+// Parameterized Routes (after static routes)
+// ============================================
 
 /**
  * @route   GET /api/v1/blogs/:id
@@ -109,29 +136,5 @@ router.delete(
   blogIdValidation,
   BlogController.deleteBlog
 );
-// ============================================
-// Public Routes
-// ============================================
-
-/**
- * @route   GET /api/v1/blogs
- * @desc    List published blogs with pagination
- * @access  Public
- */
-router.get("/", listBlogsValidation, BlogController.listBlogsPublic);
-
-/**
- * @route   GET /api/v1/blogs/featured
- * @desc    Get featured blogs for homepage
- * @access  Public
- */
-router.get("/featured", BlogController.getFeaturedBlogs);
-
-/**
- * @route   GET /api/v1/blogs/slug/:slug
- * @desc    Get a single blog by slug
- * @access  Public
- */
-router.get("/slug/:slug", blogSlugValidation, BlogController.getBlogBySlug);
 
 export default router;

@@ -108,6 +108,12 @@ export const updateBlogValidation = [
     .isArray()
     .withMessage("Tags must be an array"),
 
+  body("tags.*")
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage("Each tag cannot exceed 50 characters"),
+
   body("status")
     .optional()
     .isIn(["draft", "published", "archived"])

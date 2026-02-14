@@ -133,13 +133,27 @@ export const updateBlog = async (
   }
 
   // Clean tags if provided
-  if (data.tags) {
-    data.tags = data.tags.map(tag => tag.toLowerCase().trim());
+  // if (data.tags) {
+  //   data.tags = data.tags.map(tag => tag.toLowerCase().trim());
+  // }
+
+  // Build update object without mutating input
+  const updateData: UpdateBlogData = { ...data };
+
+  // Clean tags if provided
+  if (updateData.tags) {
+    updateData.tags = updateData.tags.map(tag => tag.toLowerCase().trim());
+  }
+
+  // Handle publishedAt when status changes to published
+  const existingBlog = await Blog.findById(id).select('status');
+  if (updateData.status === 'published' && existingBlog?.status !== 'published') {
+    (updateData as any).publishedAt = new Date();
   }
 
   const blog = await Blog.findByIdAndUpdate(
     id,
-    { $set: data },
+    { $set: updateData },
     { new: true, runValidators: true }
   ).populate("author", "name surname email");
 
@@ -200,6 +214,9 @@ export const listBlogs = async (
   }
 
   if (authorId) {
+    if (!Types.ObjectId.isValid(authorId)) {
+      throw new ApiError(400, "Invalid author ID");
+    }
     query.author = new Types.ObjectId(authorId);
   }
 

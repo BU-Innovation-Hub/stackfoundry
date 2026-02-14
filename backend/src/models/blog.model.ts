@@ -85,9 +85,11 @@ const generateSlug = (title: string): string => {
  */
 const calculateReadTime = (content: string): string => {
   const wordsPerMinute = 200;
-  const wordCount = content.trim().split(/\s+/).length;
+  const trimmed = content.trim();
+  const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
   const minutes = Math.ceil(wordCount / wordsPerMinute);
-  return `${minutes} min read`;
+  
+  return `${Math.max(1, minutes)} min read`;
 };
 
 // ============================================
@@ -256,6 +258,9 @@ BlogSchema.statics.findBySlug = function (slug: string) {
  * Increment view count for a blog post
  */
 BlogSchema.statics.incrementViews = function (id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+        return Promise.resolve(null);
+    }
   return this.findByIdAndUpdate(
     id,
     { $inc: { views: 1 } },
