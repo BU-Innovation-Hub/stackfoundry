@@ -9,6 +9,7 @@ import authRouter from "./auth.routes";
 import studentRouter from "./student.routes";
 import adminRouter from "./admin.routes";
 import blogRouter from "./blog.routes";
+import eventRouter from "./event.routes";
 
 const v1 = Router();
 
@@ -26,5 +27,8 @@ v1.use("/admin", adminRouter);
 
 // Blog routes (some protected, some public)
 v1.use("/blogs", blogRouter);
+
+// Event routes (some protected, some public)
+v1.use("/events", eventRouter);
 
 export default v1;
