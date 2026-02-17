@@ -82,7 +82,13 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 900px) {
+  .actions {
+    gap: var(--spacing-sm);
+  }
 }
 
 .joinBtn {
