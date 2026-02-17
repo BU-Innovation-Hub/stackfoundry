@@ -79,3 +79,25 @@
   color: var(--color-text-muted) !important;
   font-size: var(--font-size-sm) !important;
 }
+
+.adminBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 28px;
+  background: #1a1a2e;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.adminBtn:hover {
+  background: #2a2a4e;
+  box-shadow: 0 4px 16px rgba(26, 26, 46, 0.3);
+  transform: translateY(-1px);
+}

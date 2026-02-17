@@ -102,6 +102,25 @@
   box-shadow: 0 4px 12px rgba(214, 74, 42, 0.3);
 }
 
+.adminLink {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: #1a1a2e;
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #1a1a2e;
+  transition: all var(--transition-base);
+}
+
+.adminLink:hover {
+  background: #2a2a4e;
+  border-color: #2a2a4e;
+  box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+}
+
 .menuToggle {
   display: none;
   width: 32px;
