@@ -3,7 +3,8 @@
 // Replace with real API calls when backend is ready
 // ============================================
 
-import { Member, BlogPost, Event, Course, DashboardStats } from '../types/admin';
+import { Member, Event, Course, DashboardStats } from '../types/admin';
+import { BlogPost } from '../types/blog';
 
 // ---- Members ----
 export const mockMembers: Member[] = [
@@ -19,10 +20,10 @@ export const mockMembers: Member[] = [
 
 // ---- Blog Posts ----
 export const mockBlogs: BlogPost[] = [
-  { id: '1', title: 'Getting Started with React in 2026', slug: 'getting-started-react-2026', excerpt: 'A comprehensive guide to starting your React journey...', content: '<p>React remains one of the most popular frontend frameworks...</p>', coverImage: '', author: 'Bokang Mahlaka', tags: ['React', 'JavaScript', 'Frontend'], status: 'published', publishedAt: '2026-01-15', createdAt: '2026-01-10', updatedAt: '2026-01-15' },
-  { id: '2', title: 'Building REST APIs with Node.js', slug: 'building-rest-apis-nodejs', excerpt: 'Learn to build scalable APIs with Express and MongoDB...', content: '<p>REST APIs are the backbone of modern web applications...</p>', coverImage: '', author: 'Mpho Tau', tags: ['Node.js', 'Express', 'Backend'], status: 'published', publishedAt: '2026-01-20', createdAt: '2026-01-18', updatedAt: '2026-01-20' },
-  { id: '3', title: 'Introduction to Machine Learning with Python', slug: 'intro-ml-python', excerpt: 'Discover the basics of ML using Python and scikit-learn...', content: '<p>Machine learning is transforming industries...</p>', coverImage: '', author: 'Naledi Kgathi', tags: ['Python', 'ML', 'Data Science'], status: 'draft', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
-  { id: '4', title: 'UI/UX Design Principles for Developers', slug: 'uiux-design-principles', excerpt: 'Essential design principles every developer should know...', content: '<p>Good design is not just about aesthetics...</p>', coverImage: '', author: 'Amantle Leburu', tags: ['Design', 'UI/UX', 'Frontend'], status: 'published', publishedAt: '2026-02-05', createdAt: '2026-02-03', updatedAt: '2026-02-05' },
+  { _id: '1', title: 'Getting Started with React in 2026', slug: 'getting-started-react-2026', excerpt: 'A comprehensive guide to starting your React journey...', content: '<p>React remains one of the most popular frontend frameworks...</p>', featuredImage: '', author: 'Bokang Mahlaka', authorName: 'Bokang Mahlaka', category: 'technology', views: 120, readTime: '5 min read', tags: ['React', 'JavaScript', 'Frontend'], status: 'published', publishedAt: '2026-01-15', createdAt: '2026-01-10', updatedAt: '2026-01-15' },
+  { _id: '2', title: 'Building REST APIs with Node.js', slug: 'building-rest-apis-nodejs', excerpt: 'Learn to build scalable APIs with Express and MongoDB...', content: '<p>REST APIs are the backbone of modern web applications...</p>', featuredImage: '', author: 'Mpho Tau', authorName: 'Mpho Tau', category: 'technology', views: 85, readTime: '8 min read', tags: ['Node.js', 'Express', 'Backend'], status: 'published', publishedAt: '2026-01-20', createdAt: '2026-01-18', updatedAt: '2026-01-20' },
+  { _id: '3', title: 'Introduction to Machine Learning with Python', slug: 'intro-ml-python', excerpt: 'Discover the basics of ML using Python and scikit-learn...', content: '<p>Machine learning is transforming industries...</p>', featuredImage: '', author: 'Naledi Kgathi', authorName: 'Naledi Kgathi', category: 'technology', views: 45, readTime: '12 min read', tags: ['Python', 'ML', 'Data Science'], status: 'draft', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
+  { _id: '4', title: 'UI/UX Design Principles for Developers', slug: 'uiux-design-principles', excerpt: 'Essential design principles every developer should know...', content: '<p>Good design is not just about aesthetics...</p>', featuredImage: '', author: 'Amantle Leburu', authorName: 'Amantle Leburu', category: 'community', views: 60, readTime: '6 min read', tags: ['Design', 'UI/UX', 'Frontend'], status: 'published', publishedAt: '2026-02-05', createdAt: '2026-02-03', updatedAt: '2026-02-05' },
 ];
 
 // ---- Events ----

@@ -6,8 +6,10 @@
 //   3. Keep the same function signatures
 // ============================================
 
-import { Member, BlogPost, Event, Course, DashboardStats } from '../types/admin';
-import { mockMembers, mockBlogs, mockEvents, mockCourses, mockDashboardStats } from './mockData';
+import { Member, Event, Course, DashboardStats } from '../types/admin';
+import { BlogPost, IBlog } from '../types/blog';
+import { mockMembers, mockEvents, mockCourses, mockDashboardStats } from './mockData';
+import { api as apiClient } from './apiClient';
 
 // Simulate async delay (remove when using real API)
 const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
@@ -52,40 +54,35 @@ export const deleteMember = async (id: string): Promise<void> => {
 };
 
 // ---- Blogs ----
+const mapBackendToBlogPost = (blog: IBlog): BlogPost => ({
+  ...blog,
+  // We can keep an 'id' alias if needed, but components are being updated to use _id
+});
+
 export const getBlogs = async (): Promise<BlogPost[]> => {
-  await delay();
-  return [...mockBlogs];
-  // TODO: return (await apiClient.get('/admin/blogs')).data;
+  const response = await apiClient.get('/blogs/admin');
+  return response.data.data.map(mapBackendToBlogPost);
 };
 
-export const createBlog = async (data: Omit<BlogPost, 'id' | 'slug' | 'createdAt' | 'updatedAt'>): Promise<BlogPost> => {
-  await delay();
-  const blog: BlogPost = {
-    ...data,
-    id: String(Date.now()),
-    slug: data.title.toLowerCase().replace(/\s+/g, '-'),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  mockBlogs.push(blog);
-  return blog;
-  // TODO: return (await apiClient.post('/admin/blogs', data)).data;
+export const createBlog = async (data: any): Promise<BlogPost> => {
+  try {
+    const response = await apiClient.post('/blogs', data);
+    return mapBackendToBlogPost(response.data.data);
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      console.error('Blog creation validation failed:', error.response.data);
+    }
+    throw error;
+  }
 };
 
-export const updateBlog = async (id: string, data: Partial<BlogPost>): Promise<BlogPost> => {
-  await delay();
-  const blog = mockBlogs.find(b => b.id === id);
-  if (!blog) throw new Error('Blog not found');
-  Object.assign(blog, data, { updatedAt: new Date().toISOString() });
-  return { ...blog };
-  // TODO: return (await apiClient.put(`/admin/blogs/${id}`, data)).data;
+export const updateBlog = async (id: string, data: any): Promise<BlogPost> => {
+  const response = await apiClient.put(`/blogs/${id}`, data);
+  return mapBackendToBlogPost(response.data.data);
 };
 
 export const deleteBlog = async (id: string): Promise<void> => {
-  await delay();
-  const idx = mockBlogs.findIndex(b => b.id === id);
-  if (idx !== -1) mockBlogs.splice(idx, 1);
-  // TODO: await apiClient.delete(`/admin/blogs/${id}`);
+  await apiClient.delete(`/blogs/${id}`);
 };
 
 // ---- Events ----

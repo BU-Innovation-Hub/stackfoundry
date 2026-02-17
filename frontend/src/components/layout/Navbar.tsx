@@ -17,12 +17,12 @@ const Navbar: React.FC = () => {
   }, []);
 
   const navLinks = [
-    { name: 'About Us', href: '#about' },
-    { name: 'Explore', href: '#explore' },
-    { name: 'Events', href: '#events' },
-    { name: 'Founders', href: '#founders' },
-    { name: 'Blog', href: '#blog' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'About Us', href: '/#about' },
+    { name: 'Explore', href: '/#explore' },
+    { name: 'Events', href: '/#events' },
+    { name: 'Founders', href: '/#founders' },
+    { name: 'Blog', href: '/#blog' },
+    { name: 'Contact', href: '/#contact' },
   ];
 
   return (

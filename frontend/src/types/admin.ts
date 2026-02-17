@@ -15,20 +15,8 @@ export interface Member {
   lastLogin?: string;
 }
 
-export interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  coverImage: string;
-  author: string;
-  tags: string[];
-  status: 'draft' | 'published' | 'archived';
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// BlogPost interface removed - now using IBlog from backend models
+
 
 export interface Event {
   id: string;

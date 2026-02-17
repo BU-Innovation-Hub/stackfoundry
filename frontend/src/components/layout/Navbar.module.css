@@ -5,6 +5,8 @@
   right: 0;
   z-index: 1000;
   height: var(--header-height);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
   transition: background var(--transition-base), box-shadow var(--transition-base);
 }
 

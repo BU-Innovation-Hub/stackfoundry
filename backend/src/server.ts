@@ -1,10 +1,11 @@
-import app from "./app";
 import dotenv from "dotenv";
+// Load environment variables immediately
+dotenv.config();
+
+import app from "./app";
 import { loadEnv } from "./config/env";
 import { connectDatabase } from "./config/database";
 
-// Load environment variables
-dotenv.config();
 const env = loadEnv();
 
 let server: ReturnType<typeof app.listen> | undefined;
@@ -47,4 +48,4 @@ connectDatabase(env.MONGO_URI)
     });
   });
 
-export {};
+export { };
