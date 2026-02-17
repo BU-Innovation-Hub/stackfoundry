@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import styles from './Navbar.module.css';
 
 const Navbar: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -40,12 +42,25 @@ const Navbar: React.FC = () => {
         </nav>
 
         <div className={styles.actions}>
-          <Link to="/join" className={styles.joinBtn}>
-            Join Hub
-          </Link>
-          <Link to="/login" className={styles.navLink}>
-            Login
-          </Link>
+          {isAuthenticated && user?.role === 'admin' && (
+            <Link to="/admin" className={styles.adminLink}>
+              Admin
+            </Link>
+          )}
+          {isAuthenticated ? (
+            <Link to="/dashboard" className={styles.joinBtn}>
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/join" className={styles.joinBtn}>
+                Join Hub
+              </Link>
+              <Link to="/login" className={styles.navLink}>
+                Login
+              </Link>
+            </>
+          )}
           <button
             className={styles.menuToggle}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

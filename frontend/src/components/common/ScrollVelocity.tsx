@@ -59,7 +59,7 @@ interface ScrollVelocityProps {
 
 export const ScrollVelocity: React.FC<ScrollVelocityProps> = ({
   scrollContainerRef,
-  texts = ['Botho Innovation Hub','Creating Innovators'],
+  texts = [],
   velocity = 100,
   className = '',
   damping = 50,
