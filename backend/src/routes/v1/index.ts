@@ -8,6 +8,7 @@ import healthRouter from "./health.routes";
 import authRouter from "./auth.routes";
 import studentRouter from "./student.routes";
 import adminRouter from "./admin.routes";
+import blogRouter from "./blog.routes";
 
 const v1 = Router();
 
@@ -22,5 +23,8 @@ v1.use("/students", studentRouter);
 
 // Admin routes (protected + admin role)
 v1.use("/admin", adminRouter);
+
+// Blog routes (some protected, some public)
+v1.use("/blogs", blogRouter);
 
 export default v1;

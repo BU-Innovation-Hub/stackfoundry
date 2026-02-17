@@ -1,6 +1,6 @@
 /**
  * Database Seed Script
- * Creates initial roles and admin account
+ * Creates initial roles, admin account, and sample blogs
  *
  * Run with: npx ts-node src/scripts/seed.ts
  */
@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import Role from "../models/role.model";
 import Student from "../models/user.model";
+import Blog from "../models/blog.model";
 
 // Load environment variables
 dotenv.config();
@@ -47,6 +48,124 @@ const ADMIN_USER = {
   name: "System",
   surname: "Administrator",
 };
+
+const SAMPLE_BLOGS = [
+  {
+    title: "How to Build a Successful Tech Startup in Africa",
+    excerpt:
+      "Key insights and strategies for launching and scaling your tech venture in the African market.",
+    content: `
+# How to Build a Successful Tech Startup in Africa
+
+Africa is experiencing a tech revolution, and there's never been a better time to launch a startup on the continent.
+
+## Understanding the Market
+
+The African tech ecosystem has grown exponentially over the past decade. With a young, digitally-savvy population and increasing smartphone penetration, the opportunities are immense.
+
+### Key Considerations
+
+1. **Identify Local Problems**: The most successful startups solve real problems faced by Africans
+2. **Mobile-First Approach**: Design for mobile from day one
+3. **Localization**: Understand local languages, cultures, and payment preferences
+4. **Infrastructure Challenges**: Build solutions that work with limited connectivity
+
+## Funding Landscape
+
+The funding landscape in Africa has matured significantly:
+
+- **Angel Investors**: Growing network of local angels
+- **VC Funds**: Both local and international funds are active
+- **Accelerators**: Programs like Y Combinator are increasingly interested in African startups
+
+## Conclusion
+
+Building a tech startup in Africa requires resilience, adaptability, and a deep understanding of local markets. The rewards, however, can be transformative.
+    `,
+    category: "entrepreneurship" as const,
+    tags: ["startup", "africa", "entrepreneurship", "funding"],
+    status: "published" as const,
+  },
+  {
+    title: "The Rise of AI in African Innovation",
+    excerpt:
+      "Exploring how artificial intelligence is transforming industries across the continent.",
+    content: `
+# The Rise of AI in African Innovation
+
+Artificial Intelligence is no longer a futuristic concept—it's reshaping industries across Africa today.
+
+## AI Applications in Africa
+
+### Agriculture
+- Crop disease detection using computer vision
+- Yield prediction models
+- Smart irrigation systems
+
+### Healthcare
+- Diagnostic tools for remote areas
+- Drug discovery acceleration
+- Patient management systems
+
+### Financial Services
+- Credit scoring for the unbanked
+- Fraud detection
+- Automated customer service
+
+## Challenges and Opportunities
+
+While AI presents immense opportunities, there are challenges:
+
+- **Data availability**: Need for localized datasets
+- **Infrastructure**: Computing resources are expensive
+- **Skills gap**: Need for more AI talent
+
+## The Future
+
+African innovators are uniquely positioned to develop AI solutions that address local challenges while contributing to global knowledge.
+    `,
+    category: "technology" as const,
+    tags: ["AI", "machine learning", "innovation", "africa"],
+    status: "published" as const,
+  },
+  {
+    title: "5 Lessons from Our Latest Hackathon Winners",
+    excerpt:
+      "What we learned from the teams that built winning solutions in just 48 hours.",
+    content: `
+# 5 Lessons from Our Latest Hackathon Winners
+
+Our recent 48-hour hackathon brought together some of the brightest minds in tech. Here's what the winning teams taught us.
+
+## Lesson 1: Start with the Problem
+
+The winning team spent the first 4 hours just understanding the problem. They interviewed potential users and validated assumptions before writing any code.
+
+## Lesson 2: Keep It Simple
+
+All winning solutions were remarkably simple. They focused on doing one thing exceptionally well rather than building feature-rich applications.
+
+## Lesson 3: Team Dynamics Matter
+
+Successful teams had clear roles and excellent communication. They used tools like Slack and Notion to stay coordinated.
+
+## Lesson 4: Presentation is Key
+
+A great product with a poor presentation loses. Winners spent significant time preparing their demo and pitch.
+
+## Lesson 5: Have Fun
+
+The teams that enjoyed the process performed better. They took breaks, celebrated small wins, and maintained positive energy.
+
+## Conclusion
+
+Hackathons are about more than winning—they're about learning, networking, and pushing boundaries.
+    `,
+    category: "events" as const,
+    tags: ["hackathon", "learning", "teamwork", "competition"],
+    status: "published" as const,
+  },
+];
 
 // ============================================
 // Seed Functions
@@ -103,6 +222,34 @@ async function seedAdminUser(): Promise<void> {
   console.log(`   ⚠️  CHANGE THIS PASSWORD IN PRODUCTION!`);
 }
 
+async function seedBlogs(): Promise<void> {
+  console.log("\n📝 Seeding blogs...");
+
+  // Get admin user for author reference
+  const admin = await Student.findOne({ email: ADMIN_USER.email });
+  if (!admin) {
+    console.log("   ⚠️ Admin user not found. Skipping blog seed.");
+    return;
+  }
+
+  for (const blogData of SAMPLE_BLOGS) {
+    // Check if blog with same title exists
+    const existing = await Blog.findOne({ title: blogData.title });
+
+    if (existing) {
+      console.log(`   ✓ Blog "${blogData.title.substring(0, 40)}..." already exists`);
+    } else {
+      await Blog.create({
+        ...blogData,
+        author: admin._id,
+        authorName: `${admin.name} ${admin.surname}`,
+        publishedAt: blogData.status === "published" ? new Date() : undefined,
+      });
+      console.log(`   ✓ Created blog "${blogData.title.substring(0, 40)}..."`);
+    }
+  }
+}
+
 // ============================================
 // Main
 // ============================================
@@ -119,15 +266,18 @@ async function main(): Promise<void> {
     // Run seeds
     await seedRoles();
     await seedAdminUser();
+    await seedBlogs();
 
     console.log("\n✅ Seed completed successfully!");
 
     // Show summary
     const roleCount = await Role.countDocuments();
     const userCount = await Student.countDocuments();
+    const blogCount = await Blog.countDocuments();
     console.log(`\n📊 Summary:`);
     console.log(`   - Roles: ${roleCount}`);
     console.log(`   - Users: ${userCount}`);
+    console.log(`   - Blogs: ${blogCount}`);
   } catch (error) {
     console.error("\n❌ Seed failed:", error);
     process.exit(1);
