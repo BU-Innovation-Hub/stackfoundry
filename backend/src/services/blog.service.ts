@@ -151,15 +151,20 @@ export const updateBlog = async (
     (updateData as any).publishedAt = new Date();
   }
 
-  const blog = await Blog.findByIdAndUpdate(
-    id,
-    { $set: updateData },
-    { new: true, runValidators: true }
-  ).populate("author", "name surname email");
+  // Use findOne and save instead of findByIdAndUpdate to ensure pre-save middleware runs
+  // This is critical for publishedAt date handling and slug generation
+  const blog = await Blog.findById(id);
 
   if (!blog) {
     throw new ApiError(404, "Blog not found");
   }
+
+  // Manually update fields
+  Object.assign(blog, data);
+
+  // Tags special handling (already cleaned in previous step but reinforced by middleware)
+  await blog.save();
+  await blog.populate("author", "name surname email");
 
   return blog;
 };
@@ -228,7 +233,7 @@ export const listBlogs = async (
   // Execute query with pagination
   const [blogs, total] = await Promise.all([
     Blog.find(query)
-      .select("-content") // Exclude full content for list
+      .select(isAdmin ? "" : "-content") // Only exclude content for public list
       .populate("author", "name surname")
       .sort(isAdmin ? { updatedAt: -1 } : { publishedAt: -1 })
       .skip(skip)

@@ -29,8 +29,8 @@ export const createBlogValidation = [
     .trim()
     .notEmpty()
     .withMessage("Content is required")
-    .isLength({ min: 100 })
-    .withMessage("Content must be at least 100 characters"),
+    .isLength({ min: 10 })
+    .withMessage("Content must be at least 10 characters"),
 
   body("category")
     .trim()
@@ -40,7 +40,7 @@ export const createBlogValidation = [
     .withMessage("Invalid category"),
 
   body("featuredImage")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isURL()
     .withMessage("Featured image must be a valid URL"),

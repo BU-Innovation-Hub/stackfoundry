@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
@@ -32,6 +33,12 @@ const Dashboard: React.FC = () => {
             You're signed in as <strong>{user?.email}</strong> ({user?.role})
           </p>
           <p className={styles.studentId}>Student ID: {user?.studentId}</p>
+          {user?.role === 'admin' && (
+            <Link to="/admin" className={styles.adminBtn}>
+              <Shield size={18} />
+              Admin Panel
+            </Link>
+          )}
         </div>
       </main>
     </div>

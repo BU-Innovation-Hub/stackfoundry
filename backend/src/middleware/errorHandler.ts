@@ -24,6 +24,11 @@ export const errorHandler = (
 		return res.status(err.statusCode).json({ error: err.message, details: err.details });
 	}
 
+	// Handle Multer errors (like file too large)
+	if (err && (err as any).code === 'LIMIT_FILE_SIZE') {
+		return res.status(400).json({ error: 'File too large. Maximum size allowed is 10MB (Cloudinary Free Tier limit).' });
+	}
+
 	console.error("Unhandled error:", err);
 	res.status(500).json({ error: "Internal server error" });
 };

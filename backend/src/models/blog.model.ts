@@ -10,48 +10,17 @@
  */
 
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import { IBlog as IBlogBase, BlogCategory, BlogStatus, CATEGORIES } from "./blog.interface";
 
-// ============================================
-// Constants
-// ============================================
-
-const CATEGORIES = [
-  "technology",
-  "entrepreneurship",
-  "events",
-  "tutorials",
-  "news",
-  "community",
-] as const;
-
-type BlogCategory = (typeof CATEGORIES)[number];
-type BlogStatus = "draft" | "published" | "archived";
-
-// Export for use in other files
-// export { BlogCategory, BlogStatus, CATEGORIES };
-
-// ============================================
-// Interface
-// ============================================
-
-export interface IBlog extends Document {
+// Extend the base interface with Mongoose's Document
+export interface IBlog extends IBlogBase, Document {
   _id: Types.ObjectId;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string; // Full markdown/HTML content
-  author: Types.ObjectId; // Reference to Student (admin)
-  authorName: string; // Denormalized for display
-  category: BlogCategory;
-  status: BlogStatus;
-  readTime: string;
-  featuredImage?: string;
-  tags: string[];
-  views: number; // View count for analytics
+  author: Types.ObjectId;
   publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 // ============================================
 // Helper Functions
@@ -233,7 +202,7 @@ BlogSchema.statics.findPublished = function (
   options: { limit?: number; skip?: number; category?: string } = {}
 ) {
   const { limit = 10, skip = 0, category } = options;
-  
+
   const query: Record<string, unknown> = { status: "published" };
   if (category) query.category = category;
 

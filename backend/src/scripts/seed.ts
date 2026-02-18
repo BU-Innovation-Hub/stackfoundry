@@ -359,6 +359,7 @@ async function main(): Promise<void> {
     await seedAdminUser();
     await seedBlogs();
     await seedEvents();
+    // await seedBlogs();
 
     console.log("\n✅ Seed completed successfully!");
 

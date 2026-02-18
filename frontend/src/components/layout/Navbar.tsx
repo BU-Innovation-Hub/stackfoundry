@@ -5,7 +5,6 @@ import styles from './Navbar.module.css';
 const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -15,12 +14,12 @@ const Navbar: React.FC = () => {
   }, []);
 
   const navLinks = [
-    { name: 'About Us', href: '#about' },
-    { name: 'Explore', href: '#explore' },
-    { name: 'Events', href: '#events' },
-    { name: 'Founders', href: '#founders' },
-    { name: 'Blog', href: '#blog' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'About Us', href: '/#about' },
+    { name: 'Explore', href: '/#explore' },
+    { name: 'Events', href: '/#events' },
+    { name: 'Founders', href: '/#founders' },
+    { name: 'Blog', href: '/#blog' },
+    { name: 'Contact', href: '/#contact' },
   ];
 
   return (
@@ -46,6 +45,8 @@ const Navbar: React.FC = () => {
           <Link to="/login" className={styles.navLink}>
             Login
           </Link>
+
+
           <button
             className={styles.menuToggle}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
