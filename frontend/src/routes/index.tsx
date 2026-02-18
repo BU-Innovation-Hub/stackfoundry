@@ -8,6 +8,7 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
 import NotFound from '../pages/NotFound';
+import ChangePassword from '../pages/ChangePassword';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 
 // Admin pages
@@ -32,6 +33,14 @@ const AppRoutes: React.FC = () => (
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
           </ProtectedRoute>
         }
       />

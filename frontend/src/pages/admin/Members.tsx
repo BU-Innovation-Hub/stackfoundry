@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield } from 'lucide-react';
+import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield, UserPlus } from 'lucide-react';
 import { Member } from '../../types/admin';
 import { getMembers, updateMemberRole, toggleMemberStatus, deleteMember } from '../../services/adminService';
+import CreateMemberModal from './CreateMember';
 import styles from './Members.module.css';
 
 const Members: React.FC = () => {
@@ -12,12 +13,20 @@ const Members: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [actionError, setActionError] = useState<string>('');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await getMembers();
-    setMembers(data);
-    setLoading(false);
+    setActionError('');
+    try {
+      const data = await getMembers();
+      setMembers(data);
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to load members');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -39,22 +48,43 @@ const Members: React.FC = () => {
   }, [members, search, roleFilter, statusFilter]);
 
   const handleRoleChange = async (id: string, role: Member['role']) => {
-    await updateMemberRole(id, role);
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
+    setActionError('');
+    try {
+      await updateMemberRole(id, role);
+      setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to update role');
+    }
     setOpenMenu(null);
   };
 
   const handleToggleStatus = async (id: string) => {
-    await toggleMemberStatus(id);
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, isActive: !m.isActive } : m));
+    setActionError('');
+    try {
+      const result = await toggleMemberStatus(id);
+      setMembers(prev =>
+        prev.map(m => m.id === id ? { ...m, isActive: result.isActive } : m)
+      );
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to toggle status');
+    }
     setOpenMenu(null);
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to remove this member?')) return;
-    await deleteMember(id);
-    setMembers(prev => prev.filter(m => m.id !== id));
+    setActionError('');
+    try {
+      await deleteMember(id);
+      setMembers(prev => prev.filter(m => m.id !== id));
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to delete member');
+    }
     setOpenMenu(null);
+  };
+
+  const handleMemberCreated = (member: Member) => {
+    setMembers(prev => [member, ...prev]);
   };
 
   const roles: Member['role'][] = ['student', 'member', 'instructor', 'admin'];
@@ -64,9 +94,26 @@ const Members: React.FC = () => {
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
-        <h1>Members</h1>
-        <p>Manage registered members, roles, and access</p>
+        <div>
+          <h1>Members</h1>
+          <p>Manage registered members, roles, and access</p>
+        </div>
+        <button className={styles.addBtn} onClick={() => setShowCreate(true)}>
+          <UserPlus size={18} />
+          Add Member
+        </button>
       </div>
+
+      {actionError && (
+        <div className={styles.actionError}>{actionError}</div>
+      )}
+
+      {showCreate && (
+        <CreateMemberModal
+          onClose={() => setShowCreate(false)}
+          onCreated={handleMemberCreated}
+        />
+      )}
 
       {/* Toolbar */}
       <div className={styles.toolbar}>

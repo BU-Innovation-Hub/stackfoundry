@@ -8,7 +8,7 @@
 
 import { Member, Event, Course, DashboardStats } from '../types/admin';
 import { BlogPost, IBlog } from '../types/blog';
-import { mockMembers, mockEvents, mockCourses, mockDashboardStats } from './mockData';
+import { mockEvents, mockCourses, mockDashboardStats } from './mockData';
 import { api as apiClient } from './apiClient';
 
 // Simulate async delay (remove when using real API)
@@ -22,35 +22,52 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 // ---- Members ----
+
+/** Map backend user object to frontend Member shape */
+const mapUserToMember = (user: any): Member => ({
+  id: user._id || user.id,
+  studentId: user.studentId,
+  name: user.name,
+  surname: user.surname,
+  email: user.email,
+  role: user.roles?.[0]?.name || user.role || 'student',
+  isActive: user.isActive,
+  joinedAt: user.createdAt,
+  lastLogin: user.lastLogin,
+});
+
 export const getMembers = async (): Promise<Member[]> => {
-  await delay();
-  return [...mockMembers];
-  // TODO: return (await apiClient.get('/admin/members')).data;
+  const response = await apiClient.get('/admin/users', { params: { limit: 200 } });
+  return response.data.data.users.map(mapUserToMember);
 };
 
 export const updateMemberRole = async (id: string, role: Member['role']): Promise<Member> => {
-  await delay();
-  const member = mockMembers.find(m => m.id === id);
-  if (!member) throw new Error('Member not found');
-  member.role = role;
-  return { ...member };
-  // TODO: return (await apiClient.patch(`/admin/members/${id}/role`, { role })).data;
+  const response = await apiClient.patch(`/admin/users/${id}/role`, { role });
+  return { ...response.data.data, id } as Member;
 };
 
-export const toggleMemberStatus = async (id: string): Promise<Member> => {
-  await delay();
-  const member = mockMembers.find(m => m.id === id);
-  if (!member) throw new Error('Member not found');
-  member.isActive = !member.isActive;
-  return { ...member };
-  // TODO: return (await apiClient.patch(`/admin/members/${id}/status`)).data;
+export const toggleMemberStatus = async (id: string): Promise<{ id: string; isActive: boolean }> => {
+  const response = await apiClient.patch(`/admin/users/${id}/toggle-active`);
+  return response.data.data;
 };
 
 export const deleteMember = async (id: string): Promise<void> => {
-  await delay();
-  const idx = mockMembers.findIndex(m => m.id === id);
-  if (idx !== -1) mockMembers.splice(idx, 1);
-  // TODO: await apiClient.delete(`/admin/members/${id}`);
+  await apiClient.delete(`/admin/users/${id}`);
+};
+
+/** Admin-only: create a new user with a role */
+export interface CreateMemberData {
+  studentId: string;
+  email: string;
+  password: string;
+  name: string;
+  surname: string;
+  role: Member['role'];
+}
+
+export const createMember = async (data: CreateMemberData): Promise<Member> => {
+  const response = await apiClient.post('/admin/users', data);
+  return response.data.data as Member;
 };
 
 // ---- Blogs ----
