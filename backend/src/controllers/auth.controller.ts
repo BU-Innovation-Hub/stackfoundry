@@ -19,7 +19,7 @@ import {
   extractRefreshToken,
 } from "../utils/cookies";
 import { ApiError } from "../middleware/errorHandler";
-import { RegisterBody, LoginBody, RequestWithUser } from "../types";
+import { RegisterBody, LoginBody, RequestWithUser, ChangePasswordBody } from "../types";
 
 // ============================================
 // Helpers
@@ -264,6 +264,40 @@ export const me = async (
         surname: user.surname,
         role: user.role,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Change password for authenticated user
+ * POST /api/auth/change-password
+ * Requires authentication
+ */
+export const changePassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+
+    const userId = (req as RequestWithUser).user?.id;
+    if (!userId) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const { currentPassword, newPassword }: ChangePasswordBody = req.body;
+
+    await AuthService.changePassword(userId, currentPassword, newPassword);
+
+    // Clear cookies to force re-login with new password
+    clearAuthCookies(res);
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully. Please log in again.",
     });
   } catch (error) {
     next(error);

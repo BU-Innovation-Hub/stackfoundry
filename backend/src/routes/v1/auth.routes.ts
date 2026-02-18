@@ -12,7 +12,11 @@
 import { Router } from "express";
 import * as AuthController from "../../controllers/auth.controller";
 import { requireAuth } from "../../middleware/auth";
-import { registerValidation, loginValidation } from "../../utils/validation";
+import {
+  registerValidation,
+  loginValidation,
+  changePasswordValidation,
+} from "../../utils/validation";
 
 const router = Router();
 
@@ -65,5 +69,17 @@ router.post("/logout-all", requireAuth, AuthController.logoutAll);
  * @access  Private
  */
 router.get("/me", requireAuth, AuthController.me);
+
+/**
+ * @route   POST /api/auth/change-password
+ * @desc    Change password for authenticated user (current + new + confirm)
+ * @access  Private
+ */
+router.post(
+  "/change-password",
+  requireAuth,
+  changePasswordValidation,
+  AuthController.changePassword
+);
 
 export default router;

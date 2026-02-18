@@ -379,3 +379,53 @@ export const getUserById = async (userId: string): Promise<AuthUser | null> => {
     roles: student.roles,
   };
 };
+
+/**
+ * Change password for authenticated user
+ * - Verifies the current password
+ * - Hashes the new password
+ * - Revokes all refresh tokens (forces re-login on all devices)
+ *
+ * Security: After password change, all existing sessions are invalidated
+ */
+export const changePassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  // Load user with password hash and refresh tokens
+  const student = await Student.findById(userId).select(
+    "+passwordHash +refreshTokens"
+  );
+
+  if (!student) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!student.isActive) {
+    throw new ApiError(403, "Account is deactivated");
+  }
+
+  // Verify current password
+  const isCurrentValid = await bcrypt.compare(
+    currentPassword,
+    student.passwordHash
+  );
+  if (!isCurrentValid) {
+    throw new ApiError(400, "Current password is incorrect");
+  }
+
+  // Prevent reusing the same password
+  const isSamePassword = await bcrypt.compare(newPassword, student.passwordHash);
+  if (isSamePassword) {
+    throw new ApiError(400, "New password must be different from the current password");
+  }
+
+  // Hash new password with same rounds as registration
+  const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+  // Update password and revoke all refresh tokens
+  student.passwordHash = newHash;
+  student.refreshTokens = [];
+  await student.save();
+};

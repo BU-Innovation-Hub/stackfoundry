@@ -120,6 +120,34 @@ export interface LoginBody {
   password: string;
 }
 
+/**
+ * Admin create user request body
+ */
+export interface AdminCreateUserBody {
+  studentId: string;
+  email: string;
+  password: string;
+  name: string;
+  surname: string;
+  role: RoleName;
+}
+
+/**
+ * Admin update user role request body
+ */
+export interface AdminUpdateRoleBody {
+  role: RoleName;
+}
+
+/**
+ * Change password request body (authenticated user)
+ */
+export interface ChangePasswordBody {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
 // ============================================
 // Model Types (for lean queries)
 // ============================================
