@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import Role from "../models/role.model";
 import Student from "../models/user.model";
 import Blog from "../models/blog.model";
+import Event from "../models/event.model";
 
 // Load environment variables
 dotenv.config();
@@ -167,6 +168,68 @@ Hackathons are about more than winning—they're about learning, networking, and
   },
 ];
 
+const SAMPLE_EVENTS = [
+  {
+    title: "AI & Machine Learning Workshop",
+    description:
+      "Hands-on workshop exploring the latest in AI/ML technologies and their applications in African markets. Learn to build and deploy machine learning models using TensorFlow and PyTorch. Suitable for beginners and intermediate developers.",
+    date: "Mar 15, 2026",
+    time: "10:00 AM - 4:00 PM",
+    eventDate: new Date("2026-03-15T10:00:00"),
+    type: "workshop" as const,
+    location: "Innovation Hub Lab 1, Botho University",
+    registrationLink: "https://forms.example.com/ai-workshop",
+    status: "published" as const,
+  },
+  {
+    title: "Startup Pitch Competition 2026",
+    description:
+      "Present your startup idea to a panel of investors and industry experts. Win funding up to $10,000 and mentorship from successful entrepreneurs. Open to all students and recent graduates with innovative business ideas.",
+    date: "Mar 22, 2026",
+    time: "2:00 PM - 6:00 PM",
+    eventDate: new Date("2026-03-22T14:00:00"),
+    type: "conference" as const,
+    location: "Main Auditorium, Botho University",
+    registrationLink: "https://forms.example.com/pitch-competition",
+    status: "published" as const,
+  },
+  {
+    title: "48-Hour Hackathon: FinTech Edition",
+    description:
+      "Build innovative financial solutions for the unbanked. Teams compete for prizes worth $15,000. Food, drinks, and accommodation provided. Form teams of 2-5 members and bring your laptops ready to code!",
+    date: "Apr 5-6, 2026",
+    time: "All Day Event",
+    eventDate: new Date("2026-04-05T08:00:00"),
+    type: "hackathon" as const,
+    location: "Innovation Hub, Building C",
+    registrationLink: "https://forms.example.com/fintech-hackathon",
+    status: "published" as const,
+  },
+  {
+    title: "Tech Founders Meetup",
+    description:
+      "Network with successful tech founders and learn from their entrepreneurial journeys. Hear stories of failure and success, and get practical advice on building your startup. Light refreshments will be served.",
+    date: "Apr 12, 2026",
+    time: "6:00 PM - 9:00 PM",
+    eventDate: new Date("2026-04-12T18:00:00"),
+    type: "meetup" as const,
+    location: "Startup Lounge, Innovation Hub",
+    status: "published" as const,
+  },
+  {
+    title: "Web Development Bootcamp",
+    description:
+      "Intensive 2-day bootcamp covering modern web development with React, Node.js, and MongoDB. Build a full-stack application from scratch. Prior programming experience required.",
+    date: "Apr 19-20, 2026",
+    time: "9:00 AM - 5:00 PM",
+    eventDate: new Date("2026-04-19T09:00:00"),
+    type: "workshop" as const,
+    location: "Computer Lab 3, Tech Building",
+    registrationLink: "https://forms.example.com/webdev-bootcamp",
+    status: "draft" as const,
+  },
+];
+
 // ============================================
 // Seed Functions
 // ============================================
@@ -250,6 +313,34 @@ async function seedBlogs(): Promise<void> {
   }
 }
 
+async function seedEvents(): Promise<void> {
+  console.log("\n📅 Seeding events...");
+
+  // Get admin user for author reference
+  const admin = await Student.findOne({ email: ADMIN_USER.email });
+  if (!admin) {
+    console.log("   ⚠️ Admin user not found. Skipping event seed.");
+    return;
+  }
+
+  for (const eventData of SAMPLE_EVENTS) {
+    // Check if event with same title exists
+    const existing = await Event.findOne({ title: eventData.title });
+
+    if (existing) {
+      console.log(`   ✓ Event "${eventData.title.substring(0, 40)}..." already exists`);
+    } else {
+      await Event.create({
+        ...eventData,
+        author: admin._id,
+        authorName: `${admin.name} ${admin.surname}`,
+        publishedAt: eventData.status === "published" ? new Date() : undefined,
+      });
+      console.log(`   ✓ Created event "${eventData.title.substring(0, 40)}..."`);
+    }
+  }
+}
+
 // ============================================
 // Main
 // ============================================
@@ -266,6 +357,8 @@ async function main(): Promise<void> {
     // Run seeds
     await seedRoles();
     await seedAdminUser();
+    await seedBlogs();
+    await seedEvents();
     // await seedBlogs();
 
     console.log("\n✅ Seed completed successfully!");
@@ -274,10 +367,12 @@ async function main(): Promise<void> {
     const roleCount = await Role.countDocuments();
     const userCount = await Student.countDocuments();
     const blogCount = await Blog.countDocuments();
+    const eventCount = await Event.countDocuments();
     console.log(`\n📊 Summary:`);
     console.log(`   - Roles: ${roleCount}`);
     console.log(`   - Users: ${userCount}`);
     console.log(`   - Blogs: ${blogCount}`);
+    console.log(`   - Events: ${eventCount}`);
   } catch (error) {
     console.error("\n❌ Seed failed:", error);
     process.exit(1);
