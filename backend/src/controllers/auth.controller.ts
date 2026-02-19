@@ -292,9 +292,13 @@ export const changePassword = async (
 
     await AuthService.changePassword(userId, currentPassword, newPassword);
 
+    // Invalidate all existing sessions for security
+    await AuthService.logoutAllDevices(userId);
+
     // Clear cookies to force re-login with new password
     clearAuthCookies(res);
-
+    // Clear cookies to force re-login with new password
+    clearAuthCookies(res);
     res.status(200).json({
       success: true,
       message: "Password updated successfully. Please log in again.",

@@ -249,8 +249,7 @@ export const refreshTokens = async (
 
   if (!storedToken) {
     // Token not found - possible token reuse attack
-    // Revoke all tokens as a security measure
-    await student.removeAllRefreshTokens();
+    await student.removeAllRefreshTokens(); // REVOKES ALL TOKENS
     throw new ApiError(401, "Refresh token not found - all sessions revoked");
   }
 

@@ -9,6 +9,7 @@
  */
 
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 import Student from "../models/user.model";
 import Role from "../models/role.model";
 import { AdminCreateUserBody, RoleName } from "../types";
@@ -112,51 +113,61 @@ export const updateUserRole = async (
   userId: string,
   roleName: RoleName
 ): Promise<{ id: string; role: RoleName; isActive: boolean }> => {
-  const user = await Student.findById(userId).populate("roles");
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
+  const session = await mongoose.startSession();
+  
+  try {
+    const result = await session.withTransaction(async () => {
+      const user = await Student.findById(userId).populate("roles").session(session);
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
 
-  // Prevent demoting the last active admin
-  if (user.roles.length > 0) {
-    const currentRole = (user.roles[0] as unknown as { name: RoleName }).name;
-    if (currentRole === "admin" && roleName !== "admin") {
-      const adminRole = await Role.findOne({ name: "admin" });
-      if (adminRole) {
-        const adminCount = await Student.countDocuments({
-          roles: adminRole._id,
-          isActive: true,
-        });
-        if (adminCount <= 1) {
-          throw new ApiError(
-            400,
-            "Cannot change role of the last active admin"
-          );
+      // Check if demoting an admin - if so, ensure it's not the last one
+      if (user.roles.length > 0) {
+        const currentRole = (user.roles[0] as unknown as { name: RoleName }).name;
+        if (currentRole === "admin" && roleName !== "admin") {
+          const adminRole = await Role.findOne({ name: "admin" }).session(session);
+          if (adminRole) {
+            const adminCount = await Student.countDocuments({
+              roles: adminRole._id,
+              isActive: true,
+            }).session(session);
+            if (adminCount <= 1) {
+              throw new ApiError(
+                400,
+                "Cannot change role of the last active admin"
+              );
+            }
+          }
         }
       }
-    }
+
+      // Get or create the target role
+      const targetRole = await Role.findOneAndUpdate(
+        { name: roleName },
+        {
+          $setOnInsert: {
+            name: roleName,
+            description: `${roleName.charAt(0).toUpperCase() + roleName.slice(1)} role`,
+          },
+        },
+        { upsert: true, new: true, session }
+      );
+
+      user.roles = [targetRole._id];
+      await user.save({ session });
+
+      return {
+        id: user._id.toString(),
+        role: roleName,
+        isActive: user.isActive,
+      };
+    });
+    
+    return result;
+  } finally {
+    await session.endSession();
   }
-
-  // Get or create the target role
-  const targetRole = await Role.findOneAndUpdate(
-    { name: roleName },
-    {
-      $setOnInsert: {
-        name: roleName,
-        description: `${roleName.charAt(0).toUpperCase() + roleName.slice(1)} role`,
-      },
-    },
-    { upsert: true, new: true }
-  );
-
-  user.roles = [targetRole._id];
-  await user.save();
-
-  return {
-    id: user._id.toString(),
-    role: roleName,
-    isActive: user.isActive,
-  };
 };
 
 /**
@@ -168,46 +179,57 @@ export const updateUserRole = async (
 export const toggleUserActive = async (
   userId: string
 ): Promise<{ id: string; isActive: boolean }> => {
-  const user = await Student.findById(userId)
-    .select("+refreshTokens")
-    .populate("roles");
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
+  const session = await mongoose.startSession();
+  
+  try {
+    const result = await session.withTransaction(async () => {
+      const user = await Student.findById(userId)
+        .select("+refreshTokens")
+        .populate("roles")
+        .session(session);
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
 
-  // If deactivating, check admin safeguard
-  if (user.isActive) {
-    const primaryRole = await user.getPrimaryRole();
-    if (primaryRole === "admin") {
-      const adminRole = await Role.findOne({ name: "admin" });
-      if (adminRole) {
-        const adminCount = await Student.countDocuments({
-          roles: adminRole._id,
-          isActive: true,
-        });
-        if (adminCount <= 1) {
-          throw new ApiError(
-            400,
-            "Cannot deactivate the last active admin"
-          );
+      // If deactivating, check admin safeguard atomically
+      if (user.isActive) {
+        const primaryRole = await user.getPrimaryRole();
+        if (primaryRole === "admin") {
+          const adminRole = await Role.findOne({ name: "admin" }).session(session);
+          if (adminRole) {
+            const adminCount = await Student.countDocuments({
+              roles: adminRole._id,
+              isActive: true,
+            }).session(session);
+            if (adminCount <= 1) {
+              throw new ApiError(
+                400,
+                "Cannot deactivate the last active admin"
+              );
+            }
+          }
         }
       }
-    }
+
+      user.isActive = !user.isActive;
+
+      // If deactivating, revoke all sessions so the user is immediately logged out
+      if (!user.isActive) {
+        user.refreshTokens = [];
+      }
+
+      await user.save({ session });
+
+      return {
+        id: user._id.toString(),
+        isActive: user.isActive,
+      };
+    });
+    
+    return result;
+  } finally {
+    await session.endSession();
   }
-
-  user.isActive = !user.isActive;
-
-  // If deactivating, revoke all sessions so the user is immediately logged out
-  if (!user.isActive) {
-    user.refreshTokens = [];
-  }
-
-  await user.save();
-
-  return {
-    id: user._id.toString(),
-    isActive: user.isActive,
-  };
 };
 
 /**
@@ -215,25 +237,33 @@ export const toggleUserActive = async (
  * - Prevents deleting the last active admin
  */
 export const deleteUser = async (userId: string): Promise<void> => {
-  const user = await Student.findById(userId).populate("roles");
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
-  // Prevent deleting the last admin
-  const primaryRole = await user.getPrimaryRole();
-  if (primaryRole === "admin") {
-    const adminRole = await Role.findOne({ name: "admin" });
-    if (adminRole) {
-      const adminCount = await Student.countDocuments({
-        roles: adminRole._id,
-        isActive: true,
-      });
-      if (adminCount <= 1) {
-        throw new ApiError(400, "Cannot delete the last active admin");
+  const session = await mongoose.startSession();
+  
+  try {
+    await session.withTransaction(async () => {
+      const user = await Student.findById(userId).populate("roles").session(session);
+      if (!user) {
+        throw new ApiError(404, "User not found");
       }
-    }
-  }
 
-  await Student.findByIdAndDelete(userId);
+      // Prevent deleting the last admin atomically
+      const primaryRole = await user.getPrimaryRole();
+      if (primaryRole === "admin") {
+        const adminRole = await Role.findOne({ name: "admin" }).session(session);
+        if (adminRole) {
+          const adminCount = await Student.countDocuments({
+            roles: adminRole._id,
+            isActive: true,
+          }).session(session);
+          if (adminCount <= 1) {
+            throw new ApiError(400, "Cannot delete the last active admin");
+          }
+        }
+      }
+
+      await Student.findByIdAndDelete(userId, { session });
+    });
+  } finally {
+    await session.endSession();
+  }
 };
