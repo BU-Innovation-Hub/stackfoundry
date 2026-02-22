@@ -19,18 +19,25 @@ export interface Member {
 
 
 export interface Event {
-  id: string;
+  _id: string;
+  id?: string;
   title: string;
+  slug: string;
   description: string;
-  coverImage: string;
   date: string;
   time: string;
-  location: string;
-  type: 'workshop' | 'hackathon' | 'meetup' | 'webinar' | 'conference';
-  capacity: number;
-  registered: number;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  eventDate: string;
+  type: 'workshop' | 'hackathon' | 'meetup' | 'conference';
+  image?: string;
+  location?: string;
+  registrationLink?: string;
+  author: string;
+  authorName: string;
+  status: 'draft' | 'published' | 'archived';
+  views: number;
+  publishedAt?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield } from 'lucide-react';
 import { Member } from '../../types/admin';
 import { getMembers, updateMemberRole, toggleMemberStatus, deleteMember } from '../../services/adminService';
+import Loader from '../../components/common/Loader';
 import styles from './Members.module.css';
 
 const Members: React.FC = () => {
@@ -59,7 +60,7 @@ const Members: React.FC = () => {
 
   const roles: Member['role'][] = ['student', 'member', 'instructor', 'admin'];
 
-  if (loading) return <div className={styles.loading}>Loading members…</div>;
+  if (loading) return <Loader text="Loading members..." />;
 
   return (
     <div className={styles.page}>

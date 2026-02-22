@@ -38,7 +38,14 @@ const Register: React.FC = () => {
     try {
       const { confirmPassword, ...data } = formData;
       await register(data);
-      navigate('/dashboard');
+      // Redirect back to the page the user came from (e.g., event registration)
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const res = err.response?.data;
       if (res?.details) {

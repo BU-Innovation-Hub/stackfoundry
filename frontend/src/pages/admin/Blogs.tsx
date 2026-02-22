@@ -3,6 +3,7 @@ import { Plus, Edit3, Trash2, Eye, X, Upload } from 'lucide-react';
 import { BlogPost, IBlog, CATEGORIES, BlogCategory } from '../../types/blog';
 import { getBlogs, createBlog, updateBlog, deleteBlog } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
+import Loader from '../../components/common/Loader';
 import styles from './Blogs.module.css';
 
 type BlogForm = {
@@ -117,7 +118,7 @@ const Blogs: React.FC = () => {
 
   const filtered = filter === 'all' ? blogs : blogs.filter(b => b.status === filter);
 
-  if (loading) return <div className={styles.loading}>Loading blogs…</div>;
+  if (loading) return <Loader text="Loading blogs..." />;
 
   return (
     <div className={styles.page}>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Edit3, Trash2, X, BookOpen, Clock, Users as UsersIcon, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { Course, CourseLesson, QuizQuestion, CourseLevel } from '../../types/admin';
 import { getCourses, createCourse, updateCourse, deleteCourse } from '../../services/adminService';
+import Loader from '../../components/common/Loader';
 import styles from './Courses.module.css';
 
 /* ---------- Form types ---------- */
@@ -137,7 +138,7 @@ const Courses: React.FC = () => {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
-  if (loading) return <div className={styles.loading}>Loading courses…</div>;
+  if (loading) return <Loader text="Loading courses..." />;
 
   return (
     <div className={styles.page}>

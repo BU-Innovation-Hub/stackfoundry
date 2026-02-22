@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Blog.module.css';
 import { api as apiClient } from '../../services/apiClient';
+import Loader from '../common/Loader';
 
 import { BlogPost } from '../../types/blog';
 
@@ -43,7 +44,7 @@ const Blog: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className={styles.loading}>Loading latest posts...</div>
+          <Loader text="Loading latest posts..." size="medium" variant="inline" />
         ) : (
           <div className={styles.grid}>
             {posts.slice(0, 3).map((post, index) => (

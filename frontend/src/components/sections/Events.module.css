@@ -111,6 +111,11 @@
   color: var(--color-text-dark-secondary);
   line-height: 1.7;
   margin-bottom: var(--spacing-lg);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardButton {
@@ -161,6 +166,14 @@
 .viewAllBtn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
+}
+
+.loading,
+.empty {
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-dark-secondary);
 }
 
 @media (max-width: 900px) {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight } from 'lucide-react';
 import { DashboardStats } from '../../types/admin';
 import { getDashboardStats } from '../../services/adminService';
+import Loader from '../../components/common/Loader';
 import styles from './Dashboard.module.css';
 
 const AdminDashboard: React.FC = () => {
@@ -14,7 +15,7 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   if (loading || !stats) {
-    return <div className={styles.loading}>Loading dashboard...</div>;
+    return <Loader text="Loading dashboard..." />;
   }
 
   const statCards = [

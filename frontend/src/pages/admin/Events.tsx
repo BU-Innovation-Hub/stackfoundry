@@ -1,28 +1,30 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Users as UsersIcon } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload } from 'lucide-react';
 import { Event } from '../../types/admin';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
+import { api as apiClient } from '../../services/apiClient';
+import Loader from '../../components/common/Loader';
 import styles from './Events.module.css';
 
 type EventForm = {
   title: string;
   description: string;
-  coverImage: string;
+  image: string;
   date: string;
   time: string;
+  eventDate: string;
   location: string;
   type: Event['type'];
-  capacity: number;
+  registrationLink: string;
   status: Event['status'];
 };
 
-const emptyForm: EventForm = { title: '', description: '', coverImage: '', date: '', time: '', location: '', type: 'workshop', capacity: 50, status: 'upcoming' };
+const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', location: '', type: 'workshop', registrationLink: '', status: 'draft' };
 
 const typeColors: Record<Event['type'], string> = {
   workshop: '#2563eb',
   hackathon: '#D64A2A',
   meetup: '#16a34a',
-  webinar: '#7c3aed',
   conference: '#d97706',
 };
 
@@ -33,6 +35,8 @@ const Events: React.FC = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [filter, setFilter] = useState<string>('all');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,8 +49,19 @@ const Events: React.FC = () => {
 
   const handleOpen = (event?: Event) => {
     if (event) {
-      setEditId(event.id);
-      setForm({ title: event.title, description: event.description, coverImage: event.coverImage, date: event.date, time: event.time, location: event.location, type: event.type, capacity: event.capacity, status: event.status });
+      setEditId(event._id);
+      setForm({
+        title: event.title,
+        description: event.description,
+        image: event.image || '',
+        date: event.date,
+        time: event.time,
+        eventDate: event.eventDate ? event.eventDate.substring(0, 10) : '',
+        location: event.location || '',
+        type: event.type,
+        registrationLink: event.registrationLink || '',
+        status: event.status,
+      });
     } else {
       setEditId(null);
       setForm(emptyForm);
@@ -56,12 +71,45 @@ const Events: React.FC = () => {
 
   const handleClose = () => { setModalOpen(false); setEditId(null); setForm(emptyForm); };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Error: File is too large. Maximum size is 10MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await apiClient.post('/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm(prev => ({ ...prev, image: response.data.data.url }));
+    } catch (error: any) {
+      console.error('Image upload failed:', error);
+      const message = error.response?.data?.error || 'Image upload failed. Please try again.';
+      alert(`Error: ${message}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = async () => {
+    const payload = {
+      ...form,
+      // If eventDate not set, derive from date field
+      eventDate: form.eventDate || form.date,
+    };
     if (editId) {
-      const updated = await updateEvent(editId, form);
-      setEvents(prev => prev.map(e => e.id === editId ? updated : e));
+      const updated = await updateEvent(editId, payload);
+      setEvents(prev => prev.map(e => e._id === editId ? updated : e));
     } else {
-      const created = await createEvent(form);
+      const created = await createEvent(payload);
       setEvents(prev => [...prev, created]);
     }
     handleClose();
@@ -70,21 +118,20 @@ const Events: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this event?')) return;
     await deleteEvent(id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    setEvents(prev => prev.filter(e => e._id !== id));
   };
 
   const filtered = filter === 'all' ? events : events.filter(e => e.status === filter);
 
   const getStatusLabel = (status: Event['status']) => {
     switch (status) {
-      case 'upcoming': return 'Upcoming';
-      case 'ongoing': return 'Ongoing';
-      case 'completed': return 'Completed';
-      case 'cancelled': return 'Cancelled';
+      case 'draft': return 'Draft';
+      case 'published': return 'Published';
+      case 'archived': return 'Archived';
     }
   };
 
-  if (loading) return <div className={styles.loading}>Loading events…</div>;
+  if (loading) return <Loader text="Loading events..." />;
 
   return (
     <div className={styles.page}>
@@ -100,7 +147,7 @@ const Events: React.FC = () => {
 
       {/* Filters */}
       <div className={styles.tabs}>
-        {['all', 'upcoming', 'ongoing', 'completed', 'cancelled'].map(t => (
+        {['all', 'draft', 'published', 'archived'].map(t => (
           <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => setFilter(t)}>
             {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
             <span className={styles.tabCount}>{t === 'all' ? events.length : events.filter(e => e.status === t).length}</span>
@@ -110,10 +157,8 @@ const Events: React.FC = () => {
 
       {/* Grid */}
       <div className={styles.grid}>
-        {filtered.map(event => {
-          const fillPercent = event.capacity > 0 ? Math.round((event.registered / event.capacity) * 100) : 0;
-          return (
-            <div key={event.id} className={styles.card}>
+        {filtered.map(event => (
+            <div key={event._id} className={styles.card}>
               <div className={styles.cardTop}>
                 <span className={styles.typeBadge} style={{ background: typeColors[event.type] + '18', color: typeColors[event.type] }}>
                   {event.type}
@@ -125,25 +170,19 @@ const Events: React.FC = () => {
               <h3 className={styles.cardTitle}>{event.title}</h3>
               <p className={styles.cardDesc}>{event.description}</p>
               <div className={styles.cardDetails}>
-                <span><Clock size={14} /> {new Date(event.date).toLocaleDateString()} at {event.time}</span>
-                <span><MapPin size={14} /> {event.location}</span>
+                <span><Clock size={14} /> {event.date} at {event.time}</span>
+                {event.location && <span><MapPin size={14} /> {event.location}</span>}
               </div>
-              <div className={styles.capacity}>
-                <div className={styles.capacityHeader}>
-                  <span><UsersIcon size={14} /> {event.registered} / {event.capacity} registered</span>
-                  <span>{fillPercent}%</span>
-                </div>
-                <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: `${fillPercent}%`, background: fillPercent > 90 ? '#dc2626' : '#D64A2A' }} />
-                </div>
+              <div className={styles.cardDetails}>
+                <span>Views: {event.views}</span>
+                <span>By: {event.authorName}</span>
               </div>
               <div className={styles.cardFooter}>
                 <button className={styles.editBtn} onClick={() => handleOpen(event)}><Edit3 size={15} /> Edit</button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(event.id)}><Trash2 size={15} /></button>
+                <button className={styles.deleteBtn} onClick={() => handleDelete(event._id)}><Trash2 size={15} /></button>
               </div>
             </div>
-          );
-        })}
+          ))}
         {filtered.length === 0 && <p className={styles.empty}>No events found.</p>}
       </div>
 
@@ -179,8 +218,41 @@ const Events: React.FC = () => {
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
               </label>
               <label className={styles.field}>
-                <span>Cover Image URL</span>
-                <input value={form.coverImage} onChange={e => setForm({ ...form, coverImage: e.target.value })} placeholder="https://..." />
+                <span>Event Date (for sorting)</span>
+                <input type="date" value={form.eventDate} onChange={e => setForm({ ...form, eventDate: e.target.value })} />
+              </label>
+              <div className={styles.field}>
+                <span>Event Image</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                  id="event-image-upload"
+                />
+                {form.image ? (
+                  <div className={styles.imagePreview}>
+                    <img src={form.image} alt="Event preview" />
+                    <button type="button" className={styles.imageRemoveBtn} onClick={() => setForm({ ...form, image: '' })} title="Remove image">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.uploadBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload size={20} />
+                    {uploading ? 'Uploading…' : 'Choose Image'}
+                  </button>
+                )}
+              </div>
+              <label className={styles.field}>
+                <span>Registration Link (optional, external URL)</span>
+                <input value={form.registrationLink} onChange={e => setForm({ ...form, registrationLink: e.target.value })} placeholder="https://..." />
               </label>
               <div className={styles.row}>
                 <label className={styles.field}>
@@ -189,24 +261,18 @@ const Events: React.FC = () => {
                     <option value="workshop">Workshop</option>
                     <option value="hackathon">Hackathon</option>
                     <option value="meetup">Meetup</option>
-                    <option value="webinar">Webinar</option>
                     <option value="conference">Conference</option>
                   </select>
                 </label>
                 <label className={styles.field}>
-                  <span>Capacity</span>
-                  <input type="number" value={form.capacity} onChange={e => setForm({ ...form, capacity: Number(e.target.value) })} min={1} />
+                  <span>Status</span>
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
                 </label>
               </div>
-              <label className={styles.field}>
-                <span>Status</span>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="ongoing">Ongoing</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.cancelBtn} onClick={handleClose}>Cancel</button>

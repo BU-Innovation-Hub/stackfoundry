@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
         <div className={styles.top}>
           <div className={styles.brand}>
             <Link to="/" className={styles.logo}>
-              <span className={styles.logoText}>TECH</span>
+              <span className={styles.logoText}>InHub</span>
               <span className={styles.logoAccent}>+</span>
             </Link>
             <p className={styles.tagline}>

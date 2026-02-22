@@ -21,7 +21,14 @@ const Login: React.FC = () => {
     setError('');
     try {
       await login(formData);
-      navigate('/dashboard');
+      // Redirect back to the page the user came from (e.g., event registration)
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {

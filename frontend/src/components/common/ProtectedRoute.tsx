@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Loader from './Loader';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -12,24 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: '#f8f9fc'
-      }}>
-        <div style={{
-          width: 36,
-          height: 36,
-          border: '3px solid #e2e8f0',
-          borderTopColor: '#D64A2A',
-          borderRadius: '50%',
-          animation: 'spin 0.6s linear infinite'
-        }} />
-      </div>
-    );
+    return <Loader variant="fullscreen" size="large" />;
   }
 
   if (!isAuthenticated) {

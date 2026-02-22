@@ -1,0 +1,139 @@
+/* ============================================
+   Loader Component
+   A branded, reusable loading indicator
+   ============================================ */
+
+/* --- Overlay (fullscreen variant) --- */
+.overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xl);
+}
+
+.overlayFullScreen {
+  composes: overlay;
+  min-height: 100vh;
+  background: var(--color-bg-light);
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+/* --- Spinner graphic --- */
+.spinner {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.spinnerSmall {
+  composes: spinner;
+  width: 28px;
+  height: 28px;
+}
+
+.spinnerLarge {
+  composes: spinner;
+  width: 72px;
+  height: 72px;
+}
+
+/* Outer ring */
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--color-border-light);
+  border-top-color: var(--color-accent-primary);
+  animation: rotate 0.85s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* Inner pulsing dot */
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.spinnerSmall .dot {
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  margin-left: -3px;
+}
+
+.spinnerLarge .dot {
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  margin-left: -7px;
+}
+
+/* --- Text --- */
+.text {
+  color: var(--color-text-dark-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-primary);
+  letter-spacing: 0.02em;
+  animation: fadeText 1.8s ease-in-out infinite;
+}
+
+/* --- Inline variant (inside cards / sections) --- */
+.inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl) 0;
+}
+
+/* --- Dark background variant --- */
+.dark .ring {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-top-color: var(--color-accent-primary);
+}
+
+.dark .text {
+  color: var(--color-text-secondary);
+}
+
+/* --- Animations --- */
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeText {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
