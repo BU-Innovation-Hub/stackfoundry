@@ -46,7 +46,7 @@ const Blog: React.FC = () => {
           <div className={styles.loading}>Loading latest posts...</div>
         ) : (
           <div className={styles.grid}>
-            {posts.map((post, index) => (
+            {posts.slice(0, 3).map((post, index) => (
               <article
                 key={post._id as string}
                 className={`${styles.card} ${index === 0 ? styles.cardFeatured : ''}`}
