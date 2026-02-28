@@ -15,16 +15,16 @@ const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   // Fetch real data from multiple endpoints in parallel
   const [dashRes, blogStatsRes, eventStatsRes, membersRes] = await Promise.all([
-    apiClient.get('/admin/dashboard'),
+    apiClient.get('/admin/dashboard').catch(() => ({ data: { data: { stats: {} } } })),
     apiClient.get('/blogs/stats').catch(() => ({ data: { data: { total: 0, published: 0 } } })),
     apiClient.get('/events/stats').catch(() => ({ data: { data: { total: 0, upcoming: 0 } } })),
     apiClient.get('/admin/users?limit=4').catch(() => ({ data: { data: { users: [], pagination: { total: 0 } } } })),
   ]);
 
-  const adminStats = dashRes.data.data.stats;
+  const adminStats = dashRes.data?.data?.stats ?? {};
   const blogStats = blogStatsRes.data.data;
-  const eventStats = eventStatsRes.data.data;
-  const usersData = membersRes.data.data;
+  const eventStats = eventStatsRes.data.data; 
+   const usersData = membersRes.data.data;
 
   // Map backend users to Member type for recent registrations
   const recentMembers: Member[] = (usersData.users || []).map((u: any) => ({
@@ -261,9 +261,18 @@ export const updateCourse = async (id: string, data: Partial<Course>): Promise<C
 export const deleteCourse = async (id: string): Promise<void> => {
   try {
     await apiClient.delete(`/courses/${id}`);
-  } catch {
-    await delay();
-    const idx = mockCourses.findIndex(c => c.id === id);
-    if (idx !== -1) mockCourses.splice(idx, 1);
+  // } catch {
+  //   await delay();
+  //   const idx = mockCourses.findIndex(c => c.id === id);
+  //   if (idx !== -1) mockCourses.splice(idx, 1);
+   } catch (error: any) {
+    // Only fallback to mock for 404 (course backend not implemented)
+    if (error.response?.status === 404) {
+      await delay();
+      const idx = mockCourses.findIndex(c => c.id === id);
+      if (idx !== -1) mockCourses.splice(idx, 1);
+      return;
+    }
+    throw error;
   }
 };
