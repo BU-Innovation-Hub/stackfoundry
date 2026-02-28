@@ -94,9 +94,12 @@ export const getMaterialsByLevel = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
-    const { levelId } = req.query;
+       const levelId = req.query.levelId;   
+    if (typeof levelId !== "string") {
+      throw new ApiError(400, "levelId query parameter is required and must be a string");
+    }
 
-    const materials = await MaterialService.getMaterialsByLevel(levelId as string);
+    const materials = await MaterialService.getMaterialsByLevel(levelId);
     res.json({ success: true, data: materials });
   } catch (error) {
     next(error);
@@ -119,7 +122,7 @@ export const getMaterialDetail = async (
     // Strip cloudinaryPublicId from response for non-admin users
     const user = (req as RequestWithUser).user;
     const materialObj = material.toObject();
-    if (user.role !== "admin") {
+    if (!user || user.role !== "admin") {
       delete (materialObj as any).cloudinaryPublicId;
     }
 

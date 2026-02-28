@@ -2,7 +2,7 @@
  * Topic Service
  * Business logic for topic CRUD within a level
  */
-
+import mongoose from "mongoose";
 import Topic, { ITopic } from "../models/topic.model";
 import { ApiError } from "../middleware/errorHandler";
 
@@ -20,6 +20,7 @@ export const getTopicsByLevel = async (levelId: string): Promise<ITopic[]> => {
 };
 
 export const getTopicById = async (id: string): Promise<ITopic> => {
+  if (!mongoose.isValidObjectId(id)) throw new ApiError(404, "Topic not found");
   const topic = await Topic.findById(id);
   if (!topic) throw new ApiError(404, "Topic not found");
   return topic;
@@ -29,6 +30,7 @@ export const updateTopic = async (
   id: string,
   data: Partial<{ name: string; description: string }>
 ): Promise<ITopic> => {
+  if (!mongoose.isValidObjectId(id)) throw new ApiError(404, "Topic not found")
   const topic = await Topic.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
@@ -38,6 +40,7 @@ export const updateTopic = async (
 };
 
 export const deleteTopic = async (id: string): Promise<void> => {
+  if (!mongoose.isValidObjectId(id)) throw new ApiError(404, "Topic not found")
   const topic = await Topic.findByIdAndDelete(id);
   if (!topic) throw new ApiError(404, "Topic not found");
 };

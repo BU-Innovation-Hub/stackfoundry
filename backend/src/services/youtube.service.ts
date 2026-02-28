@@ -81,10 +81,16 @@ const parseISO8601Duration = (iso: string): number => {
 /**
  * Make an HTTPS GET request (no external dependency needed)
  */
-const httpsGet = (url: string): Promise<string> => {
+
+const httpsGet = (url: string, timeoutMs = 10000): Promise<string> => {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, (res) => {
+    // https
+    //   .get(url, (res) => {
+        const req = https.get(url, (res) => {
+      if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => resolve(data));
@@ -116,8 +122,17 @@ export const fetchYouTubeMetadata = async (
     videoId
   )}&key=${encodeURIComponent(apiKey)}`;
 
-  const raw = await httpsGet(url);
-  const data = JSON.parse(raw);
+
+  let data: any;
+  try {
+    const raw = await httpsGet(url);
+    data = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Failed to fetch YouTube metadata: ${err instanceof Error ? err.message : err}`);
+  }
+  if (data.error) {
+    throw new Error(`YouTube API error: ${data.error.message || data.error.code}`);
+  }
 
   if (!data.items || data.items.length === 0) {
     throw new Error(`YouTube video not found: ${videoId}`);

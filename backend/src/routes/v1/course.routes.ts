@@ -37,6 +37,7 @@ router.post(
   "/:courseId/levels",
   requireAuth,
   requireAdmin,
+  courseIdParamValidation,
   createLevelValidation,
   LevelController.createLevel
 );

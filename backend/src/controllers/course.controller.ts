@@ -36,6 +36,9 @@ export const createCourse = async (
   try {
     handleValidationErrors(req);
     const user = (req as RequestWithUser).user;
+       if (!user) {
+    throw new ApiError(401, "Authentication required");
+  }
     const { title, description } = req.body;
 
     const course = await CourseService.createCourse({
@@ -97,10 +100,11 @@ export const updateCourse = async (
   try {
     handleValidationErrors(req);
     const { title, description } = req.body;
-    const course = await CourseService.updateCourse(req.params.id, {
-      title,
-      description,
-    });
+    
+        const updates: { title?: string; description?: string } = {};
+   if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    const course = await CourseService.updateCourse(req.params.id, updates);
     res.json({ success: true, data: course });
   } catch (error) {
     next(error);

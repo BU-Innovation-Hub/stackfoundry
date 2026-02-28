@@ -38,6 +38,7 @@ export const updateProgress = async (
 
   // Use a session for atomic progress update + potential level unlock
   const session = await mongoose.startSession();
+  let sessionActive = true;
   try {
     session.startTransaction();
 
@@ -94,8 +95,7 @@ export const updateProgress = async (
         .select("_id")
         .session(session);
 
-      const allMaterialIds = allMaterialsInLevel.map((m) => m._id.toString());
-
+      const allMaterialIds = allMaterialsInLevel.map((m) => m._id);
       // Check if user has completed all materials in this level
       const completedCount = await Progress.countDocuments({
         user: userId,
@@ -106,9 +106,9 @@ export const updateProgress = async (
       if (completedCount >= allMaterialIds.length) {
         // All materials completed — unlock next level
         // We need to commit current transaction first, then unlock
-        // Actually, let's do it within the same session scope
         await session.commitTransaction();
         session.endSession();
+        sessionActive = false;
 
         // Unlock next level (has its own transaction)
         const unlockResult = await unlockNextLevel(
@@ -123,17 +123,21 @@ export const updateProgress = async (
     }
 
     await session.commitTransaction();
+    session.endSession();
+    sessionActive = false;
     return { progress, newLevelUnlocked, unlockedLevel };
   } catch (err) {
-    if (session.inTransaction()) {
+    if (sessionActive && session.inTransaction()) {
       await session.abortTransaction();
     }
     throw err;
   } finally {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
+    if (sessionActive) {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      session.endSession();
     }
-    session.endSession();
   }
 };
 

@@ -65,9 +65,11 @@ export const getUserEnrollments = async (
     const { userId } = req.params;
 
     // Only allow users to see their own enrollments, or admin can see any
-    if (currentUser.id !== userId && currentUser.role !== "admin") {
-      res.status(403).json({ success: false, error: "Access denied" });
-      return;
+    // if (currentUser.id !== userId && currentUser.role !== "admin") {
+    //   res.status(403).json({ success: false, error: "Access denied" });
+    //   return;
+      if (String(currentUser.id) !== userId && currentUser.role !== "admin") {
+      throw new ApiError(403, "Access denied");
     }
 
     const enrollments = await EnrollmentService.getUserEnrollments(userId);

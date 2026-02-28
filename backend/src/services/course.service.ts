@@ -45,6 +45,8 @@ export const updateCourse = async (
 export const deleteCourse = async (id: string): Promise<void> => {
   const course = await Course.findByIdAndDelete(id);
   if (!course) throw new ApiError(404, "Course not found");
+  // Cascade delete associated levels
+  await Level.deleteMany({ course: id });
 };
 
 /**

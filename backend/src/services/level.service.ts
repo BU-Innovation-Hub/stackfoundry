@@ -41,12 +41,22 @@ export const updateLevel = async (
   id: string,
   data: Partial<{ name: string; levelNumber: number; lockedByDefault: boolean }>
 ): Promise<ILevel> => {
+  try{
   const level = await Level.findByIdAndUpdate(id, data, {
     new: true,
     runValidators: true,
   });
   if (!level) throw new ApiError(404, "Level not found");
   return level;
+  } catch (err: any) {
+   if (err.code === 11000) {
+     throw new ApiError(
+       409,
+       `Level number ${data.levelNumber} already exists in this course`
+     );
+   }
+   throw err;
+ }
 };
 
 export const deleteLevel = async (id: string): Promise<void> => {

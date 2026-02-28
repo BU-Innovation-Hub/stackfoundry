@@ -36,7 +36,12 @@ export const uploadPdf = (
         format: "pdf",
       },
       (error: any, result: any) => {
-        if (error) return reject(error);
+        if (error) {
+          return reject(error);
+        }
+        if (!result) {
+          return reject(new Error("Cloudinary upload returned no result"));
+        }
         resolve({
           publicId: result.public_id,
           bytes: result.bytes,
@@ -54,26 +59,20 @@ export const uploadPdf = (
 
 /**
  * Generate a short-lived signed download URL for a Cloudinary raw resource
- * Uses the Cloudinary SDK's url() method with sign_url and a type of "authenticated"
- * Fallback: generate a URL with an expiration timestamp
+ * Uses Cloudinary's private_download_url for time-limited access
  */
 export const generateSignedDownloadUrl = (
   publicId: string,
   expiresInSeconds: number = 300
 ): string => {
-  // Generate a signed URL that expires
-  const url = cloudinary.url(publicId, {
-    resource_type: "raw",
-    type: "upload",
-    sign_url: true,
-    secure: true,
-    // Transformation with expiration flag
-    flags: `attachment`,
-  });
-
-  // Append expiration as query parameter for additional server-side validation
   const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
-  return `${url}?_expires=${expiresAt}`;
+
+  // Use Cloudinary's private_download_url for proper time-limited signed URLs
+  return cloudinary.utils.private_download_url(publicId, "pdf", {
+    resource_type: "raw",
+    expires_at: expiresAt,
+    attachment: true,
+  });
 };
 
 /**
@@ -85,4 +84,11 @@ export const getCloudinaryResourceUrl = (publicId: string): string => {
     type: "upload",
     secure: true,
   });
+};
+
+/**
+ * Delete a PDF resource from Cloudinary
+ */
+export const deletePdf = async (publicId: string): Promise<void> => {
+  await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
 };

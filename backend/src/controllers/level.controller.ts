@@ -100,7 +100,7 @@ export const updateLevel = async (
     const { name, levelNumber, lockedByDefault } = req.body;
     const level = await LevelService.updateLevel(req.params.id, {
       name,
-      levelNumber,
+      levelNumber: levelNumber !== undefined ? Number(levelNumber) : undefined,
       lockedByDefault,
     });
     res.json({ success: true, data: level });

@@ -20,21 +20,23 @@ export const enrollInCourse = async (
   const course = await Course.findById(courseId);
   if (!course) throw new ApiError(404, "Course not found");
 
-  // Check if already enrolled
-  const existing = await Enrollment.findOne({ user: userId, course: courseId });
-  if (existing) throw new ApiError(409, "Already enrolled in this course");
-
   // Find level 1 of the course to auto-unlock
   const firstLevel = await Level.findOne({ course: courseId, levelNumber: 1 });
   const levelsUnlocked = firstLevel ? [firstLevel._id] : [];
 
-  const enrollment = await Enrollment.create({
-    user: userId,
-    course: courseId,
-    levelsUnlocked,
-  });
-
-  return enrollment;
+  try {
+    const enrollment = await Enrollment.create({
+      user: userId,
+      course: courseId,
+      levelsUnlocked,
+    });
+    return enrollment;
+  } catch (err: any) {
+    if (err && err.code === 11000) {
+      throw new ApiError(409, "Already enrolled in this course");
+    }
+    throw err;
+  }
 };
 
 /**

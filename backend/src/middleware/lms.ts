@@ -111,7 +111,11 @@ export const requireLevelUnlocked = async (
     }
 
     let levelId: string | undefined = req.params.levelId;
-
+       
+    // Check query string
+    if (!levelId && req.query.levelId) {
+      levelId = req.query.levelId as string;
+    }
     // If not directly available, derive from materialId
     if (!levelId && req.params.id) {
       const material = await Material.findById(req.params.id);

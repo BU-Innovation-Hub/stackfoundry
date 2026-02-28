@@ -79,10 +79,14 @@ export const updateTopic = async (
   try {
     handleValidationErrors(req);
     const { name, description } = req.body;
-    const topic = await TopicService.updateTopic(req.params.id, {
-      name,
-      description,
-    });
+    // const topic = await TopicService.updateTopic(req.params.id, {
+    //   name,
+    //   description,
+    // });
+    const updates: { name?: string; description?: string } = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    const topic = await TopicService.updateTopic(req.params.id, updates);
     res.json({ success: true, data: topic });
   } catch (error) {
     next(error);

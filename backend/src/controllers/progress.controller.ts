@@ -39,12 +39,18 @@ export const updateProgress = async (
     const user = (req as RequestWithUser).user;
     const { materialId, watchedSeconds, maxWatchedSeconds } = req.body;
 
+     const parsedWatchedSeconds = Number(watchedSeconds);
+    const parsedMaxWatched = maxWatchedSeconds !== undefined ? Number(maxWatchedSeconds) : undefined;
+   
+   if (Number.isNaN(parsedWatchedSeconds) || (parsedMaxWatched !== undefined && Number.isNaN(parsedMaxWatched))) {
+     throw new ApiError(400, "Invalid numeric values for watchedSeconds or maxWatchedSeconds");
+   }
+
     const result = await ProgressService.updateProgress(
       user.id,
       materialId,
-      Number(watchedSeconds),
-      maxWatchedSeconds !== undefined ? Number(maxWatchedSeconds) : undefined
-    );
+      parsedWatchedSeconds,
+      parsedMaxWatched);
 
     res.json({
       success: true,
@@ -73,6 +79,11 @@ export const getProgress = async (
     handleValidationErrors(req);
     const currentUser = (req as RequestWithUser).user;
     const { courseId } = req.query;
+
+     if (!courseId || typeof courseId !== "string") {
+      throw new ApiError(400, "courseId query parameter is required");
+    }
+
     let userId = currentUser.id;
 
     // Admin can query other users' progress
@@ -86,7 +97,7 @@ export const getProgress = async (
 
     const progress = await ProgressService.getUserCourseProgress(
       userId,
-      courseId as string
+      courseId 
     );
     res.json({ success: true, data: progress });
   } catch (error) {

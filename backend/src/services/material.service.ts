@@ -5,9 +5,8 @@
 
 import Material, { IMaterial } from "../models/material.model";
 import { extractVideoId, fetchYouTubeMetadata } from "./youtube.service";
-import { uploadPdf, generateSignedDownloadUrl } from "./cloudinary.service";
+import { uploadPdf, generateSignedDownloadUrl, deletePdf } from "./cloudinary.service";
 import { ApiError } from "../middleware/errorHandler";
-
 // ============================================
 // Video Materials
 // ============================================
@@ -59,27 +58,33 @@ export const createPdfMaterial = async (data: {
   topicId?: string;
   title?: string;
 }): Promise<IMaterial> => {
-  // Upload to Cloudinary
-  const uploadResult = await uploadPdf(data.buffer, data.originalName);
+  
+    // Upload to Cloudinary
+    const uploadResult = await uploadPdf(data.buffer, data.originalName);
+try {
+    // Determine next order number
+    const lastMaterial = await Material.findOne({ level: data.levelId })
+      .sort({ order: -1 })
+      .select("order");
+    const nextOrder = lastMaterial ? lastMaterial.order + 1 : 0;
 
-  // Determine next order number
-  const lastMaterial = await Material.findOne({ level: data.levelId })
-    .sort({ order: -1 })
-    .select("order");
-  const nextOrder = lastMaterial ? lastMaterial.order + 1 : 0;
+    const material = await Material.create({
+      level: data.levelId,
+      topic: data.topicId || undefined,
+      title: data.title || data.originalName,
+      type: "pdf",
+      order: nextOrder,
+      cloudinaryPublicId: uploadResult.publicId,
+      pdfOriginalName: data.originalName,
+      pdfSizeBytes: uploadResult.bytes,
+    });
 
-  const material = await Material.create({
-    level: data.levelId,
-    topic: data.topicId || undefined,
-    title: data.title || data.originalName,
-    type: "pdf",
-    order: nextOrder,
-    cloudinaryPublicId: uploadResult.publicId,
-    pdfOriginalName: data.originalName,
-    pdfSizeBytes: uploadResult.bytes,
-  });
-
-  return material;
+    return material;
+  } catch (error) {
+    // Cleanup orphaned Cloudinary resource
+    await deletePdf(uploadResult.publicId).catch(() => { });
+    throw error;
+  }
 };
 
 // ============================================
@@ -96,7 +101,9 @@ export const getMaterialsByLevel = async (
 };
 
 export const getMaterialById = async (id: string): Promise<IMaterial> => {
-  const material = await Material.findById(id).populate("topic", "name");
+  const material = await Material.findById(id)
+    .select("-cloudinaryPublicId")
+    .populate("topic", "name");
   if (!material) throw new ApiError(404, "Material not found");
   return material;
 };
@@ -119,6 +126,12 @@ export const getPdfDownloadUrl = async (
 };
 
 export const deleteMaterial = async (id: string): Promise<void> => {
-  const material = await Material.findByIdAndDelete(id);
+  const material = await Material.findById(id);
   if (!material) throw new ApiError(404, "Material not found");
+  // Clean up Cloudinary resource for PDFs
+  if (material.type === "pdf" && material.cloudinaryPublicId) {
+    await deletePdf(material.cloudinaryPublicId);
+  }
+  await Material.findByIdAndDelete(id);
 };
+
