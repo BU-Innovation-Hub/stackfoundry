@@ -12,6 +12,10 @@ import Dashboard from '../pages/Dashboard';
 import NotFound from '../pages/NotFound';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 
+// LMS pages
+import CourseCatalog from '../pages/CourseCatalog';
+import CourseLearn from '../pages/CourseLearn';
+
 // Admin pages
 import AdminLayout from '../pages/admin/AdminLayout';
 import AdminDashboard from '../pages/admin/Dashboard';
@@ -19,6 +23,7 @@ import Members from '../pages/admin/Members';
 import Blogs from '../pages/admin/Blogs';
 import Events from '../pages/admin/Events';
 import Courses from '../pages/admin/Courses';
+import CourseManager from '../pages/admin/CourseManager';
 
 const AppRoutes: React.FC = () => (
   <BrowserRouter>
@@ -31,6 +36,15 @@ const AppRoutes: React.FC = () => (
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/courses" element={<CourseCatalog />} />
+      <Route
+        path="/learn/:courseId"
+        element={
+          <ProtectedRoute>
+            <CourseLearn />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={
@@ -54,6 +68,7 @@ const AppRoutes: React.FC = () => (
         <Route path="blogs" element={<Blogs />} />
         <Route path="events" element={<Events />} />
         <Route path="courses" element={<Courses />} />
+        <Route path="course-manager" element={<CourseManager />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

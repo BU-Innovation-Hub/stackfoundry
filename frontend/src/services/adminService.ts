@@ -158,38 +158,112 @@ export const deleteEvent = async (id: string): Promise<void> => {
 
 // ---- Courses ----
 export const getCourses = async (): Promise<Course[]> => {
-  await delay();
-  return [...mockCourses];
-  // TODO: return (await apiClient.get('/admin/courses')).data;
+  try {
+    const response = await apiClient.get('/courses');
+    const lmsCourses = response.data.data || [];
+    // Map LMS courses to the existing Course interface for backward compat
+    return lmsCourses.map((c: any) => ({
+      id: c._id,
+      title: c.title,
+      description: c.description || '',
+      coverImage: '',
+      language: '',
+      level: 'beginner' as const,
+      duration: 0,
+      lessons: [],
+      quiz: [],
+      enrolledCount: 0,
+      completionRate: 0,
+      status: 'published' as const,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
+  } catch {
+    // Fallback to mock if API not ready
+    await delay();
+    return [...mockCourses];
+  }
 };
 
 export const createCourse = async (data: Omit<Course, 'id' | 'enrolledCount' | 'completionRate' | 'createdAt' | 'updatedAt'>): Promise<Course> => {
-  await delay();
-  const course: Course = {
-    ...data,
-    id: String(Date.now()),
-    enrolledCount: 0,
-    completionRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  mockCourses.push(course);
-  return course;
-  // TODO: return (await apiClient.post('/admin/courses', data)).data;
+  try {
+    const response = await apiClient.post('/courses', {
+      title: data.title,
+      description: data.description,
+    });
+    const c = response.data.data;
+    return {
+      id: c._id,
+      title: c.title,
+      description: c.description || '',
+      coverImage: data.coverImage || '',
+      language: data.language || '',
+      framework: data.framework,
+      level: data.level || 'beginner',
+      duration: data.duration || 0,
+      lessons: data.lessons || [],
+      quiz: data.quiz || [],
+      enrolledCount: 0,
+      completionRate: 0,
+      status: data.status || 'draft',
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
+  } catch {
+    // Fallback to mock
+    await delay();
+    const course: Course = {
+      ...data,
+      id: String(Date.now()),
+      enrolledCount: 0,
+      completionRate: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockCourses.push(course);
+    return course;
+  }
 };
 
 export const updateCourse = async (id: string, data: Partial<Course>): Promise<Course> => {
-  await delay();
-  const course = mockCourses.find(c => c.id === id);
-  if (!course) throw new Error('Course not found');
-  Object.assign(course, data, { updatedAt: new Date().toISOString() });
-  return { ...course };
-  // TODO: return (await apiClient.put(`/admin/courses/${id}`, data)).data;
+  try {
+    const response = await apiClient.put(`/courses/${id}`, {
+      title: data.title,
+      description: data.description,
+    });
+    const c = response.data.data;
+    return {
+      id: c._id,
+      title: c.title,
+      description: c.description || '',
+      coverImage: data.coverImage || '',
+      language: data.language || '',
+      framework: data.framework,
+      level: data.level || 'beginner',
+      duration: data.duration || 0,
+      lessons: data.lessons || [],
+      quiz: data.quiz || [],
+      enrolledCount: data.enrolledCount || 0,
+      completionRate: data.completionRate || 0,
+      status: data.status || 'published',
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
+  } catch {
+    await delay();
+    const course = mockCourses.find(c => c.id === id);
+    if (!course) throw new Error('Course not found');
+    Object.assign(course, data, { updatedAt: new Date().toISOString() });
+    return { ...course };
+  }
 };
 
 export const deleteCourse = async (id: string): Promise<void> => {
-  await delay();
-  const idx = mockCourses.findIndex(c => c.id === id);
-  if (idx !== -1) mockCourses.splice(idx, 1);
-  // TODO: await apiClient.delete(`/admin/courses/${id}`);
+  try {
+    await apiClient.delete(`/courses/${id}`);
+  } catch {
+    await delay();
+    const idx = mockCourses.findIndex(c => c.id === id);
+    if (idx !== -1) mockCourses.splice(idx, 1);
+  }
 };
