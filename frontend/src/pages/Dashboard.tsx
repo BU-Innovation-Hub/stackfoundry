@@ -1,13 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, BookOpen, Play, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import {
-  lmsGetCourses,
-  lmsGetMyEnrollments,
-  lmsEnroll,
-} from '../services/lmsService';
-import { LmsCourse, LmsEnrollment } from '../types/lms';
+import { Shield, KeyRound } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
@@ -103,6 +97,10 @@ const Dashboard: React.FC = () => {
               Admin Panel
             </Link>
           )}
+          <Link to="/change-password" className={styles.adminBtn} style={{ background: '#D64A2A' }}>
+            <KeyRound size={18} />
+            Change Password
+          </Link>
         </div>
 
         {/* Loading / Error (only show for students) */}

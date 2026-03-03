@@ -1,6 +1,12 @@
 import { api } from './apiClient';
 import { AuthResponse, RegisterData, LoginData, User } from '../types/auth';
 
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
 export const authService = {
   register: async (data: RegisterData): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>('/auth/register', data);
@@ -28,5 +34,10 @@ export const authService = {
   getMe: async (): Promise<User> => {
     const response = await api.get<AuthResponse>('/auth/me');
     return response.data.user;
+  },
+
+  changePassword: async (data: ChangePasswordData): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/change-password', data);
+    return response.data;
   },
 };
