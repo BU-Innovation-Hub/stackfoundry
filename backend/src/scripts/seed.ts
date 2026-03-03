@@ -12,6 +12,11 @@ import Role from "../models/role.model";
 import Student from "../models/user.model";
 import Blog from "../models/blog.model";
 import Event from "../models/event.model";
+import Course from "../models/course.model";
+import Level from "../models/level.model";
+import Topic from "../models/topic.model";
+import Material from "../models/material.model";
+import Enrollment from "../models/enrollment.model";
 
 // Load environment variables
 dotenv.config();
@@ -231,6 +236,108 @@ const SAMPLE_EVENTS = [
 ];
 
 // ============================================
+// LMS Sample Data
+// ============================================
+
+const SAMPLE_COURSES = [
+  {
+    title: "Full Stack Web Development Bootcamp",
+    description:
+      "Master modern web development with React, Node.js, Express, and MongoDB. Build real-world projects from scratch and deploy them to the cloud.",
+  },
+  {
+    title: "Introduction to Python Programming",
+    description:
+      "Learn Python fundamentals, data structures, and build practical applications. Perfect for beginners with no prior programming experience.",
+  },
+  {
+    title: "Mobile App Development with React Native",
+    description:
+      "Create cross-platform mobile apps for iOS and Android using React Native. Ship your first app to the app stores.",
+  },
+];
+
+// Levels for each course (indexed by course position)
+const SAMPLE_LEVELS = [
+  // Course 0: Full Stack Web Development
+  [
+    { levelNumber: 1, name: "HTML & CSS Foundations", lockedByDefault: false },
+    { levelNumber: 2, name: "JavaScript Essentials", lockedByDefault: true },
+    { levelNumber: 3, name: "React Fundamentals", lockedByDefault: true },
+    { levelNumber: 4, name: "Node.js & Express", lockedByDefault: true },
+    { levelNumber: 5, name: "MongoDB & Database Design", lockedByDefault: true },
+  ],
+  // Course 1: Python Programming
+  [
+    { levelNumber: 1, name: "Python Basics", lockedByDefault: false },
+    { levelNumber: 2, name: "Data Structures in Python", lockedByDefault: true },
+    { levelNumber: 3, name: "Functions & Modules", lockedByDefault: true },
+    { levelNumber: 4, name: "Object-Oriented Programming", lockedByDefault: true },
+  ],
+  // Course 2: React Native
+  [
+    { levelNumber: 1, name: "React Native Setup & Basics", lockedByDefault: false },
+    { levelNumber: 2, name: "Components & Styling", lockedByDefault: true },
+    { levelNumber: 3, name: "Navigation & State Management", lockedByDefault: true },
+  ],
+];
+
+// Topics for first level of first course (for demonstration)
+const SAMPLE_TOPICS = [
+  { name: "Introduction to HTML", description: "Learn the basics of HTML document structure" },
+  { name: "HTML Elements & Tags", description: "Explore common HTML elements and their usage" },
+  { name: "CSS Fundamentals", description: "Style your web pages with CSS" },
+  { name: "Flexbox & Grid", description: "Modern CSS layout techniques" },
+];
+
+// Materials for first level of first course (video + pdf examples)
+const SAMPLE_MATERIALS = [
+  {
+    title: "Welcome to Web Development",
+    type: "video" as const,
+    youtubeVideoId: "UB1O30fR-EE", // HTML Crash Course for Beginners
+    youtubeTitle: "HTML Crash Course For Beginners",
+    youtubeDurationSeconds: 3600,
+    youtubeThumbnail: "https://img.youtube.com/vi/UB1O30fR-EE/maxresdefault.jpg",
+    order: 1,
+  },
+  {
+    title: "HTML5 Complete Reference",
+    type: "pdf" as const,
+    cloudinaryPublicId: "innovation-hub/lms-pdfs/html5-reference",
+    pdfOriginalName: "html5-complete-reference.pdf",
+    pdfSizeBytes: 2457600,
+    order: 2,
+  },
+  {
+    title: "CSS Basics Tutorial",
+    type: "video" as const,
+    youtubeVideoId: "yfoY53QXEnI", // CSS Crash Course for Beginners
+    youtubeTitle: "CSS Crash Course For Beginners",
+    youtubeDurationSeconds: 5040,
+    youtubeThumbnail: "https://img.youtube.com/vi/yfoY53QXEnI/maxresdefault.jpg",
+    order: 3,
+  },
+  {
+    title: "CSS Cheat Sheet",
+    type: "pdf" as const,
+    cloudinaryPublicId: "innovation-hub/lms-pdfs/css-cheatsheet",
+    pdfOriginalName: "css-cheatsheet.pdf",
+    pdfSizeBytes: 1048576,
+    order: 4,
+  },
+  {
+    title: "Flexbox in 20 Minutes",
+    type: "video" as const,
+    youtubeVideoId: "JJSoEo8JSnc", // Flexbox tutorial
+    youtubeTitle: "Flexbox CSS In 20 Minutes",
+    youtubeDurationSeconds: 1200,
+    youtubeThumbnail: "https://img.youtube.com/vi/JJSoEo8JSnc/maxresdefault.jpg",
+    order: 5,
+  },
+];
+
+// ============================================
 // Seed Functions
 // ============================================
 
@@ -341,6 +448,137 @@ async function seedEvents(): Promise<void> {
   }
 }
 
+async function seedLMS(): Promise<void> {
+  console.log("\n📚 Seeding LMS (Courses, Levels, Topics, Materials)...");
+
+  // Get admin user for createdBy reference
+  const admin = await Student.findOne({ email: ADMIN_USER.email });
+  if (!admin) {
+    console.log("   ⚠️ Admin user not found. Skipping LMS seed.");
+    return;
+  }
+
+  // Seed Courses
+  const createdCourses: mongoose.Types.ObjectId[] = [];
+
+  for (let i = 0; i < SAMPLE_COURSES.length; i++) {
+    const courseData = SAMPLE_COURSES[i];
+    const existing = await Course.findOne({ title: courseData.title });
+
+    if (existing) {
+      console.log(`   ✓ Course "${courseData.title.substring(0, 40)}..." already exists`);
+      createdCourses.push(existing._id as mongoose.Types.ObjectId);
+    } else {
+      const course = await Course.create({
+        ...courseData,
+        createdBy: admin._id,
+      });
+      console.log(`   ✓ Created course "${courseData.title.substring(0, 40)}..."`);
+      createdCourses.push(course._id as mongoose.Types.ObjectId);
+    }
+  }
+
+  // Seed Levels for each course
+  const createdLevels: mongoose.Types.ObjectId[][] = [];
+
+  for (let courseIdx = 0; courseIdx < createdCourses.length; courseIdx++) {
+    const courseId = createdCourses[courseIdx];
+    const levelsData = SAMPLE_LEVELS[courseIdx] || [];
+    const courseLevels: mongoose.Types.ObjectId[] = [];
+
+    for (const levelData of levelsData) {
+      const existing = await Level.findOne({
+        course: courseId,
+        levelNumber: levelData.levelNumber,
+      });
+
+      if (existing) {
+        console.log(`   ✓ Level ${levelData.levelNumber} "${levelData.name}" already exists`);
+        courseLevels.push(existing._id as mongoose.Types.ObjectId);
+      } else {
+        const level = await Level.create({
+          ...levelData,
+          course: courseId,
+        });
+        console.log(`   ✓ Created level ${levelData.levelNumber}: "${levelData.name}"`);
+        courseLevels.push(level._id as mongoose.Types.ObjectId);
+      }
+    }
+    createdLevels.push(courseLevels);
+  }
+
+  // Seed Topics for the first level of the first course
+  if (createdLevels.length > 0 && createdLevels[0].length > 0) {
+    const firstLevelId = createdLevels[0][0];
+    const createdTopics: mongoose.Types.ObjectId[] = [];
+
+    for (const topicData of SAMPLE_TOPICS) {
+      const existing = await Topic.findOne({
+        level: firstLevelId,
+        name: topicData.name,
+      });
+
+      if (existing) {
+        console.log(`   ✓ Topic "${topicData.name}" already exists`);
+        createdTopics.push(existing._id as mongoose.Types.ObjectId);
+      } else {
+        const topic = await Topic.create({
+          ...topicData,
+          level: firstLevelId,
+        });
+        console.log(`   ✓ Created topic "${topicData.name}"`);
+        createdTopics.push(topic._id as mongoose.Types.ObjectId);
+      }
+    }
+
+    // Seed Materials for the first level
+    const firstTopicId = createdTopics.length > 0 ? createdTopics[0] : undefined;
+
+    for (const materialData of SAMPLE_MATERIALS) {
+      const existing = await Material.findOne({
+        level: firstLevelId,
+        title: materialData.title,
+      });
+
+      if (existing) {
+        console.log(`   ✓ Material "${materialData.title.substring(0, 35)}..." already exists`);
+      } else {
+        await Material.create({
+          ...materialData,
+          level: firstLevelId,
+          topic: firstTopicId,
+        });
+        console.log(`   ✓ Created ${materialData.type} material: "${materialData.title.substring(0, 35)}..."`);
+      }
+    }
+  }
+
+  // Enroll admin in the first course (for testing)
+  if (createdCourses.length > 0 && createdLevels.length > 0) {
+    const firstCourseId = createdCourses[0];
+    const firstCourseLevels = createdLevels[0];
+
+    const existingEnrollment = await Enrollment.findOne({
+      user: admin._id,
+      course: firstCourseId,
+    });
+
+    if (existingEnrollment) {
+      console.log(`   ✓ Admin enrollment in first course already exists`);
+    } else {
+      // Enroll admin with first level unlocked
+      await Enrollment.create({
+        user: admin._id,
+        course: firstCourseId,
+        levelsUnlocked: firstCourseLevels.length > 0 ? [firstCourseLevels[0]] : [],
+      });
+      console.log(`   ✓ Enrolled admin in first course with level 1 unlocked`);
+    }
+  }
+
+  console.log("   ✓ LMS seeding complete");
+}
+
 // ============================================
 // Main
 // ============================================
@@ -359,7 +597,7 @@ async function main(): Promise<void> {
     await seedAdminUser();
     await seedBlogs();
     await seedEvents();
-    // await seedBlogs();
+    await seedLMS();
 
     console.log("\n✅ Seed completed successfully!");
 
@@ -368,11 +606,22 @@ async function main(): Promise<void> {
     const userCount = await Student.countDocuments();
     const blogCount = await Blog.countDocuments();
     const eventCount = await Event.countDocuments();
+    const courseCount = await Course.countDocuments();
+    const levelCount = await Level.countDocuments();
+    const topicCount = await Topic.countDocuments();
+    const materialCount = await Material.countDocuments();
+    const enrollmentCount = await Enrollment.countDocuments();
+
     console.log(`\n📊 Summary:`);
     console.log(`   - Roles: ${roleCount}`);
     console.log(`   - Users: ${userCount}`);
     console.log(`   - Blogs: ${blogCount}`);
     console.log(`   - Events: ${eventCount}`);
+    console.log(`   - Courses: ${courseCount}`);
+    console.log(`   - Levels: ${levelCount}`);
+    console.log(`   - Topics: ${topicCount}`);
+    console.log(`   - Materials: ${materialCount}`);
+    console.log(`   - Enrollments: ${enrollmentCount}`);
   } catch (error) {
     console.error("\n❌ Seed failed:", error);
     process.exit(1);
