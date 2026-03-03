@@ -12,6 +12,14 @@ import blogRouter from "./blog.routes";
 import eventRouter from "./event.routes";
 import uploadRouter from "./upload.routes";
 
+// LMS routes
+import courseRouter from "./course.routes";
+import levelRouter from "./level.routes";
+import topicRouter from "./topic.routes";
+import materialRouter from "./material.routes";
+import enrollmentRouter from "./enrollment.routes";
+import progressRouter from "./progress.routes";
+
 const v1 = Router();
 
 // Health check
@@ -33,5 +41,13 @@ v1.use("/blogs", blogRouter);
 v1.use("/events", eventRouter);
 // Upload routes (protected)
 v1.use("/upload", uploadRouter);
+
+// LMS routes
+v1.use("/courses", courseRouter);
+v1.use("/levels", levelRouter);
+v1.use("/topics", topicRouter);
+v1.use("/materials", materialRouter);
+v1.use("/", enrollmentRouter); // mounts /enroll and /enrollments/*
+v1.use("/progress", progressRouter);
 
 export default v1;

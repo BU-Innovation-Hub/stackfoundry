@@ -28,6 +28,12 @@ export interface Env {
 
   // Cloudinary (optional)
   CLOUDINARY_URL?: string;
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
+
+  // YouTube
+  YOUTUBE_API_KEY?: string;
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: number;
@@ -84,6 +90,12 @@ export const loadEnv = (): Env => {
 
     // Cloudinary
     CLOUDINARY_URL: process.env.CLOUDINARY_URL,
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+
+    // YouTube
+    YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
 
     // Rate Limiting
     RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
