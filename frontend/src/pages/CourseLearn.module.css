@@ -133,9 +133,9 @@
 .materialItem {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 1rem 0.55rem 2.25rem;
-  font-size: 0.82rem;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem 0.45rem 2.75rem;
+  font-size: 0.8rem;
   color: #555;
   cursor: pointer;
   transition: background 0.15s;
@@ -143,6 +143,14 @@
 .materialItem:hover { background: #f5f7ff; }
 .materialItem.active { background: #eef2ff; color: #4f46e5; font-weight: 600; }
 .materialItem.completed { color: #16a34a; }
+
+.materialNum {
+  font-size: 0.7rem;
+  color: #aaa;
+  font-weight: 500;
+  min-width: 1.8rem;
+  flex-shrink: 0;
+}
 
 .materialName {
   flex: 1;
@@ -158,6 +166,77 @@
   padding: 0.5rem 2.25rem;
   font-size: 0.78rem;
   color: #aaa;
+}
+
+/* Level completion progress bar */
+.levelProgressBar {
+  height: 3px;
+  background: #e5e7eb;
+  margin: 0 1rem;
+}
+.levelProgressFill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Level expanded content */
+.levelContent {
+  padding: 0.25rem 0 0.5rem;
+}
+
+/* Topic block (Cisco-style expandable) */
+.topicBlock {
+  border-top: 1px solid #f0f0f0;
+}
+
+.topicHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1rem 0.55rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.topicHead:hover { background: #fafbfc; }
+.topicHead.topicDone .topicLabel { color: #16a34a; }
+
+.topicLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  color: #555;
+}
+
+.topicLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topicProgress {
+  font-size: 0.7rem;
+  color: #888;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.topicMaterials {
+  padding: 0 0 0.25rem;
+}
+
+.emptyTopic {
+  padding: 0.3rem 2.75rem;
+  font-size: 0.75rem;
+  color: #bbb;
+  font-style: italic;
 }
 
 /* Main content */

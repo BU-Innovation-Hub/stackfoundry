@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Plus, Edit3, Trash2, X, BookOpen, ChevronDown, ChevronUp,
+  Plus, Edit3, Trash2, X, BookOpen, ChevronDown, ChevronUp, ChevronRight,
   Video, FileText, Upload, Layers, FolderOpen, Lock, Unlock
 } from 'lucide-react';
 import {
@@ -27,6 +27,7 @@ const CourseManager: React.FC = () => {
   const [topics, setTopics] = useState<Record<string, LmsTopic[]>>({});
   const [materials, setMaterials] = useState<Record<string, LmsMaterial[]>>({});
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
+  const [expandedAdminTopic, setExpandedAdminTopic] = useState<string | null>(null);
 
   // Modal state
   const [modal, setModal] = useState<{
@@ -336,71 +337,141 @@ const CourseManager: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Expanded Level: Topics + Materials */}
+                    {/* Expanded Level: Topics with nested Materials */}
                     {expandedLevel === level._id && (
                       <div className={styles.levelContent}>
-                        {/* Topics */}
-                        <div className={styles.section}>
-                          <div className={styles.sectionHeader}>
-                            <h5><FolderOpen size={14} /> Topics</h5>
-                            <button className={styles.tinyBtn} onClick={() => {
-                              setModal({ type: 'topic', parentId: level._id });
-                              setFormData({});
-                            }}>
-                              <Plus size={12} /> Topic
-                            </button>
-                          </div>
-                          {(topics[level._id] || []).map(topic => (
-                            <div key={topic._id} className={styles.topicRow}>
-                              <span>{topic.name}</span>
-                              <button className={styles.deleteBtn} onClick={() => handleDeleteTopic(level._id, topic._id)}>
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))}
-                          {(topics[level._id] || []).length === 0 && <p className={styles.empty}>No topics yet</p>}
+                        {/* Add Topic header */}
+                        <div className={styles.sectionHeader}>
+                          <h5><FolderOpen size={14} /> Topics &amp; Materials</h5>
+                          <button className={styles.tinyBtn} onClick={() => {
+                            setModal({ type: 'topic', parentId: level._id });
+                            setFormData({});
+                          }}>
+                            <Plus size={12} /> Topic
+                          </button>
                         </div>
 
-                        {/* Materials */}
-                        <div className={styles.section}>
-                          <div className={styles.sectionHeader}>
-                            <h5>Materials</h5>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className={styles.tinyBtn} onClick={() => {
-                                setModal({ type: 'video', parentId: level._id, courseId: course._id });
-                                setFormData({});
-                              }}>
-                                <Video size={12} /> Video
-                              </button>
-                              <button className={styles.tinyBtn} onClick={() => {
-                                setModal({ type: 'pdf', parentId: level._id, courseId: course._id });
-                                setFormData({});
-                              }}>
-                                <Upload size={12} /> PDF
-                              </button>
-                            </div>
-                          </div>
-                          {(materials[level._id] || []).map(mat => (
-                            <div key={mat._id} className={styles.materialRow}>
-                              {mat.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
-                              <span className={styles.materialTitle}>{mat.title}</span>
-                              {mat.type === 'video' && mat.youtubeDurationSeconds && (
-                                <span className={styles.duration}>
-                                  {Math.floor(mat.youtubeDurationSeconds / 60)}:{String(mat.youtubeDurationSeconds % 60).padStart(2, '0')}
-                                </span>
+                        {/* Topics with nested materials */}
+                        {(topics[level._id] || []).map(topic => {
+                          const topicMats = (materials[level._id] || []).filter(m => {
+                            const tId = typeof m.topic === 'string' ? m.topic : (m.topic as any)?._id;
+                            return tId === topic._id;
+                          });
+                          const isTopicOpen = expandedAdminTopic === topic._id;
+
+                          return (
+                            <div key={topic._id} className={styles.adminTopicBlock}>
+                              <div className={styles.adminTopicHead}>
+                                <div
+                                  className={styles.adminTopicLeft}
+                                  onClick={() => setExpandedAdminTopic(isTopicOpen ? null : topic._id)}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {isTopicOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                  <FolderOpen size={14} />
+                                  <span className={styles.adminTopicName}>{topic.name}</span>
+                                  <span className={styles.adminTopicCount}>{topicMats.length} item{topicMats.length !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div className={styles.cardActions}>
+                                  <button className={styles.tinyBtn} title="Add video to topic" onClick={() => {
+                                    setModal({ type: 'video', parentId: level._id, courseId: course._id });
+                                    setFormData({ topicId: topic._id });
+                                  }}>
+                                    <Video size={12} />
+                                  </button>
+                                  <button className={styles.tinyBtn} title="Add PDF to topic" onClick={() => {
+                                    setModal({ type: 'pdf', parentId: level._id, courseId: course._id });
+                                    setFormData({ topicId: topic._id });
+                                  }}>
+                                    <Upload size={12} />
+                                  </button>
+                                  <button className={styles.deleteBtn} title="Delete topic" onClick={() => handleDeleteTopic(level._id, topic._id)}>
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {isTopicOpen && (
+                                <div className={styles.adminTopicMaterials}>
+                                  {topicMats.map(mat => (
+                                    <div key={mat._id} className={styles.materialRow}>
+                                      {mat.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
+                                      <span className={styles.materialTitle}>{mat.title}</span>
+                                      {mat.type === 'video' && mat.youtubeDurationSeconds && (
+                                        <span className={styles.duration}>
+                                          {Math.floor(mat.youtubeDurationSeconds / 60)}:{String(mat.youtubeDurationSeconds % 60).padStart(2, '0')}
+                                        </span>
+                                      )}
+                                      {mat.type === 'pdf' && mat.pdfSizeBytes && (
+                                        <span className={styles.duration}>
+                                          {(mat.pdfSizeBytes / 1024 / 1024).toFixed(1)} MB
+                                        </span>
+                                      )}
+                                      <button className={styles.deleteBtn} onClick={() => handleDeleteMaterial(level._id, mat._id)}>
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {topicMats.length === 0 && <p className={styles.empty}>No materials in this topic</p>}
+                                </div>
                               )}
-                              {mat.type === 'pdf' && mat.pdfSizeBytes && (
-                                <span className={styles.duration}>
-                                  {(mat.pdfSizeBytes / 1024 / 1024).toFixed(1)} MB
-                                </span>
-                              )}
-                              <button className={styles.deleteBtn} onClick={() => handleDeleteMaterial(level._id, mat._id)}>
-                                <Trash2 size={12} />
-                              </button>
                             </div>
-                          ))}
-                          {(materials[level._id] || []).length === 0 && <p className={styles.empty}>No materials yet</p>}
-                        </div>
+                          );
+                        })}
+
+                        {(topics[level._id] || []).length === 0 && (
+                          <p className={styles.empty}>No topics yet. Add the first topic.</p>
+                        )}
+
+                        {/* Ungrouped materials (not assigned to any topic) */}
+                        {(() => {
+                          const ungrouped = (materials[level._id] || []).filter(m => {
+                            const tId = typeof m.topic === 'string' ? m.topic : (m.topic as any)?._id;
+                            return !tId;
+                          });
+                          if (ungrouped.length === 0 && (topics[level._id] || []).length > 0) return null;
+                          return (
+                            <div className={styles.section} style={{ marginTop: '0.5rem' }}>
+                              <div className={styles.sectionHeader}>
+                                <h5>Ungrouped Materials</h5>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                  <button className={styles.tinyBtn} onClick={() => {
+                                    setModal({ type: 'video', parentId: level._id, courseId: course._id });
+                                    setFormData({});
+                                  }}>
+                                    <Video size={12} /> Video
+                                  </button>
+                                  <button className={styles.tinyBtn} onClick={() => {
+                                    setModal({ type: 'pdf', parentId: level._id, courseId: course._id });
+                                    setFormData({});
+                                  }}>
+                                    <Upload size={12} /> PDF
+                                  </button>
+                                </div>
+                              </div>
+                              {ungrouped.map(mat => (
+                                <div key={mat._id} className={styles.materialRow}>
+                                  {mat.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
+                                  <span className={styles.materialTitle}>{mat.title}</span>
+                                  {mat.type === 'video' && mat.youtubeDurationSeconds && (
+                                    <span className={styles.duration}>
+                                      {Math.floor(mat.youtubeDurationSeconds / 60)}:{String(mat.youtubeDurationSeconds % 60).padStart(2, '0')}
+                                    </span>
+                                  )}
+                                  {mat.type === 'pdf' && mat.pdfSizeBytes && (
+                                    <span className={styles.duration}>
+                                      {(mat.pdfSizeBytes / 1024 / 1024).toFixed(1)} MB
+                                    </span>
+                                  )}
+                                  <button className={styles.deleteBtn} onClick={() => handleDeleteMaterial(level._id, mat._id)}>
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              {ungrouped.length === 0 && <p className={styles.empty}>No loose materials. Add materials to topics above.</p>}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

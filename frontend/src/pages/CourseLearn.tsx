@@ -11,14 +11,14 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronDown, ChevronUp, Lock, CheckCircle,
+  ChevronLeft, ChevronDown, ChevronUp, ChevronRight, Lock, CheckCircle,
   PlayCircle, FileText, Download, AlertCircle
 } from 'lucide-react';
 import {
-  lmsGetCourse, lmsGetMaterials, lmsGetProgress,
+  lmsGetCourse, lmsGetMaterials, lmsGetTopics, lmsGetProgress,
   lmsUpdateProgress, lmsDownloadPdf, lmsGetMyEnrollments
 } from '../services/lmsService';
-import { LmsCourse, LmsLevel, LmsMaterial, LmsProgress, LmsEnrollment } from '../types/lms';
+import { LmsCourse, LmsLevel, LmsTopic, LmsMaterial, LmsProgress, LmsEnrollment } from '../types/lms';
 import { useYouTubePlayer, PlayerState } from '../hooks/useYouTubePlayer';
 import { useProgressPersistence } from '../hooks/useProgressPersistence';
 import { useAuth } from '../context/AuthContext';
@@ -37,11 +37,13 @@ const CourseLearn: React.FC = () => {
   const [levels, setLevels] = useState<LmsLevel[]>([]);
   const [enrollment, setEnrollment] = useState<LmsEnrollment | null>(null);
   const [materialsByLevel, setMaterialsByLevel] = useState<Record<string, LmsMaterial[]>>({});
+  const [topicsByLevel, setTopicsByLevel] = useState<Record<string, LmsTopic[]>>({});
   const [progressMap, setProgressMap] = useState<Record<string, LmsProgress>>({});
   const [loading, setLoading] = useState(true);
 
   const [selectedMaterial, setSelectedMaterial] = useState<LmsMaterial | null>(null);
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
+  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
   const [seekBlockedToast, setSeekBlockedToast] = useState<string | null>(null);
 
   // Get initial maxWatched from saved progress
@@ -133,12 +135,21 @@ const CourseLearn: React.FC = () => {
       });
       setEnrollment(myEnrollment || null);
 
-      // Load materials for all levels
+      // Load materials and topics for all levels
       const matPromises = courseData.levels.map(l => lmsGetMaterials(l._id).catch(() => []));
-      const matResults = await Promise.all(matPromises);
+      const topicPromises = courseData.levels.map(l => lmsGetTopics(l._id).catch(() => []));
+      const [matResults, topicResults] = await Promise.all([
+        Promise.all(matPromises),
+        Promise.all(topicPromises),
+      ]);
       const matMap: Record<string, LmsMaterial[]> = {};
-      courseData.levels.forEach((l, i) => { matMap[l._id] = matResults[i]; });
+      const topMap: Record<string, LmsTopic[]> = {};
+      courseData.levels.forEach((l, i) => {
+        matMap[l._id] = matResults[i];
+        topMap[l._id] = topicResults[i];
+      });
       setMaterialsByLevel(matMap);
+      setTopicsByLevel(topMap);
 
       // Load progress
       try {
@@ -188,6 +199,20 @@ const CourseLearn: React.FC = () => {
     const mats = materialsByLevel[levelId] || [];
     const completed = mats.filter(m => getMaterialProgress(m._id)?.completed).length;
     return { completed, total: mats.length };
+  };
+
+  const getTopicCompletion = (topicId: string, levelId: string): { completed: number; total: number } => {
+    const levelMats = materialsByLevel[levelId] || [];
+    const topicMats = levelMats.filter(m => {
+      const tId = typeof m.topic === 'string' ? m.topic : m.topic?._id;
+      return tId === topicId;
+    });
+    const completed = topicMats.filter(m => getMaterialProgress(m._id)?.completed).length;
+    return { completed, total: topicMats.length };
+  };
+
+  const toggleTopic = (topicId: string) => {
+    setExpandedTopics(prev => ({ ...prev, [topicId]: !prev[topicId] }));
   };
 
   /* -------- Select material -------- */
@@ -259,15 +284,30 @@ const CourseLearn: React.FC = () => {
             const unlocked = isLevelUnlocked(level._id);
             const { completed, total } = getLevelCompletion(level._id);
             const isExpanded = expandedLevel === level._id;
+            const levelTopics = topicsByLevel[level._id] || [];
+            const levelMats = materialsByLevel[level._id] || [];
+
+            // Materials not assigned to any topic
+            const ungrouped = levelMats.filter(m => {
+              const tId = typeof m.topic === 'string' ? m.topic : m.topic?._id;
+              return !tId;
+            });
 
             return (
               <div key={level._id} className={`${styles.levelBlock} ${!unlocked ? styles.locked : ''}`}>
+                {/* Module header */}
                 <div
                   className={styles.levelHead}
                   onClick={() => unlocked && setExpandedLevel(isExpanded ? null : level._id)}
                 >
                   <div className={styles.levelLeft}>
-                    {!unlocked ? <Lock size={16} /> : completed === total && total > 0 ? <CheckCircle size={16} className={styles.completedIcon} /> : <span className={styles.levelBadge}>L{level.levelNumber}</span>}
+                    {!unlocked ? (
+                      <Lock size={16} />
+                    ) : completed === total && total > 0 ? (
+                      <CheckCircle size={16} className={styles.completedIcon} />
+                    ) : (
+                      <span className={styles.levelBadge}>{level.levelNumber}</span>
+                    )}
                     <span className={styles.levelName}>{level.name}</span>
                   </div>
                   <div className={styles.levelRight}>
@@ -276,9 +316,79 @@ const CourseLearn: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Completion bar */}
+                {unlocked && total > 0 && (
+                  <div className={styles.levelProgressBar}>
+                    <div
+                      className={styles.levelProgressFill}
+                      style={{ width: `${Math.round((completed / total) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Expanded: Topics + Materials */}
                 {isExpanded && unlocked && (
-                  <div className={styles.materialList}>
-                    {(materialsByLevel[level._id] || []).map(mat => {
+                  <div className={styles.levelContent}>
+                    {levelTopics.map((topic, tIdx) => {
+                      const { completed: tDone, total: tAll } = getTopicCompletion(topic._id, level._id);
+                      const isTopicOpen = expandedTopics[topic._id];
+                      const topicMats = levelMats.filter(m => {
+                        const tId = typeof m.topic === 'string' ? m.topic : m.topic?._id;
+                        return tId === topic._id;
+                      });
+
+                      return (
+                        <div key={topic._id} className={styles.topicBlock}>
+                          <div
+                            className={`${styles.topicHead} ${tDone === tAll && tAll > 0 ? styles.topicDone : ''}`}
+                            onClick={() => toggleTopic(topic._id)}
+                          >
+                            <div className={styles.topicLeft}>
+                              {tDone === tAll && tAll > 0 ? (
+                                <CheckCircle size={14} className={styles.completedIcon} />
+                              ) : isTopicOpen ? (
+                                <ChevronDown size={14} />
+                              ) : (
+                                <ChevronRight size={14} />
+                              )}
+                              <span className={styles.topicLabel}>
+                                {level.levelNumber}.{tIdx + 1} {topic.name}
+                              </span>
+                            </div>
+                            <span className={styles.topicProgress}>{tDone}/{tAll}</span>
+                          </div>
+
+                          {isTopicOpen && (
+                            <div className={styles.topicMaterials}>
+                              {topicMats.map((mat, mIdx) => {
+                                const prog = getMaterialProgress(mat._id);
+                                const isActive = selectedMaterial?._id === mat._id;
+                                return (
+                                  <div
+                                    key={mat._id}
+                                    className={`${styles.materialItem} ${isActive ? styles.active : ''} ${prog?.completed ? styles.completed : ''}`}
+                                    onClick={() => selectMaterial(mat)}
+                                  >
+                                    <span className={styles.materialNum}>
+                                      {level.levelNumber}.{tIdx + 1}.{mIdx + 1}
+                                    </span>
+                                    {mat.type === 'video' ? <PlayCircle size={14} /> : <FileText size={14} />}
+                                    <span className={styles.materialName}>{mat.title}</span>
+                                    {prog?.completed && <CheckCircle size={13} className={styles.checkIcon} />}
+                                  </div>
+                                );
+                              })}
+                              {topicMats.length === 0 && (
+                                <p className={styles.emptyTopic}>No materials yet</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Materials not assigned to any topic */}
+                    {ungrouped.map(mat => {
                       const prog = getMaterialProgress(mat._id);
                       const isActive = selectedMaterial?._id === mat._id;
                       return (
@@ -287,14 +397,15 @@ const CourseLearn: React.FC = () => {
                           className={`${styles.materialItem} ${isActive ? styles.active : ''} ${prog?.completed ? styles.completed : ''}`}
                           onClick={() => selectMaterial(mat)}
                         >
-                          {mat.type === 'video' ? <PlayCircle size={15} /> : <FileText size={15} />}
+                          {mat.type === 'video' ? <PlayCircle size={14} /> : <FileText size={14} />}
                           <span className={styles.materialName}>{mat.title}</span>
-                          {prog?.completed && <CheckCircle size={14} className={styles.checkIcon} />}
+                          {prog?.completed && <CheckCircle size={13} className={styles.checkIcon} />}
                         </div>
                       );
                     })}
-                    {(materialsByLevel[level._id] || []).length === 0 && (
-                      <p className={styles.emptyLevel}>No materials in this level</p>
+
+                    {levelMats.length === 0 && levelTopics.length === 0 && (
+                      <p className={styles.emptyLevel}>No content in this module</p>
                     )}
                   </div>
                 )}
