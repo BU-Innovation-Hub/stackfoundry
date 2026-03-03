@@ -49,6 +49,7 @@ const CourseLearn: React.FC = () => {
     if (!selectedMaterial) return 0;
     const prog = progressMap[selectedMaterial._id];
     return prog?.maxWatchedSeconds || 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMaterial?._id, progressMap]);
 
   /* -------- YouTube IFrame Player API hook -------- */
@@ -167,6 +168,11 @@ const CourseLearn: React.FC = () => {
   /* -------- Helpers -------- */
   const isLevelUnlocked = (levelId: string): boolean => {
     if (user?.role === 'admin') return true;
+
+    // Levels with lockedByDefault === false are always available
+    const level = levels.find(l => l._id === levelId);
+    if (level && !level.lockedByDefault) return true;
+
     if (!enrollment) return false;
     return enrollment.levelsUnlocked.some(l => {
       const id = typeof l === 'string' ? l : l._id;
@@ -222,15 +228,6 @@ const CourseLearn: React.FC = () => {
     const maxWatched = Math.max(ytMaxWatched, prog?.maxWatchedSeconds || 0);
     
     return Math.min(100, Math.round((maxWatched / dur) * 100));
-  };
-
-  /**
-   * Get current playback position as percentage (where the playhead is)
-   */
-  const getPlaybackPositionPercent = (): number => {
-    const dur = ytDuration || 0;
-    if (!dur) return 0;
-    return Math.min(100, Math.round((ytCurrentTime / dur) * 100));
   };
 
   const formatTime = (seconds: number): string => {

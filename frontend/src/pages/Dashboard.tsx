@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, KeyRound } from 'lucide-react';
+import { Shield, KeyRound, Loader2, AlertCircle, RefreshCw, BookOpen, Play } from 'lucide-react';
+import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll } from '../services/lmsService';
+import { LmsCourse, LmsEnrollment } from '../types/lms';
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {

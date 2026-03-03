@@ -13,6 +13,7 @@ import { Router } from "express";
 import { requireAuth, requireAdmin } from "../../middleware/auth";
 import * as LevelController from "../../controllers/level.controller";
 import * as TopicController from "../../controllers/topic.controller";
+import * as EnrollmentController from "../../controllers/enrollment.controller";
 import {
   levelIdValidation,
   updateLevelValidation,
@@ -26,6 +27,12 @@ const router = Router();
 router.get("/:id", requireAuth, levelIdValidation, LevelController.getLevelById);
 router.put("/:id", requireAuth, requireAdmin, updateLevelValidation, LevelController.updateLevel);
 router.delete("/:id", requireAuth, requireAdmin, levelIdValidation, LevelController.deleteLevel);
+
+// Admin: toggle lock status (updates level + all enrollments)
+router.patch("/:id/toggle-lock", requireAuth, requireAdmin, levelIdValidation, EnrollmentController.toggleLevelLock);
+
+// Admin: unlock level for all enrolled students (without changing lockedByDefault)
+router.patch("/:id/unlock-all", requireAuth, requireAdmin, levelIdValidation, EnrollmentController.unlockLevelForAll);
 
 // Topics nested under level
 router.post(

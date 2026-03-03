@@ -110,7 +110,21 @@
 .lockedBadge {
   background: #fef3c7; color: #d97706; font-size: 0.68rem; font-weight: 600;
   padding: 0.1rem 0.4rem; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 0.2rem;
 }
+
+.unlockedBadge {
+  background: #d1fae5; color: #059669; font-size: 0.68rem; font-weight: 600;
+  padding: 0.1rem 0.4rem; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 0.2rem;
+}
+
+.unlockAllBtn {
+  background: #dbeafe; color: #2563eb; border: none; font-size: 0.68rem;
+  font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px;
+  cursor: pointer; white-space: nowrap;
+}
+.unlockAllBtn:hover { background: #bfdbfe; }
 
 .levelContent { padding: 0 0.8rem 0.8rem; }
 

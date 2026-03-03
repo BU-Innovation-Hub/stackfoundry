@@ -99,9 +99,49 @@ export const isLevelUnlocked = async (
 };
 
 /**
- * Unlock the next level for a user in a course (called after all materials in current level completed)
- * Uses a transaction for atomicity
+ * Admin: Unlock a level for ALL enrolled students in its course
+ * Adds the level to levelsUnlocked for every enrollment that doesn't already have it
  */
+export const unlockLevelForAllStudents = async (
+  levelId: string
+): Promise<{ modifiedCount: number }> => {
+  const level = await Level.findById(levelId);
+  if (!level) throw new ApiError(404, "Level not found");
+
+  const result = await Enrollment.updateMany(
+    {
+      course: level.course,
+      levelsUnlocked: { $ne: level._id },
+    },
+    {
+      $addToSet: { levelsUnlocked: level._id },
+    }
+  );
+
+  return { modifiedCount: result.modifiedCount };
+};
+
+/**
+ * Admin: Lock a level for ALL enrolled students in its course
+ * Removes the level from levelsUnlocked for every enrollment
+ */
+export const lockLevelForAllStudents = async (
+  levelId: string
+): Promise<{ modifiedCount: number }> => {
+  const level = await Level.findById(levelId);
+  if (!level) throw new ApiError(404, "Level not found");
+
+  const result = await Enrollment.updateMany(
+    {
+      course: level.course,
+    },
+    {
+      $pull: { levelsUnlocked: level._id } as any,
+    }
+  );
+
+  return { modifiedCount: result.modifiedCount };
+};
 export const unlockNextLevel = async (
   userId: string,
   currentLevelId: string

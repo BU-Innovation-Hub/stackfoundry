@@ -13,7 +13,7 @@ import Loader from '../components/common/Loader';
 import styles from './CourseCatalog.module.css';
 
 const CourseCatalog: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [courses, setCourses] = useState<LmsCourse[]>([]);
   const [enrollments, setEnrollments] = useState<LmsEnrollment[]>([]);

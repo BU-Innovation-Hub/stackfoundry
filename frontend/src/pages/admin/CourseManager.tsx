@@ -7,11 +7,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Plus, Edit3, Trash2, X, BookOpen, ChevronDown, ChevronUp,
-  Video, FileText, Upload, Layers, FolderOpen
+  Video, FileText, Upload, Layers, FolderOpen, Lock, Unlock
 } from 'lucide-react';
 import {
   lmsGetCourses, lmsCreateCourse, lmsUpdateCourse, lmsDeleteCourse,
-  lmsGetLevels, lmsCreateLevel, lmsDeleteLevel,
+  lmsGetLevels, lmsCreateLevel, lmsUpdateLevel, lmsDeleteLevel, lmsToggleLevelLock, lmsUnlockLevelForAll,
   lmsGetTopics, lmsCreateTopic, lmsDeleteTopic,
   lmsGetMaterials, lmsCreateVideoMaterial, lmsUploadPdfMaterial, lmsDeleteMaterial
 } from '../../services/lmsService';
@@ -30,7 +30,7 @@ const CourseManager: React.FC = () => {
 
   // Modal state
   const [modal, setModal] = useState<{
-    type: 'course' | 'level' | 'topic' | 'video' | 'pdf' | null;
+    type: 'course' | 'level' | 'editLevel' | 'topic' | 'video' | 'pdf' | null;
     parentId?: string;
     courseId?: string;
   }>({ type: null });
@@ -123,6 +123,24 @@ const CourseManager: React.FC = () => {
           }));
           break;
         }
+        case 'editLevel': {
+          const updated = await lmsUpdateLevel(formData._id, {
+            name: formData.name,
+            levelNumber: Number(formData.levelNumber),
+            lockedByDefault: formData.lockedByDefault,
+          });
+          // Update level in the correct course's levels array
+          setLevels(prev => {
+            const newState = { ...prev };
+            for (const courseId of Object.keys(newState)) {
+              newState[courseId] = newState[courseId].map(l =>
+                l._id === updated._id ? updated : l
+              );
+            }
+            return newState;
+          });
+          break;
+        }
         case 'topic': {
           const top = await lmsCreateTopic(modal.parentId!, {
             name: formData.name,
@@ -184,6 +202,30 @@ const CourseManager: React.FC = () => {
       ...prev,
       [courseId]: (prev[courseId] || []).filter(l => l._id !== levelId),
     }));
+  };
+
+  const handleToggleLock = async (courseId: string, levelId: string) => {
+    try {
+      const { level: updated, modifiedEnrollments } = await lmsToggleLevelLock(levelId);
+      setLevels(prev => ({
+        ...prev,
+        [courseId]: (prev[courseId] || []).map(l => l._id === updated._id ? updated : l),
+      }));
+      const action = updated.lockedByDefault ? 'locked' : 'unlocked';
+      alert(`Level ${action}. ${modifiedEnrollments} enrollment(s) updated.`);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to toggle lock');
+    }
+  };
+
+  const handleUnlockForAll = async (levelId: string) => {
+    if (!window.confirm('Unlock this level for ALL currently enrolled students?')) return;
+    try {
+      const { modifiedCount } = await lmsUnlockLevelForAll(levelId);
+      alert(`Level unlocked for ${modifiedCount} student(s).`);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to unlock level');
+    }
   };
 
   const handleDeleteTopic = async (levelId: string, topicId: string) => {
@@ -262,9 +304,29 @@ const CourseManager: React.FC = () => {
                       <div className={styles.levelInfo} onClick={() => toggleLevel(level._id)} style={{ cursor: 'pointer' }}>
                         <span className={styles.levelNum}>L{level.levelNumber}</span>
                         <span>{level.name}</span>
-                        {level.lockedByDefault && <span className={styles.lockedBadge}>Locked</span>}
+                        {level.lockedByDefault
+                          ? <span className={styles.lockedBadge}><Lock size={11} /> Locked</span>
+                          : <span className={styles.unlockedBadge}><Unlock size={11} /> Open</span>
+                        }
                       </div>
                       <div className={styles.cardActions}>
+                        <button title="Edit Level" onClick={() => {
+                          setModal({ type: 'editLevel', parentId: course._id });
+                          setFormData({ _id: level._id, name: level.name, levelNumber: level.levelNumber, lockedByDefault: level.lockedByDefault });
+                        }}>
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          title={level.lockedByDefault ? 'Unlock level for all students' : 'Lock level for all students'}
+                          onClick={() => handleToggleLock(course._id, level._id)}
+                        >
+                          {level.lockedByDefault ? <Unlock size={14} /> : <Lock size={14} />}
+                        </button>
+                        {level.lockedByDefault && (
+                          <button title="Unlock for all enrolled students (keep locked by default)" className={styles.unlockAllBtn} onClick={() => handleUnlockForAll(level._id)}>
+                            Unlock All
+                          </button>
+                        )}
                         <button title="Delete Level" className={styles.deleteBtn} onClick={() => handleDeleteLevel(course._id, level._id)}>
                           <Trash2 size={14} />
                         </button>
@@ -359,6 +421,7 @@ const CourseManager: React.FC = () => {
               <h2>
                 {modal.type === 'course' && (formData._id ? 'Edit Course' : 'New Course')}
                 {modal.type === 'level' && 'New Level'}
+                {modal.type === 'editLevel' && 'Edit Level'}
                 {modal.type === 'topic' && 'New Topic'}
                 {modal.type === 'video' && 'Add Video Material'}
                 {modal.type === 'pdf' && 'Upload PDF Material'}
@@ -382,7 +445,7 @@ const CourseManager: React.FC = () => {
               )}
 
               {/* Level Form */}
-              {modal.type === 'level' && (
+              {(modal.type === 'level' || modal.type === 'editLevel') && (
                 <>
                   <label className={styles.field}>
                     <span>Level Number *</span>

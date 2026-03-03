@@ -8,6 +8,7 @@ import { validationResult } from "express-validator";
 import { RequestWithUser } from "../types";
 import { ApiError } from "../middleware/errorHandler";
 import * as EnrollmentService from "../services/enrollment.service";
+import * as LevelService from "../services/level.service";
 
 // ============================================
 // Helpers
@@ -92,6 +93,72 @@ export const getMyEnrollments = async (
     const user = (req as RequestWithUser).user;
     const enrollments = await EnrollmentService.getUserEnrollments(user.id);
     res.json({ success: true, data: enrollments });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/v1/levels/:id/toggle-lock
+ * Admin: Toggle lock status for a level and update all enrolled students
+ */
+export const toggleLevelLock = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Get current level
+    const currentLevel = await LevelService.getLevelById(id);
+    const newLocked = !currentLevel.lockedByDefault;
+
+    // Update the level's lockedByDefault flag
+    const updatedLevel = await LevelService.updateLevel(id, {
+      lockedByDefault: newLocked,
+    });
+
+    // If unlocking: add this level to all enrolled students' levelsUnlocked
+    // If locking: remove this level from all enrolled students' levelsUnlocked
+    let modifiedCount = 0;
+    if (!newLocked) {
+      const result = await EnrollmentService.unlockLevelForAllStudents(id);
+      modifiedCount = result.modifiedCount;
+    } else {
+      const result = await EnrollmentService.lockLevelForAllStudents(id);
+      modifiedCount = result.modifiedCount;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        level: updatedLevel,
+        modifiedEnrollments: modifiedCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/v1/levels/:id/unlock-all
+ * Admin: Unlock a level for all enrolled students (without changing lockedByDefault)
+ */
+export const unlockLevelForAll = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const result = await EnrollmentService.unlockLevelForAllStudents(
+      req.params.id
+    );
+    res.json({
+      success: true,
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

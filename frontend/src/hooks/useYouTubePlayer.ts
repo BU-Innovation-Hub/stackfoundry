@@ -15,17 +15,55 @@
  *  - Tracks maxWatchedSeconds in real-time as user watches
  */
 
-/// <reference types="youtube" />
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 /* ------------------------------------------------------------------ */
 /* YouTube IFrame API global types                                    */
 /* ------------------------------------------------------------------ */
 
+// Minimal YT type declarations so we don't need @types/youtube
+declare namespace YT {
+  interface PlayerVars {
+    rel?: number;
+    modestbranding?: number;
+    playsinline?: number;
+    controls?: number;
+    disablekb?: number;
+    fs?: number;
+    iv_load_policy?: number;
+    [key: string]: any;
+  }
+  interface PlayerEvent {
+    target: Player;
+  }
+  interface OnStateChangeEvent {
+    target: Player;
+    data: number;
+  }
+  interface OnErrorEvent {
+    target: Player;
+    data: number;
+  }
+  class Player {
+    constructor(elementId: string, options: any);
+    playVideo(): void;
+    pauseVideo(): void;
+    seekTo(seconds: number, allowSeekAhead: boolean): void;
+    getCurrentTime(): number;
+    getDuration(): number;
+    getVolume(): number;
+    setVolume(volume: number): void;
+    mute(): void;
+    unMute(): void;
+    isMuted(): boolean;
+    destroy(): void;
+  }
+}
+
 // Extend Window to include YT namespace and callback
 declare global {
   interface Window {
+    YT: typeof YT;
     onYouTubeIframeAPIReady: (() => void) | undefined;
   }
 }
@@ -208,6 +246,14 @@ export function useYouTubePlayer({
     }
   }, []);
 
+  /* ---------- Stop polling ---------- */
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
   /* ---------- Polling getCurrentTime while PLAYING ---------- */
   const startPolling = useCallback(() => {
     stopPolling();
@@ -234,14 +280,7 @@ export function useYouTubePlayer({
         onTimeUpdateRef.current?.(t, maxWatchedRef.current);
       }
     }, 500); // Poll every 500ms for more responsive seek detection
-  }, [updateMaxWatched, enforceSeekRestriction]);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
+  }, [updateMaxWatched, enforceSeekRestriction, stopPolling]);
 
   /* ---------- Create / destroy player ---------- */
   useEffect(() => {

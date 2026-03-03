@@ -85,6 +85,20 @@ export const lmsDeleteLevel = async (id: string): Promise<void> => {
   await api.delete(`/levels/${id}`);
 };
 
+export const lmsToggleLevelLock = async (
+  id: string
+): Promise<{ level: LmsLevel; modifiedEnrollments: number }> => {
+  const res = await api.patch(`/levels/${id}/toggle-lock`);
+  return res.data.data;
+};
+
+export const lmsUnlockLevelForAll = async (
+  id: string
+): Promise<{ modifiedCount: number }> => {
+  const res = await api.patch(`/levels/${id}/unlock-all`);
+  return res.data.data;
+};
+
 // ============================================
 // Topics
 // ============================================

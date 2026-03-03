@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, SkipForward } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, SkipForward } from 'lucide-react';
 import styles from './VideoPlayerControls.module.css';
 
 interface VideoPlayerControlsProps {
