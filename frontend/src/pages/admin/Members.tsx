@@ -3,6 +3,7 @@ import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield, UserPlus } from
 import { Member } from '../../types/admin';
 import { getMembers, updateMemberRole, toggleMemberStatus, deleteMember } from '../../services/adminService';
 import Loader from '../../components/common/Loader';
+import CreateMemberModal from './CreateMember';
 import styles from './Members.module.css';
 
 const Members: React.FC = () => {

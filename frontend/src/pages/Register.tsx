@@ -128,7 +128,7 @@ const Register: React.FC = () => {
                     id="name"
                     name="name"
                     type="text"
-                    placeholder="John"
+                    placeholder="Name"
                     value={formData.name}
                     onChange={handleChange}
                     required
@@ -141,7 +141,7 @@ const Register: React.FC = () => {
                     id="surname"
                     name="surname"
                     type="text"
-                    placeholder="Doe"
+                    placeholder="Surname"
                     value={formData.surname}
                     onChange={handleChange}
                     required
@@ -155,7 +155,7 @@ const Register: React.FC = () => {
                   id="studentId"
                   name="studentId"
                   type="text"
-                  placeholder="e.g. STU-2026-001"
+                  placeholder="e.g. 2230....."
                   value={formData.studentId}
                   onChange={handleChange}
                   required
@@ -168,7 +168,7 @@ const Register: React.FC = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="you@botho.ac.bw"
+                  placeholder="your botho email"
                   value={formData.email}
                   onChange={handleChange}
                   required

@@ -55,6 +55,15 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 
 // ---- Members ----
 
+export interface CreateMemberData {
+  studentId: string;
+  email: string;
+  password: string;
+  name: string;
+  surname: string;
+  role: string;
+}
+
 /** Map backend user object to frontend Member shape */
 const mapUserToMember = (user: any): Member => ({
   id: user._id || user.id,
@@ -81,6 +90,11 @@ export const getMembers = async (): Promise<Member[]> => {
     joinedAt: u.createdAt,
     lastLogin: u.lastLogin,
   }));
+};
+
+export const createMember = async (data: CreateMemberData): Promise<Member> => {
+  const response = await apiClient.post('/admin/users', data);
+  return mapUserToMember(response.data.data);
 };
 
 export const updateMemberRole = async (id: string, role: Member['role']): Promise<Member> => {
