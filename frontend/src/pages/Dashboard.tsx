@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Shield, KeyRound } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
@@ -39,6 +39,10 @@ const Dashboard: React.FC = () => {
               Admin Panel
             </Link>
           )}
+          <Link to="/change-password" className={styles.adminBtn} style={{ background: '#D64A2A' }}>
+            <KeyRound size={18} />
+            Change Password
+          </Link>
         </div>
       </main>
     </div>

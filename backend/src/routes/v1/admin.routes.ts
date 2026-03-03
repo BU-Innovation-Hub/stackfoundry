@@ -2,9 +2,13 @@
  * Admin Routes
  * Endpoints for admin users only
  *
- * GET /api/admin/dashboard - Get admin dashboard data
- * GET /api/admin/users - List all users
- * (Additional admin endpoints can be added here)
+ * GET    /api/admin/dashboard            - Get admin dashboard data
+ * GET    /api/admin/users                - List all users (paginated)
+ * GET    /api/admin/users/:id            - Get single user details
+ * POST   /api/admin/users                - Create a new user with role
+ * PATCH  /api/admin/users/:id/role       - Update a user's role
+ * PATCH  /api/admin/users/:id/toggle-active - Toggle user active status
+ * DELETE /api/admin/users/:id            - Delete a user
  */
 
 import { Router, Request, Response, NextFunction } from "express";
@@ -12,6 +16,12 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import { RequestWithUser } from "../../types";
 import Student from "../../models/user.model";
 import Role from "../../models/role.model";
+import * as AdminController from "../../controllers/admin.controller";
+import {
+  adminCreateUserValidation,
+  updateUserRoleValidation,
+  objectIdParam,
+} from "../../utils/validation";
 
 const router = Router();
 
@@ -158,38 +168,47 @@ router.get(
 
 /**
  * @route   PATCH /api/admin/users/:id/toggle-active
- * @desc    Toggle user active status
+ * @desc    Toggle user active status (with session revocation on deactivation)
  * @access  Private (admin only)
  */
 router.patch(
   "/users/:id/toggle-active",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = await Student.findById(req.params.id);
+  objectIdParam("id"),
+  AdminController.toggleUserActive
+);
 
-      if (!user) {
-        res.status(404).json({
-          success: false,
-          error: "User not found",
-        });
-        return;
-      }
+/**
+ * @route   POST /api/admin/users
+ * @desc    Create a new user with a specified role
+ * @access  Private (admin only)
+ */
+router.post(
+  "/users",
+  adminCreateUserValidation,
+  AdminController.createUser
+);
 
-      user.isActive = !user.isActive;
-      await user.save();
+/**
+ * @route   PATCH /api/admin/users/:id/role
+ * @desc    Update a user's role
+ * @access  Private (admin only)
+ */
+router.patch(
+  "/users/:id/role",
+  objectIdParam("id"),
+  updateUserRoleValidation,
+  AdminController.updateUserRole
+);
 
-      res.status(200).json({
-        success: true,
-        message: `User ${user.isActive ? "activated" : "deactivated"} successfully`,
-        data: {
-          id: user._id,
-          isActive: user.isActive,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+/**
+ * @route   DELETE /api/admin/users/:id
+ * @desc    Delete a user
+ * @access  Private (admin only)
+ */
+router.delete(
+  "/users/:id",
+  objectIdParam("id"),
+  AdminController.deleteUser
 );
 
 export default router;
