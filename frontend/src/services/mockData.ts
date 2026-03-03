@@ -1,38 +1,12 @@
 // ============================================
 // Mock Data for Admin Dashboard
-// Replace with real API calls when backend is ready
+// Only courses remain as mock — all others use real API
 // ============================================
 
-import { Member, Event, Course, DashboardStats } from '../types/admin';
-import { BlogPost } from '../types/blog';
+import { Member, Course, DashboardStats } from '../types/admin';
 
-// ---- Members ----
-export const mockMembers: Member[] = [
-  { id: '1', studentId: 'STU001', name: 'Thabo', surname: 'Mokoena', email: 'thabo@botho.ac.bw', role: 'member', isActive: true, joinedAt: '2025-09-15', lastLogin: '2026-02-08' },
-  { id: '2', studentId: 'STU002', name: 'Naledi', surname: 'Kgathi', email: 'naledi@botho.ac.bw', role: 'member', isActive: true, joinedAt: '2025-10-01', lastLogin: '2026-02-07' },
-  { id: '3', studentId: 'STU003', name: 'Kagiso', surname: 'Modise', email: 'kagiso@botho.ac.bw', role: 'student', isActive: true, joinedAt: '2025-10-20', lastLogin: '2026-02-06' },
-  { id: '4', studentId: 'STU004', name: 'Mpho', surname: 'Tau', email: 'mpho@botho.ac.bw', role: 'instructor', isActive: true, joinedAt: '2025-08-01', lastLogin: '2026-02-08' },
-  { id: '5', studentId: 'STU005', name: 'Amantle', surname: 'Leburu', email: 'amantle@botho.ac.bw', role: 'member', isActive: false, joinedAt: '2025-11-10', lastLogin: '2026-01-15' },
-  { id: '6', studentId: 'STU006', name: 'Tshegofatso', surname: 'Ramotswa', email: 'tshego@botho.ac.bw', role: 'student', isActive: true, joinedAt: '2025-12-01', lastLogin: '2026-02-05' },
-  { id: '7', studentId: 'STU007', name: 'Bokang', surname: 'Mahlaka', email: 'bokang@botho.ac.bw', role: 'admin', isActive: true, joinedAt: '2025-07-01', lastLogin: '2026-02-09' },
-  { id: '8', studentId: 'STU008', name: 'Keitumetse', surname: 'Phiri', email: 'keitu@botho.ac.bw', role: 'member', isActive: true, joinedAt: '2026-01-05', lastLogin: '2026-02-04' },
-];
-
-// ---- Blog Posts ----
-export const mockBlogs: BlogPost[] = [
-  { _id: '1', title: 'Getting Started with React in 2026', slug: 'getting-started-react-2026', excerpt: 'A comprehensive guide to starting your React journey...', content: '<p>React remains one of the most popular frontend frameworks...</p>', featuredImage: '', author: 'Bokang Mahlaka', authorName: 'Bokang Mahlaka', category: 'technology', views: 120, readTime: '5 min read', tags: ['React', 'JavaScript', 'Frontend'], status: 'published', publishedAt: '2026-01-15', createdAt: '2026-01-10', updatedAt: '2026-01-15' },
-  { _id: '2', title: 'Building REST APIs with Node.js', slug: 'building-rest-apis-nodejs', excerpt: 'Learn to build scalable APIs with Express and MongoDB...', content: '<p>REST APIs are the backbone of modern web applications...</p>', featuredImage: '', author: 'Mpho Tau', authorName: 'Mpho Tau', category: 'technology', views: 85, readTime: '8 min read', tags: ['Node.js', 'Express', 'Backend'], status: 'published', publishedAt: '2026-01-20', createdAt: '2026-01-18', updatedAt: '2026-01-20' },
-  { _id: '3', title: 'Introduction to Machine Learning with Python', slug: 'intro-ml-python', excerpt: 'Discover the basics of ML using Python and scikit-learn...', content: '<p>Machine learning is transforming industries...</p>', featuredImage: '', author: 'Naledi Kgathi', authorName: 'Naledi Kgathi', category: 'technology', views: 45, readTime: '12 min read', tags: ['Python', 'ML', 'Data Science'], status: 'draft', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
-  { _id: '4', title: 'UI/UX Design Principles for Developers', slug: 'uiux-design-principles', excerpt: 'Essential design principles every developer should know...', content: '<p>Good design is not just about aesthetics...</p>', featuredImage: '', author: 'Amantle Leburu', authorName: 'Amantle Leburu', category: 'community', views: 60, readTime: '6 min read', tags: ['Design', 'UI/UX', 'Frontend'], status: 'published', publishedAt: '2026-02-05', createdAt: '2026-02-03', updatedAt: '2026-02-05' },
-];
-
-// ---- Events ----
-export const mockEvents: Event[] = [
-  { id: '1', title: 'Hackathon 2026: Build for Botswana', description: 'A 48-hour hackathon focused on solving local challenges with technology.', coverImage: '', date: '2026-03-15', time: '08:00', location: 'Botho University, Block C', type: 'hackathon', capacity: 100, registered: 67, status: 'upcoming', createdAt: '2026-01-10' },
-  { id: '2', title: 'React Workshop: Hooks Deep Dive', description: 'Master React Hooks with hands-on coding exercises.', coverImage: '', date: '2026-02-20', time: '14:00', location: 'Lab 3, Botho University', type: 'workshop', capacity: 30, registered: 28, status: 'upcoming', createdAt: '2026-01-25' },
-  { id: '3', title: 'Tech+ Monthly Meetup - February', description: 'Monthly community meetup. Networking and project showcases.', coverImage: '', date: '2026-02-10', time: '17:00', location: 'Innovation Hub Lounge', type: 'meetup', capacity: 50, registered: 42, status: 'upcoming', createdAt: '2026-01-30' },
-  { id: '4', title: 'Cloud Computing Webinar', description: 'Introduction to AWS and cloud architecture patterns.', coverImage: '', date: '2026-01-25', time: '10:00', location: 'Online (Zoom)', type: 'webinar', capacity: 200, registered: 156, status: 'completed', createdAt: '2026-01-05' },
-];
+// ---- Members (kept for courses dashboard stats fallback) ----
+export const mockMembers: Member[] = [];
 
 // ---- Courses ----
 export const mockCourses: Course[] = [
@@ -89,16 +63,16 @@ export const mockCourses: Course[] = [
   },
 ];
 
-// ---- Dashboard Stats ----
+// ---- Dashboard Stats (computed from real API in adminService) ----
 export const mockDashboardStats: DashboardStats = {
-  totalMembers: mockMembers.length,
-  activeMembers: mockMembers.filter(m => m.isActive).length,
-  totalBlogs: mockBlogs.length,
-  publishedBlogs: mockBlogs.filter(b => b.status === 'published').length,
-  totalEvents: mockEvents.length,
-  upcomingEvents: mockEvents.filter(e => e.status === 'upcoming').length,
+  totalMembers: 0,
+  activeMembers: 0,
+  totalBlogs: 0,
+  publishedBlogs: 0,
+  totalEvents: 0,
+  upcomingEvents: 0,
   totalCourses: mockCourses.length,
   publishedCourses: mockCourses.filter(c => c.status === 'published').length,
-  recentRegistrations: mockMembers.slice(-4).reverse(),
+  recentRegistrations: [],
   popularCourses: mockCourses.filter(c => c.status === 'published').sort((a, b) => b.enrolledCount - a.enrolledCount).slice(0, 3),
 };

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home';
 import BlogListing from '../pages/BlogListing';
 import BlogPostPage from '../pages/BlogPost';
+import EventListing from '../pages/EventListing';
+import EventDetail from '../pages/EventDetail';
 import Join from '../pages/Join';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -25,6 +27,8 @@ const AppRoutes: React.FC = () => (
       <Route path="/" element={<Home />} />
       <Route path="/blog" element={<BlogListing />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
+      <Route path="/events" element={<EventListing />} />
+      <Route path="/events/:slug" element={<EventDetail />} />
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

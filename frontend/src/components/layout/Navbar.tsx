@@ -26,7 +26,7 @@ const Navbar: React.FC = () => {
     <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}>
       <div className={styles.container}>
         <Link to="/" className={styles.logo}>
-          <span className={styles.logoText}>TECH</span>
+          <span className={styles.logoText}>InHub</span>
           <span className={styles.logoAccent}>+</span>
         </Link>
 

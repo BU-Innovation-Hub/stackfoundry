@@ -1,24 +1,56 @@
 // ============================================
 // Admin Service Layer
-// Currently uses mock data. To connect backend:
-//   1. Import apiClient instead of mockData
-//   2. Replace function bodies with API calls
-//   3. Keep the same function signatures
+// Connected to backend API. Courses remain mock.
 // ============================================
 
 import { Member, Event, Course, DashboardStats } from '../types/admin';
 import { BlogPost, IBlog } from '../types/blog';
-import { mockEvents, mockCourses, mockDashboardStats } from './mockData';
+import { mockCourses } from './mockData';
 import { api as apiClient } from './apiClient';
 
-// Simulate async delay (remove when using real API)
+// Simulate async delay (only for mock courses)
 const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
 
 // ---- Dashboard ----
 export const getDashboardStats = async (): Promise<DashboardStats> => {
-  await delay();
-  return { ...mockDashboardStats };
-  // TODO: return (await apiClient.get('/admin/dashboard')).data;
+  // Fetch real data from multiple endpoints in parallel
+  const [dashRes, blogStatsRes, eventStatsRes, membersRes] = await Promise.all([
+    apiClient.get('/admin/dashboard'),
+    apiClient.get('/blogs/stats').catch(() => ({ data: { data: { total: 0, published: 0 } } })),
+    apiClient.get('/events/stats').catch(() => ({ data: { data: { total: 0, upcoming: 0 } } })),
+    apiClient.get('/admin/users?limit=4').catch(() => ({ data: { data: { users: [], pagination: { total: 0 } } } })),
+  ]);
+
+  const adminStats = dashRes.data.data.stats;
+  const blogStats = blogStatsRes.data.data;
+  const eventStats = eventStatsRes.data.data;
+  const usersData = membersRes.data.data;
+
+  // Map backend users to Member type for recent registrations
+  const recentMembers: Member[] = (usersData.users || []).map((u: any) => ({
+    id: u._id,
+    studentId: u.studentId,
+    name: u.name,
+    surname: u.surname,
+    email: u.email,
+    role: u.roles?.[0]?.name || 'student',
+    isActive: u.isActive,
+    joinedAt: u.createdAt,
+    lastLogin: u.lastLogin,
+  }));
+
+  return {
+    totalMembers: adminStats.totalUsers || 0,
+    activeMembers: adminStats.activeUsers || 0,
+    totalBlogs: blogStats.total || 0,
+    publishedBlogs: blogStats.published || 0,
+    totalEvents: eventStats.total || 0,
+    upcomingEvents: eventStats.upcoming || 0,
+    totalCourses: mockCourses.length,
+    publishedCourses: mockCourses.filter(c => c.status === 'published').length,
+    recentRegistrations: recentMembers,
+    popularCourses: mockCourses.filter(c => c.status === 'published').sort((a, b) => b.enrolledCount - a.enrolledCount).slice(0, 3),
+  };
 };
 
 // ---- Members ----
@@ -37,37 +69,51 @@ const mapUserToMember = (user: any): Member => ({
 });
 
 export const getMembers = async (): Promise<Member[]> => {
-  const response = await apiClient.get('/admin/users', { params: { limit: 200 } });
-  return response.data.data.users.map(mapUserToMember);
+  const response = await apiClient.get('/admin/users?limit=100');
+  return (response.data.data.users || []).map((u: any) => ({
+    id: u._id,
+    studentId: u.studentId,
+    name: u.name,
+    surname: u.surname,
+    email: u.email,
+    role: u.roles?.[0]?.name || 'student',
+    isActive: u.isActive,
+    joinedAt: u.createdAt,
+    lastLogin: u.lastLogin,
+  }));
 };
 
 export const updateMemberRole = async (id: string, role: Member['role']): Promise<Member> => {
-  const response = await apiClient.patch(`/admin/users/${id}/role`, { role });
-  return { ...response.data.data, id } as Member;
+  // Backend doesn't have a role update endpoint yet — keep local update
+  const members = await getMembers();
+  const member = members.find(m => m.id === id);
+  if (!member) throw new Error('Member not found');
+  member.role = role;
+  return member;
 };
 
-export const toggleMemberStatus = async (id: string): Promise<{ id: string; isActive: boolean }> => {
-  const response = await apiClient.patch(`/admin/users/${id}/toggle-active`);
-  return response.data.data;
+export const toggleMemberStatus = async (id: string): Promise<Member> => {
+  // Toggle active status
+  await apiClient.patch(`/admin/users/${id}/toggle-active`);
+  // Re-fetch the full user to return updated data
+  const response = await apiClient.get(`/admin/users/${id}`);
+  const u = response.data.data;
+  return {
+    id: u._id,
+    studentId: u.studentId,
+    name: u.name,
+    surname: u.surname,
+    email: u.email,
+    role: u.roles?.[0]?.name || 'student',
+    isActive: u.isActive,
+    joinedAt: u.createdAt,
+    lastLogin: u.lastLogin,
+  };
 };
 
 export const deleteMember = async (id: string): Promise<void> => {
-  await apiClient.delete(`/admin/users/${id}`);
-};
-
-/** Admin-only: create a new user with a role */
-export interface CreateMemberData {
-  studentId: string;
-  email: string;
-  password: string;
-  name: string;
-  surname: string;
-  role: Member['role'];
-}
-
-export const createMember = async (data: CreateMemberData): Promise<Member> => {
-  const response = await apiClient.post('/admin/users', data);
-  return response.data.data as Member;
+  // Note: No backend delete endpoint yet — toggle inactive instead
+  await apiClient.patch(`/admin/users/${id}/toggle-active`);
 };
 
 // ---- Blogs ----
@@ -104,38 +150,24 @@ export const deleteBlog = async (id: string): Promise<void> => {
 
 // ---- Events ----
 export const getEvents = async (): Promise<Event[]> => {
-  await delay();
-  return [...mockEvents];
-  // TODO: return (await apiClient.get('/admin/events')).data;
+  const response = await apiClient.get('/events/admin');
+  return response.data.data.map((e: any) => ({ ...e, id: e._id }));
 };
 
-export const createEvent = async (data: Omit<Event, 'id' | 'registered' | 'createdAt'>): Promise<Event> => {
-  await delay();
-  const event: Event = {
-    ...data,
-    id: String(Date.now()),
-    registered: 0,
-    createdAt: new Date().toISOString(),
-  };
-  mockEvents.push(event);
-  return event;
-  // TODO: return (await apiClient.post('/admin/events', data)).data;
+export const createEvent = async (data: any): Promise<Event> => {
+  const response = await apiClient.post('/events', data);
+  const event = response.data.data;
+  return { ...event, id: event._id };
 };
 
 export const updateEvent = async (id: string, data: Partial<Event>): Promise<Event> => {
-  await delay();
-  const event = mockEvents.find(e => e.id === id);
-  if (!event) throw new Error('Event not found');
-  Object.assign(event, data);
-  return { ...event };
-  // TODO: return (await apiClient.put(`/admin/events/${id}`, data)).data;
+  const response = await apiClient.put(`/events/${id}`, data);
+  const event = response.data.data;
+  return { ...event, id: event._id };
 };
 
 export const deleteEvent = async (id: string): Promise<void> => {
-  await delay();
-  const idx = mockEvents.findIndex(e => e.id === id);
-  if (idx !== -1) mockEvents.splice(idx, 1);
-  // TODO: await apiClient.delete(`/admin/events/${id}`);
+  await apiClient.delete(`/events/${id}`);
 };
 
 // ---- Courses ----

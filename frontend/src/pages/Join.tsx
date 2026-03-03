@@ -23,7 +23,7 @@ const Join: React.FC = () => {
             Welcome
           </span>
           <h1 className={styles.title}>
-            Join the <span className={styles.accent}>Tech+ Hub</span>
+            Join the <span className={styles.accent}>The Hub Hub</span>
           </h1>
           <p className={styles.subtitle}>
             Be part of Africa's next generation of tech innovators. 
@@ -37,7 +37,7 @@ const Join: React.FC = () => {
               <UserPlus size={32} strokeWidth={1.75} />
             </div>
             <h2>Create Account</h2>
-            <p>New to Tech+? Join our community of founders,  
+            <p>New to The Hub? Join our community of founders,  
                developers, and innovators building the future.</p>
             <span className={styles.cardAction}>
               Get Started <ArrowRight size={18} />

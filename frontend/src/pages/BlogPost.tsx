@@ -4,6 +4,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { api as apiClient } from '../services/apiClient';
 import { IBlog } from '../types/blog';
+import Loader from '../components/common/Loader';
 import styles from './BlogPost.module.css';
 
 const BlogPost: React.FC = () => {
@@ -56,10 +57,7 @@ const BlogPost: React.FC = () => {
         return (
             <div className={styles.page}>
                 <Navbar />
-                <div className={styles.loadingContainer}>
-                    <div className={styles.spinner} />
-                    <p className={styles.loadingText}>Loading article...</p>
-                </div>
+                <Loader text="Loading article..." size="large" />
                 <Footer />
             </div>
         );
