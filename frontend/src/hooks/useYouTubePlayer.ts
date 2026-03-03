@@ -48,6 +48,7 @@ declare namespace YT {
     constructor(elementId: string, options: any);
     playVideo(): void;
     pauseVideo(): void;
+    stopVideo(): void;
     seekTo(seconds: number, allowSeekAhead: boolean): void;
     getCurrentTime(): number;
     getDuration(): number;
@@ -376,6 +377,14 @@ export function useYouTubePlayer({
             }
 
             if (state === PlayerState.ENDED) {
+              // Suppress YouTube end-screen suggestions:
+              // Stop the player so the recommendation overlay never appears.
+              // Seek to near-end so the thumbnail stays on the last frame.
+              try {
+                const dur = event.target.getDuration();
+                event.target.stopVideo();
+                event.target.seekTo(Math.max(0, dur - 0.1), true);
+              } catch { /* noop */ }
               onEndedRef.current?.();
             }
           },

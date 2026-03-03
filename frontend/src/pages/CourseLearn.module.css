@@ -257,12 +257,24 @@
   margin-bottom: 1.25rem;
 }
 
+/*
+ * Suppress YouTube suggestion overlays (pause screen "More videos" + end screen).
+ * These are rendered inside the iframe so we can't directly target them,
+ * but the stop-on-end logic in useYouTubePlayer handles the end-screen.
+ * For the pause overlay, we use an ::after pseudo-element that blocks pointer
+ * events on the upper portion of the iframe where YouTube renders suggestions.
+ */
+
 .videoIframe {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  /* Block pointer events on the iframe so users can't click YouTube's
+     internal overlays ("More videos" on pause, end-screen suggestions).
+     All interaction goes through our custom VideoPlayerControls overlay. */
+  pointer-events: none;
 }
 
 /* Material info */
