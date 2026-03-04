@@ -325,7 +325,11 @@ const Dashboard: React.FC = () => {
                           return (
                             <div key={course._id} className={styles.clCard}>
                               <div className={styles.clThumb}>
-                                <BookOpen size={32} />
+                                {course.coverImage ? (
+                                  <img src={course.coverImage} alt={course.title} className={styles.clThumbImg} />
+                                ) : (
+                                  <BookOpen size={32} />
+                                )}
                                 {stat && (
                                   <span className={styles.clBadge}>
                                     <Layers size={11} /> {stat.total} Materials {stat.completed > 0 && <CheckCircle size={11} />}
@@ -440,7 +444,11 @@ const Dashboard: React.FC = () => {
                             return (
                               <div key={course._id} className={styles.clCard}>
                                 <div className={styles.clThumb}>
-                                  <BookOpen size={32} />
+                                  {course.coverImage ? (
+                                    <img src={course.coverImage} alt={course.title} className={styles.clThumbImg} />
+                                  ) : (
+                                    <BookOpen size={32} />
+                                  )}
                                   {stat && (
                                     <span className={styles.clBadge}>
                                       <Layers size={11} /> {stat.total} Materials {stat.completed > 0 && <CheckCircle size={11} />}

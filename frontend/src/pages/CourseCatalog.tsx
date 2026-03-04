@@ -76,9 +76,15 @@ const CourseCatalog: React.FC = () => {
           const enrolled = isEnrolled(course._id);
           return (
             <div key={course._id} className={styles.card}>
-              <div className={styles.cardIcon}>
-                <BookOpen size={32} />
-              </div>
+              {course.coverImage ? (
+                <div className={styles.cardCover}>
+                  <img src={course.coverImage} alt={course.title} className={styles.cardCoverImg} />
+                </div>
+              ) : (
+                <div className={styles.cardIcon}>
+                  <BookOpen size={32} />
+                </div>
+              )}
               <h3 className={styles.cardTitle}>{course.title}</h3>
               {course.description && (
                 <p className={styles.cardDesc}>{course.description}</p>
