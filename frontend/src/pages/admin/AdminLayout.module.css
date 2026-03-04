@@ -157,42 +157,19 @@
   flex-direction: column;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 2rem;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
 .menuBtn {
   display: none;
-  background: none;
-  border: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
   color: #1a1a2e;
   cursor: pointer;
-  padding: 0.25rem;
-}
-
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.backBtn:hover {
-  color: #D64A2A;
+  padding: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .content {

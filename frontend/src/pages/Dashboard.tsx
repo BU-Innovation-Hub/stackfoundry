@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
   BookOpen, Play, Calendar, FileText, ArrowRight, Clock, Tag,
-  Home, ChevronLeft, MapPin, User, Eye, ExternalLink,
+  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers,
 } from 'lucide-react';
-import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll } from '../services/lmsService';
-import { LmsCourse, LmsEnrollment } from '../types/lms';
+import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMaterials, lmsGetProgress } from '../services/lmsService';
+import { LmsCourse, LmsEnrollment, LmsProgress } from '../types/lms';
 import { api as apiClient } from '../services/apiClient';
 import { IBlog } from '../types/blog';
 import { getEvents, getEventBySlug } from '../services/eventService';
@@ -19,9 +19,11 @@ type View = 'home' | 'courses' | 'blogs' | 'blog-detail' | 'events' | 'event-det
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Navigation
-  const [activeView, setActiveView] = useState<View>('home');
+  // Navigation — honour incoming state (e.g. back from CourseLearn)
+  const initialView = (location.state as { view?: View } | null)?.view || 'home';
+  const [activeView, setActiveView] = useState<View>(initialView);
 
   // Data
   const [courses, setCourses] = useState<LmsCourse[]>([]);
@@ -44,6 +46,10 @@ const Dashboard: React.FC = () => {
   // Event filter
   const [eventSearch, setEventSearch] = useState('');
   const [eventType, setEventType] = useState('all');
+
+  // Course stats: materialCount + progress %
+  const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
+  const [courseTab, setCourseTab] = useState<'learning' | 'catalog'>('learning');
 
   const isAdmin = user?.role === 'admin';
 
@@ -73,6 +79,49 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const enrolledCourseIds = new Set(
+    enrollments.map(e => (typeof e.course === 'string' ? e.course : e.course._id))
+  );
+  const enrolledCourses = courses.filter(c => enrolledCourseIds.has(c._id));
+  const availableCourses = courses.filter(c => !enrolledCourseIds.has(c._id));
+
+  /* -------- Fetch course stats (material counts + progress) -------- */
+  useEffect(() => {
+    if (enrolledCourses.length === 0) return;
+    let cancelled = false;
+
+    const loadStats = async () => {
+      const stats: Record<string, { total: number; completed: number; percent: number }> = {};
+
+      // Process courses sequentially to avoid 429 rate-limit bursts
+      for (const course of enrolledCourses) {
+        if (cancelled) return;
+        try {
+          const levels = await lmsGetLevels(course._id);
+          // Fetch materials for all levels of this course (limited blast radius)
+          const materialArrays = await Promise.all(levels.map(l => lmsGetMaterials(l._id)));
+          const allMats = materialArrays.flat();
+          const progressArr: LmsProgress[] = await lmsGetProgress(course._id);
+          const completedSet = new Set(
+            progressArr.filter(p => p.completed).map(p => typeof p.material === 'string' ? p.material : p.material._id)
+          );
+          const total = allMats.length;
+          const completed = allMats.filter(m => completedSet.has(m._id)).length;
+          stats[course._id] = { total, completed, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+        } catch {
+          stats[course._id] = { total: 0, completed: 0, percent: 0 };
+        }
+      }
+
+      if (!cancelled) setCourseStats(stats);
+    };
+
+    loadStats();
+    return () => { cancelled = true; };
+    // Only re-run when the list of enrolled course IDs actually changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrolledCourses.map(c => c._id).join(',')]);
+
   /* -------- Helpers -------- */
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
@@ -87,12 +136,6 @@ const Dashboard: React.FC = () => {
       setEnrollingId(null);
     }
   };
-
-  const enrolledCourseIds = new Set(
-    enrollments.map(e => (typeof e.course === 'string' ? e.course : e.course._id))
-  );
-  const enrolledCourses = courses.filter(c => enrolledCourseIds.has(c._id));
-  const availableCourses = courses.filter(c => !enrolledCourseIds.has(c._id));
 
   const formatDate = (date?: Date | string | null) => {
     if (!date) return '';
@@ -267,28 +310,42 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* My courses preview */}
+                  {/* Continue Learning preview */}
                   <section className={styles.section}>
                     <div className={styles.sectionHead}>
-                      <h3 className={styles.sectionTitle}><BookOpen size={18} /> My Courses</h3>
+                      <h3 className={styles.sectionTitle}><BookOpen size={18} /> Continue Learning</h3>
                       <button className={styles.seeAll} onClick={() => setActiveView('courses')}>View All <ArrowRight size={14} /></button>
                     </div>
                     {enrolledCourses.length === 0 ? (
                       <p className={styles.emptyText}>No courses yet. Explore available courses!</p>
                     ) : (
-                      <div className={styles.courseGrid}>
-                        {enrolledCourses.slice(0, 3).map(course => (
-                          <div key={course._id} className={styles.courseCard}>
-                            <div className={styles.courseCardIcon}><BookOpen size={20} /></div>
-                            <div className={styles.courseCardBody}>
-                              <h4>{course.title}</h4>
-                              {course.description && <p>{course.description}</p>}
+                      <div className={styles.clGrid}>
+                        {enrolledCourses.slice(0, 2).map(course => {
+                          const stat = courseStats[course._id];
+                          return (
+                            <div key={course._id} className={styles.clCard}>
+                              <div className={styles.clThumb}>
+                                <BookOpen size={32} />
+                                {stat && (
+                                  <span className={styles.clBadge}>
+                                    <Layers size={11} /> {stat.total} Materials {stat.completed > 0 && <CheckCircle size={11} />}
+                                  </span>
+                                )}
+                              </div>
+                              <div className={styles.clInfo}>
+                                <span className={styles.clLabel}><BookOpen size={12} /> Course</span>
+                                <h4 className={styles.clTitle}>{course.title}</h4>
+                                <div className={styles.clProgress}>
+                                  <span>Progress: <strong>{stat?.percent ?? 0}%</strong></span>
+                                  <div className={styles.clBarTrack}>
+                                    <div className={styles.clBarFill} style={{ width: `${stat?.percent ?? 0}%` }} />
+                                  </div>
+                                </div>
+                                <Link to={`/learn/${course._id}`} className={styles.clContinueBtn}>Continue</Link>
+                              </div>
                             </div>
-                            <Link to={`/learn/${course._id}`} className={styles.continueBtn}>
-                              <Play size={14} /> Continue
-                            </Link>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </section>
@@ -355,51 +412,95 @@ const Dashboard: React.FC = () => {
               {/* ==================== COURSES VIEW ==================== */}
               {activeView === 'courses' && (
                 <>
-                  <div className={styles.pageTitle}>
-                    <h2>My Courses</h2>
-                    <p className={styles.welcomeSub}>Continue learning or enroll in something new</p>
+                  {/* Tabs: My Learning / Catalog */}
+                  <div className={styles.courseTabs}>
+                    <button className={`${styles.courseTabBtn} ${courseTab === 'learning' ? styles.courseTabActive : ''}`} onClick={() => setCourseTab('learning')}>
+                      My Learning
+                    </button>
+                    <button className={`${styles.courseTabBtn} ${courseTab === 'catalog' ? styles.courseTabActive : ''}`} onClick={() => setCourseTab('catalog')}>
+                      Catalog <span className={styles.courseTabCount}>{availableCourses.length}</span>
+                    </button>
                   </div>
 
-                  {enrolledCourses.length === 0 ? (
-                    <div className={styles.emptyCard}>
-                      <BookOpen size={40} strokeWidth={1.5} />
-                      <p>You haven't enrolled in any courses yet.</p>
-                    </div>
-                  ) : (
-                    <div className={styles.courseGrid}>
-                      {enrolledCourses.map(course => (
-                        <div key={course._id} className={styles.courseCard}>
-                          <div className={styles.courseCardIcon}><BookOpen size={20} /></div>
-                          <div className={styles.courseCardBody}>
-                            <h4>{course.title}</h4>
-                            {course.description && <p>{course.description}</p>}
-                          </div>
-                          <Link to={`/learn/${course._id}`} className={styles.continueBtn}>
-                            <Play size={14} /> Continue Learning
-                          </Link>
+                  {/* My Learning tab */}
+                  {courseTab === 'learning' && (
+                    <>
+                      <h3 className={styles.clSectionTitle}>Continue Learning</h3>
+
+                      {enrolledCourses.length === 0 ? (
+                        <div className={styles.emptyCard}>
+                          <BookOpen size={40} strokeWidth={1.5} />
+                          <p>You haven't enrolled in any courses yet.</p>
+                          <button className={styles.enrollBtn} onClick={() => setCourseTab('catalog')}>Browse Catalog</button>
                         </div>
-                      ))}
-                    </div>
+                      ) : (
+                        <div className={styles.clGrid}>
+                          {enrolledCourses.map(course => {
+                            const stat = courseStats[course._id];
+                            return (
+                              <div key={course._id} className={styles.clCard}>
+                                <div className={styles.clThumb}>
+                                  <BookOpen size={32} />
+                                  {stat && (
+                                    <span className={styles.clBadge}>
+                                      <Layers size={11} /> {stat.total} Materials {stat.completed > 0 && <CheckCircle size={11} />}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className={styles.clInfo}>
+                                  <span className={styles.clLabel}><BookOpen size={12} /> Course</span>
+                                  <h4 className={styles.clTitle}>{course.title}</h4>
+                                  <div className={styles.clProgress}>
+                                    <span>Progress: <strong>{stat?.percent ?? 0}%</strong></span>
+                                    <div className={styles.clBarTrack}>
+                                      <div className={styles.clBarFill} style={{ width: `${stat?.percent ?? 0}%` }} />
+                                    </div>
+                                  </div>
+                                  <Link to={`/learn/${course._id}`} className={styles.clContinueBtn}>Continue</Link>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* All Materials count */}
+                      {enrolledCourses.length > 0 && (
+                        <div className={styles.allMaterialsRow}>
+                          <span className={styles.allMaterialsLabel}>
+                            All Materials <strong>{Object.values(courseStats).reduce((s, c) => s + c.total, 0)}</strong>
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {availableCourses.length > 0 && (
-                    <div className={styles.availableSection}>
-                      <h3 className={styles.sectionTitle}>Available to Enroll</h3>
-                      <div className={styles.courseGrid}>
-                        {availableCourses.map(course => (
-                          <div key={course._id} className={styles.courseCard}>
-                            <div className={styles.courseCardIcon} style={{ background: '#f0fdf4', color: '#16a34a' }}><BookOpen size={20} /></div>
-                            <div className={styles.courseCardBody}>
-                              <h4>{course.title}</h4>
-                              {course.description && <p>{course.description}</p>}
+                  {/* Catalog tab */}
+                  {courseTab === 'catalog' && (
+                    <>
+                      <h3 className={styles.clSectionTitle}>Available Courses</h3>
+                      {availableCourses.length === 0 ? (
+                        <p className={styles.emptyText}>No additional courses available right now.</p>
+                      ) : (
+                        <div className={styles.clGrid}>
+                          {availableCourses.map(course => (
+                            <div key={course._id} className={styles.clCard}>
+                              <div className={styles.clThumb} style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
+                                <BookOpen size={32} style={{ color: '#16a34a' }} />
+                              </div>
+                              <div className={styles.clInfo}>
+                                <span className={styles.clLabel}><BookOpen size={12} /> Course</span>
+                                <h4 className={styles.clTitle}>{course.title}</h4>
+                                {course.description && <p className={styles.clDesc}>{course.description}</p>}
+                                <button onClick={() => handleEnroll(course._id)} disabled={enrollingId === course._id} className={styles.clContinueBtn}>
+                                  {enrollingId === course._id ? <><Loader2 className={styles.spinner} size={14} /> Enrolling...</> : 'Enroll Now'}
+                                </button>
+                              </div>
                             </div>
-                            <button onClick={() => handleEnroll(course._id)} disabled={enrollingId === course._id} className={styles.enrollBtn}>
-                              {enrollingId === course._id ? <><Loader2 className={styles.spinner} size={14} /> Enrolling...</> : 'Enroll Now'}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

@@ -13,6 +13,7 @@ export interface ICourse extends Document {
   _id: Types.ObjectId;
   title: string;
   description?: string;
+  coverImage?: string;
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +36,10 @@ const CourseSchema: Schema<ICourse> = new Schema(
       type: String,
       trim: true,
       maxlength: [2000, "Description cannot exceed 2000 characters"],
+    },
+    coverImage: {
+      type: String,
+      trim: true,
     },
     createdBy: {
       type: Schema.Types.ObjectId,

@@ -269,8 +269,8 @@ const CourseLearn: React.FC = () => {
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate('/courses')}>
-          <ChevronLeft size={20} /> Courses
+        <button className={styles.backBtn} onClick={() => navigate('/dashboard', { state: { view: 'courses' } })}>
+          <ChevronLeft size={20} /> My Courses
         </button>
         <h1>{course.title}</h1>
         {course.description && <p>{course.description}</p>}

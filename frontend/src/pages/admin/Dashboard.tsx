@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight } from 'lucide-react';
+import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight, Plus, Activity } from 'lucide-react';
 import { DashboardStats } from '../../types/admin';
 import { getDashboardStats } from '../../services/adminService';
+import { useAuth } from '../../context/AuthContext';
 import Loader from '../../components/common/Loader';
 import styles from './Dashboard.module.css';
 
 const AdminDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,25 +20,56 @@ const AdminDashboard: React.FC = () => {
     return <Loader text="Loading dashboard..." />;
   }
 
+  const now = new Date();
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
   const statCards = [
-    { icon: Users, label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, color: '#3b82f6', link: '/admin/members' },
-    { icon: FileText, label: 'Blog Posts', value: stats.totalBlogs, sub: `${stats.publishedBlogs} published`, color: '#8b5cf6', link: '/admin/blogs' },
-    { icon: Calendar, label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, color: '#f59e0b', link: '/admin/events' },
-    { icon: BookOpen, label: 'Courses', value: stats.totalCourses, sub: `${stats.publishedCourses} published`, color: '#D64A2A', link: '/admin/courses' },
+    { icon: Users, label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, color: '#3b82f6', bg: '#eff6ff', link: '/admin/members' },
+    { icon: FileText, label: 'Blog Posts', value: stats.totalBlogs, sub: `${stats.publishedBlogs} published`, color: '#8b5cf6', bg: '#f5f3ff', link: '/admin/blogs' },
+    { icon: Calendar, label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, color: '#f59e0b', bg: '#fffbeb', link: '/admin/events' },
+    { icon: BookOpen, label: 'Courses', value: stats.totalCourses, sub: `${stats.publishedCourses} published`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/courses' },
+  ];
+
+  const quickActions = [
+    { label: 'New Blog', icon: FileText, link: '/admin/blogs', color: '#8b5cf6' },
+    { label: 'New Event', icon: Calendar, link: '/admin/events', color: '#f59e0b' },
+    { label: 'New Course', icon: BookOpen, link: '/admin/courses', color: '#D64A2A' },
+    { label: 'Members', icon: Users, link: '/admin/members', color: '#3b82f6' },
   ];
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <h1>Dashboard</h1>
-        <p>Welcome back! Here's an overview of your hub.</p>
+      {/* Hero Header */}
+      <div className={styles.heroHeader}>
+        <div className={styles.heroLeft}>
+          <span className={styles.heroDate}>{dateStr}</span>
+          <h1 className={styles.heroTitle}>{greeting}, {user?.name || 'Admin'}!</h1>
+          <p className={styles.heroSub}>Here's what's happening with your hub today.</p>
+        </div>
+        <div className={styles.heroRight}>
+          <Activity size={56} strokeWidth={1.2} className={styles.heroIcon} />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className={styles.quickActions}>
+        {quickActions.map(({ label, icon: Icon, link, color }) => (
+          <Link to={link} key={label} className={styles.quickAction}>
+            <div className={styles.quickActionIcon} style={{ background: `${color}12`, color }}>
+              <Plus size={14} />
+              <Icon size={16} />
+            </div>
+            <span>{label}</span>
+          </Link>
+        ))}
       </div>
 
       {/* Stat Cards */}
       <div className={styles.statsGrid}>
-        {statCards.map(({ icon: Icon, label, value, sub, color, link }) => (
+        {statCards.map(({ icon: Icon, label, value, sub, color, bg, link }) => (
           <Link to={link} key={label} className={styles.statCard}>
-            <div className={styles.statIcon} style={{ background: `${color}15`, color }}>
+            <div className={styles.statIcon} style={{ background: bg, color }}>
               <Icon size={22} />
             </div>
             <div className={styles.statInfo}>
@@ -58,7 +91,9 @@ const AdminDashboard: React.FC = () => {
             <Link to="/admin/members" className={styles.viewAll}>View All</Link>
           </div>
           <div className={styles.memberList}>
-            {stats.recentRegistrations.map(m => (
+            {stats.recentRegistrations.length === 0 ? (
+              <p className={styles.emptyText}>No members yet.</p>
+            ) : stats.recentRegistrations.map(m => (
               <div key={m.id} className={styles.memberRow}>
                 <div className={styles.memberAvatar}>{m.name.charAt(0)}</div>
                 <div className={styles.memberInfo}>
@@ -80,7 +115,9 @@ const AdminDashboard: React.FC = () => {
             <Link to="/admin/courses" className={styles.viewAll}>View All</Link>
           </div>
           <div className={styles.courseList}>
-            {stats.popularCourses.map(c => (
+            {stats.popularCourses.length === 0 ? (
+              <p className={styles.emptyText}>No courses yet.</p>
+            ) : stats.popularCourses.map(c => (
               <div key={c.id} className={styles.courseRow}>
                 <div className={styles.courseInfo}>
                   <span className={styles.courseName}>{c.title}</span>

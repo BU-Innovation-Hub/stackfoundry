@@ -5,6 +5,7 @@
 
 import Course, { ICourse } from "../models/course.model";
 import Level from "../models/level.model";
+import Enrollment from "../models/enrollment.model";
 import { ApiError } from "../middleware/errorHandler";
 
 // ============================================
@@ -14,14 +15,29 @@ import { ApiError } from "../middleware/errorHandler";
 export const createCourse = async (data: {
   title: string;
   description?: string;
+  coverImage?: string;
   createdBy: string;
 }): Promise<ICourse> => {
   const course = await Course.create(data);
   return course;
 };
 
-export const getCourses = async (): Promise<ICourse[]> => {
-  return Course.find().sort({ createdAt: -1 }).populate("createdBy", "name surname email");
+export const getCourses = async (): Promise<any[]> => {
+  const courses = await Course.find().sort({ createdAt: -1 }).populate("createdBy", "name surname email").lean();
+
+  // Get enrollment counts per course
+  const enrollCounts = await Enrollment.aggregate([
+    { $group: { _id: "$course", count: { $sum: 1 } } },
+  ]);
+  const countMap: Record<string, number> = {};
+  for (const ec of enrollCounts) {
+    countMap[ec._id.toString()] = ec.count;
+  }
+
+  return courses.map((c: any) => ({
+    ...c,
+    enrolledCount: countMap[c._id.toString()] || 0,
+  }));
 };
 
 export const getCourseById = async (id: string): Promise<ICourse> => {
@@ -32,7 +48,7 @@ export const getCourseById = async (id: string): Promise<ICourse> => {
 
 export const updateCourse = async (
   id: string,
-  data: Partial<{ title: string; description: string }>
+  data: Partial<{ title: string; description: string; coverImage: string }>
 ): Promise<ICourse> => {
   const course = await Course.findByIdAndUpdate(id, data, {
     new: true,

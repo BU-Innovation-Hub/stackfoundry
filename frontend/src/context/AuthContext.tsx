@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (data: LoginData) => Promise<void>;
+  login: (data: LoginData) => Promise<User>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -43,9 +43,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('auth:session-expired', handler);
   }, [clearUser]);
 
-  const login = async (data: LoginData) => {
+  const login = async (data: LoginData): Promise<User> => {
     const response = await authService.login(data);
     setUser(response.user);
+    return response.user;
   };
 
   const register = async (data: RegisterData) => {

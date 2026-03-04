@@ -39,11 +39,12 @@ export const createCourse = async (
        if (!user) {
     throw new ApiError(401, "Authentication required");
   }
-    const { title, description } = req.body;
+    const { title, description, coverImage } = req.body;
 
     const course = await CourseService.createCourse({
       title,
       description,
+      coverImage,
       createdBy: user.id,
     });
 
@@ -99,11 +100,12 @@ export const updateCourse = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
-    const { title, description } = req.body;
+    const { title, description, coverImage } = req.body;
     
-        const updates: { title?: string; description?: string } = {};
-   if (title !== undefined) updates.title = title;
+    const updates: { title?: string; description?: string; coverImage?: string } = {};
+    if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
+    if (coverImage !== undefined) updates.coverImage = coverImage;
     const course = await CourseService.updateCourse(req.params.id, updates);
     res.json({ success: true, data: course });
   } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Calendar, BookOpen, GraduationCap, LogOut, Menu, X, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import styles from './AdminLayout.module.css';
 
@@ -10,7 +10,6 @@ const navItems = [
   { to: '/admin/blogs', icon: FileText, label: 'Blogs', end: false },
   { to: '/admin/events', icon: Calendar, label: 'Events', end: false },
   { to: '/admin/courses', icon: BookOpen, label: 'Courses', end: false },
-  { to: '/admin/course-manager', icon: GraduationCap, label: 'LMS Manager', end: false },
 ];
 
 const AdminLayout: React.FC = () => {
@@ -70,15 +69,9 @@ const AdminLayout: React.FC = () => {
 
       {/* Main content */}
       <div className={styles.main}>
-        <header className={styles.topbar}>
-          <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
-            <Menu size={22} />
-          </button>
-          <button className={styles.backBtn} onClick={() => navigate('/')}>
-            <ChevronLeft size={18} />
-            Back to Site
-          </button>
-        </header>
+        <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
+          <Menu size={22} />
+        </button>
         <div className={styles.content}>
           <Outlet />
         </div>

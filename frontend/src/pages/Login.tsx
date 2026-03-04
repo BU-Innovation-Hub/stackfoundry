@@ -20,12 +20,14 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     setError('');
     try {
-      await login(formData);
+      const loggedInUser = await login(formData);
       // Redirect back to the page the user came from (e.g., event registration)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
         sessionStorage.removeItem('redirectAfterLogin');
         navigate(redirectUrl);
+      } else if (loggedInUser.role === 'admin') {
+        navigate('/admin');
       } else {
         navigate('/dashboard');
       }

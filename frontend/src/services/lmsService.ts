@@ -18,6 +18,19 @@ import {
 } from "../types/lms";
 
 // ============================================
+// Image Upload (Cloudinary)
+// ============================================
+
+export const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("image", file);
+  const res = await api.post("/upload/image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data.url;
+};
+
+// ============================================
 // Courses
 // ============================================
 
@@ -34,6 +47,7 @@ export const lmsGetCourse = async (id: string): Promise<CourseWithLevels> => {
 export const lmsCreateCourse = async (data: {
   title: string;
   description?: string;
+  coverImage?: string;
 }): Promise<LmsCourse> => {
   const res = await api.post("/courses", data);
   return res.data.data;
@@ -41,7 +55,7 @@ export const lmsCreateCourse = async (data: {
 
 export const lmsUpdateCourse = async (
   id: string,
-  data: { title?: string; description?: string }
+  data: { title?: string; description?: string; coverImage?: string }
 ): Promise<LmsCourse> => {
   const res = await api.put(`/courses/${id}`, data);
   return res.data.data;

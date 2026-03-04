@@ -24,7 +24,6 @@ import Members from '../pages/admin/Members';
 import Blogs from '../pages/admin/Blogs';
 import Events from '../pages/admin/Events';
 import Courses from '../pages/admin/Courses';
-import CourseManager from '../pages/admin/CourseManager';
 
 const AppRoutes: React.FC = () => (
   <BrowserRouter>
@@ -77,7 +76,6 @@ const AppRoutes: React.FC = () => (
         <Route path="blogs" element={<Blogs />} />
         <Route path="events" element={<Events />} />
         <Route path="courses" element={<Courses />} />
-        <Route path="course-manager" element={<CourseManager />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

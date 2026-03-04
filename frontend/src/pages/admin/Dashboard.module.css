@@ -1,27 +1,104 @@
-.page { }
-
-.pageHeader {
-  margin-bottom: 2rem;
+/* ---- Page ---- */
+.page {
+  padding-bottom: 2rem;
 }
 
-.pageHeader h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin-bottom: 0.25rem;
-}
-
-.pageHeader p {
-  color: #888;
-  font-size: 0.95rem;
-}
-
-.loading {
+/* ---- Hero Header ---- */
+.heroHeader {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d2d52 100%);
+  border-radius: 18px;
+  padding: 2rem 2.5rem;
+  margin-bottom: 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroHeader::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300px;
   height: 300px;
-  color: #888;
+  background: radial-gradient(circle, rgba(214, 74, 42, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.heroLeft {
+  z-index: 1;
+}
+
+.heroDate {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.heroTitle {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0.35rem 0 0.3rem;
+  line-height: 1.25;
+}
+
+.heroSub {
+  font-size: 0.92rem;
+  color: rgba(255,255,255,0.65);
+  margin: 0;
+}
+
+.heroRight {
+  z-index: 1;
+}
+
+.heroIcon {
+  color: rgba(255,255,255,0.12);
+}
+
+/* ---- Quick Actions ---- */
+.quickActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.quickAction {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 1.1rem;
+  background: #fff;
+  border: 1px solid #e8e8ee;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.quickAction:hover {
+  border-color: #D64A2A;
+  box-shadow: 0 2px 12px rgba(214,74,42,0.08);
+}
+
+.quickActionIcon {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  justify-content: center;
 }
 
 /* ---- Stats Grid ---- */
@@ -29,7 +106,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .statCard {
@@ -48,6 +125,7 @@
 .statCard:hover {
   box-shadow: 0 4px 20px rgba(0,0,0,0.06);
   border-color: #ddd;
+  transform: translateY(-2px);
 }
 
 .statIcon {
@@ -118,6 +196,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #f3f3f3;
 }
 
 .cardHeader h3 {
@@ -127,6 +207,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: #1a1a2e;
+  margin: 0;
 }
 
 .viewAll {
@@ -140,6 +221,13 @@
   text-decoration: underline;
 }
 
+.emptyText {
+  font-size: 0.85rem;
+  color: #aaa;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
 /* ---- Members List ---- */
 .memberList {
   display: flex;
@@ -151,14 +239,20 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 0;
+  padding: 0.55rem 0.5rem;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.memberRow:hover {
+  background: #fafafa;
 }
 
 .memberAvatar {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: #D64A2A;
+  background: linear-gradient(135deg, #D64A2A, #e86d4f);
   color: #fff;
   display: flex;
   align-items: center;
@@ -175,18 +269,18 @@
 }
 
 .memberName {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #1a1a2e;
 }
 
 .memberEmail {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #999;
 }
 
 .badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
@@ -208,7 +302,7 @@
 .courseList {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.25rem;
 }
 
 .courseRow {
@@ -216,8 +310,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0;
+  padding: 0.65rem 0.5rem;
+  border-radius: 10px;
   border-bottom: 1px solid #f5f5f5;
+  transition: background 0.15s;
+}
+
+.courseRow:hover {
+  background: #fafafa;
 }
 
 .courseRow:last-child {
@@ -231,13 +331,13 @@
 }
 
 .courseName {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #1a1a2e;
 }
 
 .courseMeta {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #999;
   text-transform: capitalize;
 }
@@ -266,7 +366,7 @@
 
 .progressFill {
   height: 100%;
-  background: #D64A2A;
+  background: linear-gradient(90deg, #D64A2A, #e86d4f);
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -281,14 +381,31 @@
   .statsGrid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .heroHeader {
+    padding: 1.5rem 1.75rem;
+  }
+  .heroTitle {
+    font-size: 1.4rem;
+  }
 }
 
 @media (max-width: 768px) {
   .statsGrid {
     grid-template-columns: 1fr;
   }
-
   .bottomGrid {
     grid-template-columns: 1fr;
+  }
+  .heroHeader {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem 1.25rem;
+    text-align: center;
+  }
+  .heroRight {
+    display: none;
+  }
+  .quickActions {
+    justify-content: center;
   }
 }

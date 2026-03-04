@@ -11,6 +11,8 @@ export interface LmsCourse {
   _id: string;
   title: string;
   description?: string;
+  coverImage?: string;
+  enrolledCount?: number;
   createdBy?: {
     _id: string;
     name: string;

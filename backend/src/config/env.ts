@@ -99,7 +99,7 @@ export const loadEnv = (): Env => {
 
     // Rate Limiting
     RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+    RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 500,
 
     // Admin seed
     ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@botho.ac.bw",

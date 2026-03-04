@@ -409,7 +409,216 @@
 }
 .backBtn:hover { color: #D64A2A; }
 
-/* ========== Course Cards ========== */
+/* ========== Course Tabs ========== */
+.courseTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e8eaf0;
+  margin-bottom: 1.5rem;
+}
+
+.courseTabBtn {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #888;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.courseTabBtn:hover { color: #333; }
+.courseTabActive {
+  color: #1a1a2e;
+  border-bottom-color: #1a1a2e;
+}
+.courseTabCount {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #e8eaf0;
+  color: #555;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+}
+
+.clSectionTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 1rem;
+}
+
+/* ========== Continue Learning Cards (horizontal) ========== */
+.clGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1.25rem;
+}
+
+.clCard {
+  display: flex;
+  background: #fff;
+  border: 1px solid #e8eaf0;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.clCard:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+  transform: translateY(-2px);
+}
+
+.clThumb {
+  width: 170px;
+  min-height: 140px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+  position: relative;
+}
+
+.clBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(26, 26, 46, 0.85);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+}
+
+.clInfo {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.clLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.clTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0 0 0.5rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clDesc {
+  font-size: 0.78rem;
+  color: #777;
+  margin: 0 0 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.clProgress {
+  margin-bottom: 0.65rem;
+}
+.clProgress span {
+  font-size: 0.78rem;
+  color: #666;
+}
+.clProgress strong {
+  color: #1a1a2e;
+}
+
+.clBarTrack {
+  height: 5px;
+  background: #e8eaf0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+.clBarFill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.clContinueBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem 1.1rem;
+  background: #fff;
+  color: #1a1a2e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  align-self: flex-start;
+  margin-top: auto;
+}
+.clContinueBtn:hover {
+  background: #1a1a2e;
+  color: #fff;
+  border-color: #1a1a2e;
+}
+
+/* All Materials row */
+.allMaterialsRow {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e8eaf0;
+}
+.allMaterialsLabel {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.allMaterialsLabel strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8eaf0;
+  color: #555;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  margin-left: 0.4rem;
+}
+
+/* Legacy course cards (keep for potential reuse) */
 .courseGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -868,6 +1077,7 @@
   .sidebar { width: 200px; }
   .main { padding: 1.25rem 1.25rem 2rem; }
   .statRow { grid-template-columns: 1fr; }
+  .clGrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
@@ -896,6 +1106,9 @@
   .courseGrid, .blogGrid, .eventGrid {
     grid-template-columns: 1fr;
   }
+  .clGrid { grid-template-columns: 1fr; }
+  .clCard { flex-direction: column; }
+  .clThumb { width: 100%; min-height: 120px; }
   .detailGrid {
     grid-template-columns: 1fr;
   }
