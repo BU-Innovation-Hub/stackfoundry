@@ -82,7 +82,8 @@ const StudentSchema: Schema<IStudent> = new Schema(
       trim: true,
       index: true,
       match: [
-        /^[A-Za-z0-9._%+-]+@bothouniversity\.com$/,
+        // /^[A-Za-z0-9._%+-]+@bothouniversity\.com$/,
+        /^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@bothouniversity\.com$/,
         "Email must be from @bothouniversity.com domain",
       ],
     },
