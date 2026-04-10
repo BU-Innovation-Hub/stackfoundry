@@ -6,6 +6,12 @@
 import { body, param, ValidationChain } from "express-validator";
 import mongoose from "mongoose";
 
+const BOTHO_EMAIL_DOMAIN = "@bothouniversity.com";
+const BOTHO_EMAIL_ERROR = "Email must be from botho domain";
+
+const isBothoUniversityEmail = (email: string): boolean =>
+  email.toLowerCase().endsWith(BOTHO_EMAIL_DOMAIN);
+
 // ============================================
 // Auth Validation Rules
 // ============================================
@@ -30,6 +36,12 @@ export const registerValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail()
+    .custom((email: string) => {
+      if (!isBothoUniversityEmail(email)) {
+        throw new Error(BOTHO_EMAIL_ERROR);
+      }
+      return true;
+    })
     .isLength({ max: 100 })
     .withMessage("Email cannot exceed 100 characters"),
 
@@ -74,7 +86,13 @@ export const loginValidation: ValidationChain[] = [
     .withMessage("Email is required")
     .isEmail()
     .withMessage("Please provide a valid email")
-    .normalizeEmail(),
+    .normalizeEmail()
+    .custom((email: string) => {
+      if (!isBothoUniversityEmail(email)) {
+        throw new Error(BOTHO_EMAIL_ERROR);
+      }
+      return true;
+    }),
 
   body("password")
     .notEmpty()
@@ -136,6 +154,12 @@ export const adminCreateUserValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail()
+    .custom((email: string) => {
+      if (!isBothoUniversityEmail(email)) {
+        throw new Error(BOTHO_EMAIL_ERROR);
+      }
+      return true;
+    })
     .isLength({ max: 100 })
     .withMessage("Email cannot exceed 100 characters"),
 

@@ -49,7 +49,7 @@ const ROLES = [
 
 const ADMIN_USER = {
   studentId: "ADMIN-001",
-  email: process.env.ADMIN_EMAIL || "admin@botho.ac.bw",
+  email: process.env.ADMIN_EMAIL || "admin@bothouniversity.com",
   password: process.env.ADMIN_PASSWORD || "Admin@123456",
   name: "System",
   surname: "Administrator",

@@ -102,7 +102,7 @@ export const loadEnv = (): Env => {
     RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 500,
 
     // Admin seed
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@botho.ac.bw",
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@bothouniversity.com",
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "Admin@123456",
   };
 };
