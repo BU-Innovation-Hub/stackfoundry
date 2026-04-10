@@ -98,12 +98,20 @@ export const createMember = async (data: CreateMemberData): Promise<Member> => {
 };
 
 export const updateMemberRole = async (id: string, role: Member['role']): Promise<Member> => {
-  // Backend doesn't have a role update endpoint yet — keep local update
-  const members = await getMembers();
-  const member = members.find(m => m.id === id);
-  if (!member) throw new Error('Member not found');
-  member.role = role;
-  return member;
+  await apiClient.patch(`/admin/users/${id}/role`, { role });
+  const response = await apiClient.get(`/admin/users/${id}`);
+  const u = response.data.data;
+  return {
+    id: u._id,
+    studentId: u.studentId,
+    name: u.name,
+    surname: u.surname,
+    email: u.email,
+    role: u.roles?.[0]?.name || 'student',
+    isActive: u.isActive,
+    joinedAt: u.createdAt,
+    lastLogin: u.lastLogin,
+  };
 };
 
 export const toggleMemberStatus = async (id: string): Promise<Member> => {
@@ -126,8 +134,7 @@ export const toggleMemberStatus = async (id: string): Promise<Member> => {
 };
 
 export const deleteMember = async (id: string): Promise<void> => {
-  // Note: No backend delete endpoint yet — toggle inactive instead
-  await apiClient.patch(`/admin/users/${id}/toggle-active`);
+  await apiClient.delete(`/admin/users/${id}`);
 };
 
 // ---- Blogs ----

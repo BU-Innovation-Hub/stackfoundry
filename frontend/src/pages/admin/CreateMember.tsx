@@ -2,6 +2,7 @@ import React, { useState, FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { createMember, CreateMemberData } from '../../services/adminService';
 import { Member } from '../../types/admin';
+import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../../utils/emailValidation';
 import styles from './CreateMember.module.css';
 
 interface Props {
@@ -34,9 +35,18 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
     e.preventDefault();
     setError('');
     setDetails([]);
+
+    if (!isBothoUniversityEmail(form.email)) {
+      setError(BOTHO_EMAIL_ERROR);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const created = await createMember(form);
+      const created = await createMember({
+        ...form,
+        email: form.email.trim().toLowerCase(),
+      });
       onCreated({
         id: created.id,
         studentId: created.studentId || form.studentId,
@@ -125,6 +135,7 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
                 id="cm-email"
                 name="email"
                 type="email"
+                placeholder="user@bothouniversity.com"
                 value={form.email}
                 onChange={handleChange}
                 required

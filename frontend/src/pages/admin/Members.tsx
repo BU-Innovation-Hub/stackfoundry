@@ -51,8 +51,14 @@ const Members: React.FC = () => {
   const handleRoleChange = async (id: string, role: Member['role']) => {
     setActionError('');
     try {
-      await updateMemberRole(id, role);
-      setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
+      const updated = await updateMemberRole(id, role);
+      setMembers(prev =>
+        prev.map(m =>
+          m.id === id
+            ? { ...m, role: updated.role, isActive: updated.isActive }
+            : m
+        )
+      );
     } catch (err: any) {
       setActionError(err.response?.data?.error || 'Failed to update role');
     }

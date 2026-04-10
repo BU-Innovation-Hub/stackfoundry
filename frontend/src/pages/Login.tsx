@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../utils/emailValidation';
 import styles from './Login.module.css';
 
 const Login: React.FC = () => {
@@ -17,10 +18,19 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
+
+    if (!isBothoUniversityEmail(formData.email)) {
+      setError(BOTHO_EMAIL_ERROR);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const loggedInUser = await login(formData);
+      const loggedInUser = await login({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+      });
       // Redirect back to the page the user came from (e.g., event registration)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
@@ -79,7 +89,7 @@ const Login: React.FC = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="you@botho.ac.bw"
+                  placeholder="you@bothouniversity.com"
                   value={formData.email}
                   onChange={handleChange}
                   required
