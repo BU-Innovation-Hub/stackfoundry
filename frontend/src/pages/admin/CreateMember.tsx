@@ -36,7 +36,9 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
     setError('');
     setDetails([]);
 
-    if (!isBothoUniversityEmail(form.email)) {
+    const normalizedEmail = form.email.trim().toLowerCase();
+
+    if (!isBothoUniversityEmail(normalizedEmail)) {
       setError(BOTHO_EMAIL_ERROR);
       return;
     }
@@ -45,7 +47,7 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
     try {
       const created = await createMember({
         ...form,
-        email: form.email.trim().toLowerCase(),
+       email: normalizedEmail,
       });
       onCreated({
         id: created.id,

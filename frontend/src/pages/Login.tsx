@@ -20,7 +20,9 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (!isBothoUniversityEmail(formData.email)) {
+  const normalizedEmail = formData.email.trim().toLowerCase();
+
+  if (!isBothoUniversityEmail(normalizedEmail)) {
       setError(BOTHO_EMAIL_ERROR);
       return;
     }
@@ -29,7 +31,7 @@ const Login: React.FC = () => {
     try {
       const loggedInUser = await login({
         ...formData,
-        email: formData.email.trim().toLowerCase(),
+        email: normalizedEmail,
       });
       // Redirect back to the page the user came from (e.g., event registration)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');

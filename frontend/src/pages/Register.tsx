@@ -35,7 +35,9 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (!isBothoUniversityEmail(formData.email)) {
+    const normalizedEmail = formData.email.trim().toLowerCase();
+
+    if (!isBothoUniversityEmail(normalizedEmail)) {
       setError(BOTHO_EMAIL_ERROR);
       return;
     }
@@ -43,7 +45,7 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
     try {
       const { confirmPassword, ...data } = formData;
-      await register({ ...data, email: data.email.trim().toLowerCase() });
+      await register({ ...data, email: normalizedEmail });
       // Redirect back to the page the user came from (e.g., event registration)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
