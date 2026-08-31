@@ -7,6 +7,8 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { ApiError } from "../middleware/errorHandler";
 import * as TopicService from "../services/topic.service";
+import * as CourseService from "../services/course.service";
+import { RequestWithUser } from "../types";
 
 // ============================================
 // Helpers
@@ -36,6 +38,9 @@ export const createTopic = async (
     handleValidationErrors(req);
     const { levelId } = req.params;
     const { name, description } = req.body;
+
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, levelId);
 
     const topic = await TopicService.createTopic({
       level: levelId,
@@ -78,6 +83,9 @@ export const updateTopic = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageTopic(user, req.params.id);
+
     const { name, description } = req.body;
     // const topic = await TopicService.updateTopic(req.params.id, {
     //   name,
@@ -104,6 +112,9 @@ export const deleteTopic = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageTopic(user, req.params.id);
+
     await TopicService.deleteTopic(req.params.id);
     res.json({ success: true, message: "Topic deleted" });
   } catch (error) {

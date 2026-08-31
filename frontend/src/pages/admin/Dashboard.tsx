@@ -13,8 +13,11 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDashboardStats().then(data => { setStats(data); setLoading(false); });
-  }, []);
+    getDashboardStats(user?.role)
+      .then(data => setStats(data))
+      .catch(() => setStats({ totalCourses: 0, publishedCourses: 0, popularCourses: [] }))
+      .finally(() => setLoading(false));
+  }, [user?.role]);
 
   if (loading || !stats) {
     return <Loader text="Loading dashboard..." />;
@@ -23,20 +26,27 @@ const AdminDashboard: React.FC = () => {
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
   const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const isSystemAdmin = user?.role === 'system_admin';
+  const isMentor = user?.role === 'mentor';
 
   const statCards = [
     { icon: Users, label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, color: '#3b82f6', bg: '#eff6ff', link: '/admin/members' },
     { icon: FileText, label: 'Blog Posts', value: stats.totalBlogs, sub: `${stats.publishedBlogs} published`, color: '#8b5cf6', bg: '#f5f3ff', link: '/admin/blogs' },
     { icon: Calendar, label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, color: '#f59e0b', bg: '#fffbeb', link: '/admin/events' },
     { icon: BookOpen, label: 'Courses', value: stats.totalCourses, sub: `${stats.publishedCourses} published`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/courses' },
-  ];
+  ].filter(card => card.value !== undefined &&
+    (!isSystemAdmin || card.link === '/admin/members') &&
+    (!isMentor || card.link === '/admin/courses'));
 
   const quickActions = [
     { label: 'New Blog', icon: FileText, link: '/admin/blogs', color: '#8b5cf6' },
     { label: 'New Event', icon: Calendar, link: '/admin/events', color: '#f59e0b' },
     { label: 'New Course', icon: BookOpen, link: '/admin/courses', color: '#D64A2A' },
     { label: 'Members', icon: Users, link: '/admin/members', color: '#3b82f6' },
-  ];
+  ].filter(action =>
+    isSystemAdmin ? action.link === '/admin/members' :
+    isMentor ? action.link === '/admin/courses' : true
+  );
 
   return (
     <div className={styles.page}>
@@ -85,7 +95,7 @@ const AdminDashboard: React.FC = () => {
       {/* Bottom section */}
       <div className={styles.bottomGrid}>
         {/* Recent Registrations */}
-        <div className={styles.card}>
+        {stats.recentRegistrations && <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3><Users size={18} /> Recent Members</h3>
             <Link to="/admin/members" className={styles.viewAll}>View All</Link>
@@ -106,10 +116,10 @@ const AdminDashboard: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Popular Courses */}
-        <div className={styles.card}>
+        {!isSystemAdmin && <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3><TrendingUp size={18} /> Popular Courses</h3>
             <Link to="/admin/courses" className={styles.viewAll}>View All</Link>
@@ -135,7 +145,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

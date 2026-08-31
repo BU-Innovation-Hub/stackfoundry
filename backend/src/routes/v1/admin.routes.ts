@@ -12,14 +12,16 @@
  */
 
 import { Router, Request, Response, NextFunction } from "express";
-import { requireAuth, requireRole } from "../../middleware/auth";
+import { requireAuth, requireUserManagement, requireDashboardAccess } from "../../middleware/auth";
 import { RequestWithUser } from "../../types";
 import Student from "../../models/user.model";
 import Role from "../../models/role.model";
+import Course from "../../models/course.model";
 import * as AdminController from "../../controllers/admin.controller";
 import {
   adminCreateUserValidation,
   updateUserRoleValidation,
+  adminUpdateUserValidation,
   objectIdParam,
 } from "../../utils/validation";
 
@@ -30,7 +32,6 @@ const router = Router();
 // ============================================
 
 router.use(requireAuth);
-router.use(requireRole(["admin"]));
 
 /**
  * @route   GET /api/admin/dashboard
@@ -39,9 +40,26 @@ router.use(requireRole(["admin"]));
  */
 router.get(
   "/dashboard",
+  requireDashboardAccess,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as RequestWithUser).user;
+
+      if (user.role === "mentor") {
+        const totalCourses = await Course.countDocuments();
+        const publishedCourses = totalCourses;
+        res.status(200).json({ success: true, data: { admin: { name: user.name, email: user.email }, stats: { totalCourses, publishedCourses }, timestamp: new Date().toISOString() } });
+        return;
+      }
+
+      if (user.role === "system_admin") {
+        const [totalUsers, activeUsers] = await Promise.all([
+          Student.countDocuments(),
+          Student.countDocuments({ isActive: true }),
+        ]);
+        res.status(200).json({ success: true, data: { admin: { name: user.name, email: user.email }, stats: { totalUsers, activeUsers, inactiveUsers: totalUsers - activeUsers }, timestamp: new Date().toISOString() } });
+        return;
+      }
 
       // Get statistics
       const totalUsers = await Student.countDocuments();
@@ -99,21 +117,49 @@ router.get(
  */
 router.get(
   "/users",
+  requireUserManagement,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 10);
       const skip = (page - 1) * limit;
 
+      const filter: any = {};
+
+      // Optional: role filter (by role name via populated lookup)
+      if (req.query.role) {
+        const role = await Role.findOne({ name: req.query.role }).lean();
+        if (role) filter.roles = role._id;
+      }
+
+      // Optional: active status filter
+      if (req.query.status === "active") filter.isActive = true;
+      if (req.query.status === "inactive") filter.isActive = false;
+
+      // Optional: free-text search across name, surname, email, studentId
+      if (req.query.search && String(req.query.search).trim()) {
+        const q = String(req.query.search).trim();
+        filter.$or = [
+          { name: { $regex: q, $options: "i" } },
+          { surname: { $regex: q, $options: "i" } },
+          { email: { $regex: q, $options: "i" } },
+          { studentId: { $regex: q, $options: "i" } },
+        ];
+      }
+
+      const sortField =
+        req.query.sort === "-createdAt" ? "-createdAt" :
+        req.query.sort === "name" ? "name" : "-createdAt";
+
       const [users, total] = await Promise.all([
-        Student.find()
+        Student.find(filter)
           .select("-passwordHash -refreshTokens")
           .populate("roles", "name description")
           .skip(skip)
           .limit(limit)
-          .sort({ createdAt: -1 })
+          .sort(sortField)
           .lean(),
-        Student.countDocuments(),
+        Student.countDocuments(filter),
       ]);
 
       res.status(200).json({
@@ -125,6 +171,8 @@ router.get(
             limit,
             total,
             pages: Math.ceil(total / limit),
+            hasNext: page * limit < total,
+            hasPrevious: page > 1,
           },
         },
       });
@@ -141,6 +189,7 @@ router.get(
  */
 router.get(
   "/users/:id",
+  requireUserManagement,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = await Student.findById(req.params.id)
@@ -173,6 +222,7 @@ router.get(
  */
 router.patch(
   "/users/:id/toggle-active",
+  requireUserManagement,
   objectIdParam("id"),
   AdminController.toggleUserActive
 );
@@ -184,8 +234,22 @@ router.patch(
  */
 router.post(
   "/users",
+  requireUserManagement,
   adminCreateUserValidation,
   AdminController.createUser
+);
+
+/**
+ * @route   PATCH /api/admin/users/:id/profile
+ * @desc    Update a user's profile (name, surname, email, studentId)
+ * @access  Private (admin only)
+ */
+router.patch(
+  "/users/:id/profile",
+  requireUserManagement,
+  objectIdParam("id"),
+  adminUpdateUserValidation,
+  AdminController.updateUserProfile
 );
 
 /**
@@ -195,6 +259,7 @@ router.post(
  */
 router.patch(
   "/users/:id/role",
+  requireUserManagement,
   objectIdParam("id"),
   updateUserRoleValidation,
   AdminController.updateUserRole
@@ -207,6 +272,7 @@ router.patch(
  */
 router.delete(
   "/users/:id",
+  requireUserManagement,
   objectIdParam("id"),
   AdminController.deleteUser
 );

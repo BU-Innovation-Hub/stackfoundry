@@ -122,8 +122,8 @@ export const requireRole = (allowedRoles: RoleName[]) => {
       return;
     }
 
-    // Check if user's primary role is in allowed roles
-    if (!allowedRoles.includes(user.role)) {
+    const userRoles = new Set<RoleName>([user.role, ...(user.roleNames || [])]);
+    if (![...userRoles].some((role) => allowedRoles.includes(role))) {
       next(
         new ApiError(
           403,
@@ -140,14 +140,21 @@ export const requireRole = (allowedRoles: RoleName[]) => {
 /**
  * Require admin role (convenience middleware)
  */
-export const requireAdmin = requireRole(["admin"]);
+export const requireAdmin = requireRole(["system_admin", "innovation_hub_admin"]);
+
+export const requireSystemAdmin = requireRole(["system_admin"]);
+export const requireHubAdmin = requireRole(["system_admin", "innovation_hub_admin"]);
+export const requireUserManagement = requireRole(["system_admin", "innovation_hub_admin"]);
+export const requireCourseManagement = requireRole(["innovation_hub_admin", "mentor"]);
+export const requireContentManagement = requireRole(["innovation_hub_admin"]);
+export const requireDashboardAccess = requireRole(["system_admin", "innovation_hub_admin", "mentor"]);
 
 /**
  * Require instructor role (convenience middleware)
  */
-export const requireInstructor = requireRole(["admin", "instructor"]);
+export const requireInstructor = requireRole(["system_admin", "innovation_hub_admin", "mentor"]);
 
 /**
  * Require member or higher role (convenience middleware)
  */
-export const requireMember = requireRole(["admin", "instructor", "member"]);
+export const requireMember = requireRole(["system_admin", "innovation_hub_admin", "mentor", "member"]);

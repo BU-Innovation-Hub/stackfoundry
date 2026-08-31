@@ -12,7 +12,7 @@
  */
 
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { requireAuth, requireCourseManagement } from "../../middleware/auth";
 import * as CourseController from "../../controllers/course.controller";
 import * as LevelController from "../../controllers/level.controller";
 import {
@@ -26,17 +26,17 @@ import {
 const router = Router();
 
 // Course CRUD
-router.post("/", requireAuth, requireAdmin, createCourseValidation, CourseController.createCourse);
+router.post("/", requireAuth, requireCourseManagement, createCourseValidation, CourseController.createCourse);
 router.get("/", CourseController.getCourses);
 router.get("/:id", courseIdValidation, CourseController.getCourseById);
-router.put("/:id", requireAuth, requireAdmin, updateCourseValidation, CourseController.updateCourse);
-router.delete("/:id", requireAuth, requireAdmin, courseIdValidation, CourseController.deleteCourse);
+router.put("/:id", requireAuth, requireCourseManagement, updateCourseValidation, CourseController.updateCourse);
+router.delete("/:id", requireAuth, requireCourseManagement, courseIdValidation, CourseController.deleteCourse);
 
 // Level nested under course
 router.post(
   "/:courseId/levels",
   requireAuth,
-  requireAdmin,
+  requireCourseManagement,
   courseIdParamValidation,
   createLevelValidation,
   LevelController.createLevel

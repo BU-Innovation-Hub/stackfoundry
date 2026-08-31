@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import * as MaterialService from "../services/material.service";
+import * as CourseService from "../services/course.service";
 import { RequestWithUser } from "../types";
 import { ApiError } from "../middleware/errorHandler";
 
@@ -37,6 +38,9 @@ export const createVideoMaterial = async (
     handleValidationErrors(req);
     const { youtubeUrl, levelId, topicId, title } = req.body;
 
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, levelId);
+
     const material = await MaterialService.createVideoMaterial({
       youtubeUrl,
       levelId,
@@ -67,6 +71,9 @@ export const uploadPdfMaterial = async (
     if (!file) {
       throw new ApiError(400, "PDF file is required");
     }
+
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, levelId);
 
     const material = await MaterialService.createPdfMaterial({
       buffer: file.buffer,
@@ -122,7 +129,7 @@ export const getMaterialDetail = async (
     // Strip cloudinaryPublicId from response for non-admin users
     const user = (req as RequestWithUser).user;
     const materialObj = material.toObject();
-    if (!user || user.role !== "admin") {
+    if (!user || !["system_admin", "innovation_hub_admin"].includes(user.role)) {
       delete (materialObj as any).cloudinaryPublicId;
     }
 
@@ -151,6 +158,26 @@ export const downloadPdf = async (
 };
 
 /**
+ * GET /api/v1/materials/:id/view
+ * View a PDF material in the browser (authenticated + enrolled + level unlocked)
+ * Returns a short-lived signed URL with inline disposition, so browsers render
+ * the PDF in-place rather than forcing a download.
+ */
+export const viewPdf = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+    const result = await MaterialService.getPdfViewUrl(req.params.id);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * DELETE /api/v1/materials/:id
  * Delete a material (admin only)
  */
@@ -161,6 +188,9 @@ export const deleteMaterial = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageMaterial(user, req.params.id);
+
     await MaterialService.deleteMaterial(req.params.id);
     res.json({ success: true, message: "Material deleted" });
   } catch (error) {

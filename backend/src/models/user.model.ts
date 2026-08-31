@@ -1,5 +1,5 @@
 /**
- * Student (User) Model
+ * User Model
  * Primary user model with secure password handling and refresh token storage
  *
  * Security features:
@@ -26,7 +26,7 @@ const MAX_REFRESH_TOKENS = 5; // Limit concurrent sessions
 
 export interface IStudent extends Document {
   _id: Types.ObjectId;
-  studentId: string; // e.g., "2230001 or similar format"
+  studentId?: string; // Required only for students
   email: string;
   name: string;
   surname: string;
@@ -35,6 +35,13 @@ export interface IStudent extends Document {
   refreshTokens: StoredRefreshToken[];
   isActive: boolean;
   lastLogin?: Date;
+  bio?: string;
+  skills: string[];
+  interests: string[];
+  department?: string;
+  programme?: string;
+  profilePictureUrl?: string;
+  profilePicturePublicId?: string;
   createdAt: Date;
   updatedAt: Date;
 
@@ -68,8 +75,8 @@ const StudentSchema: Schema<IStudent> = new Schema(
   {
     studentId: {
       type: String,
-      required: [true, "Student ID is required"],
       unique: true,
+      sparse: true,
       trim: true,
       index: true,
       // Format: STU-YYYY-NNN or similar
@@ -119,10 +126,17 @@ const StudentSchema: Schema<IStudent> = new Schema(
     lastLogin: {
       type: Date,
     },
+    bio: { type: String, trim: true, maxlength: 1000 },
+    skills: { type: [String], default: [], maxlength: 30 },
+    interests: { type: [String], default: [], maxlength: 30 },
+    department: { type: String, trim: true, maxlength: 150 },
+    programme: { type: String, trim: true, maxlength: 150 },
+    profilePictureUrl: { type: String, trim: true },
+    profilePicturePublicId: { type: String, trim: true },
   },
   {
     timestamps: true,
-    collection: "students",
+    collection: "users",
     toJSON: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       transform: (_doc: any, ret: any) => {
@@ -140,7 +154,7 @@ const StudentSchema: Schema<IStudent> = new Schema(
 // ============================================
 
 StudentSchema.index({ email: 1, isActive: 1 });
-StudentSchema.index({ studentId: 1, isActive: 1 });
+StudentSchema.index({ studentId: 1, isActive: 1 }, { sparse: true });
 StudentSchema.index({ "refreshTokens.tokenId": 1 });
 
 // ============================================
@@ -291,8 +305,8 @@ interface StudentModel extends Model<IStudent> {
 }
 
 const Student: StudentModel =
-  (mongoose.models.Student as StudentModel) ||
-  mongoose.model<IStudent, StudentModel>("Student", StudentSchema);
+  (mongoose.models.User as StudentModel) ||
+  mongoose.model<IStudent, StudentModel>("User", StudentSchema);
 
 export default Student;
 

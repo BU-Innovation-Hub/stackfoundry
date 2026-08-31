@@ -1,30 +1,75 @@
 // ============================================
 // Admin Service Layer
-// Connected to backend API. Courses remain mock.
+// Connected to backend API. All data is live — no mock fallbacks.
 // ============================================
 
 import { Member, Event, Course, DashboardStats } from '../types/admin';
 import { BlogPost, IBlog } from '../types/blog';
-import { mockCourses } from './mockData';
 import { api as apiClient } from './apiClient';
-
-// Simulate async delay (only for mock courses)
-const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
+import { RoleName } from '../types/auth';
+import { LmsCourse } from '../types/lms';
 
 // ---- Dashboard ----
-export const getDashboardStats = async (): Promise<DashboardStats> => {
+
+/**
+ * Map a live LMS course (with real enrolledCount from the backend) to the
+ * legacy admin Course shape used by the dashboard's "Popular Courses" card.
+ * Fields the LMS backend does not track (language, completionRate, etc.)
+ * are filled with honest defaults — never fabricated numbers.
+ */
+const mapLmsCourseToAdminCourse = (c: LmsCourse): Course => ({
+  id: c._id,
+  title: c.title,
+  description: c.description || '',
+  coverImage: c.coverImage || '',
+  language: '',
+  framework: undefined,
+  level: 'beginner',
+  duration: 0,
+  lessons: [],
+  quiz: [],
+  enrolledCount: c.enrolledCount ?? 0,
+  completionRate: 0,
+  status: 'published',
+  createdAt: c.createdAt,
+  updatedAt: c.updatedAt,
+});
+
+export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats> => {
+  if (role === 'mentor' || role === 'system_admin') {
+    const response = await apiClient.get('/admin/dashboard');
+    const stats = response.data?.data?.stats ?? {};
+    if (role === 'mentor') {
+      return {
+        totalCourses: stats.totalCourses || 0,
+        publishedCourses: stats.publishedCourses || 0,
+        popularCourses: [],
+      };
+    }
+    return {
+      totalMembers: stats.totalUsers || 0,
+      activeMembers: stats.activeUsers || 0,
+      totalCourses: 0,
+      publishedCourses: 0,
+      recentRegistrations: [],
+      popularCourses: [],
+    };
+  }
   // Fetch real data from multiple endpoints in parallel
-  const [dashRes, blogStatsRes, eventStatsRes, membersRes] = await Promise.all([
+  const [dashRes, blogStatsRes, eventStatsRes, membersRes, coursesRes] = await Promise.all([
     apiClient.get('/admin/dashboard').catch(() => ({ data: { data: { stats: {} } } })),
     apiClient.get('/blogs/stats').catch(() => ({ data: { data: { total: 0, published: 0 } } })),
     apiClient.get('/events/stats').catch(() => ({ data: { data: { total: 0, upcoming: 0 } } })),
     apiClient.get('/admin/users?limit=4').catch(() => ({ data: { data: { users: [], pagination: { total: 0 } } } })),
+    apiClient.get('/courses').catch(() => ({ data: { data: [] } })),
   ]);
 
   const adminStats = dashRes.data?.data?.stats ?? {};
   const blogStats = blogStatsRes.data.data;
-  const eventStats = eventStatsRes.data.data; 
-   const usersData = membersRes.data.data;
+  const eventStats = eventStatsRes.data.data;
+  const usersData = membersRes.data.data;
+  const liveCourses: LmsCourse[] = coursesRes.data.data || [];
+  const courses: Course[] = liveCourses.map(mapLmsCourseToAdminCourse);
 
   // Map backend users to Member type for recent registrations
   const recentMembers: Member[] = (usersData.users || []).map((u: any) => ({
@@ -46,22 +91,31 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     publishedBlogs: blogStats.published || 0,
     totalEvents: eventStats.total || 0,
     upcomingEvents: eventStats.upcoming || 0,
-    totalCourses: mockCourses.length,
-    publishedCourses: mockCourses.filter(c => c.status === 'published').length,
+    totalCourses: courses.length,
+    // The LMS has no draft/published concept — every persisted course is live
+    publishedCourses: courses.length,
     recentRegistrations: recentMembers,
-    popularCourses: mockCourses.filter(c => c.status === 'published').sort((a, b) => b.enrolledCount - a.enrolledCount).slice(0, 3),
+    // Real enrollment counts, highest first
+    popularCourses: [...courses].sort((a, b) => b.enrolledCount - a.enrolledCount).slice(0, 3),
   };
 };
 
 // ---- Members ----
 
 export interface CreateMemberData {
-  studentId: string;
+  studentId?: string;
   email: string;
   password: string;
   name: string;
   surname: string;
-  role: string;
+  role: RoleName;
+}
+
+export interface UpdateMemberData {
+  studentId?: string;
+  email?: string;
+  name?: string;
+  surname?: string;
 }
 
 /** Map backend user object to frontend Member shape */
@@ -77,9 +131,33 @@ const mapUserToMember = (user: any): Member => ({
   lastLogin: user.lastLogin,
 });
 
-export const getMembers = async (): Promise<Member[]> => {
-  const response = await apiClient.get('/admin/users?limit=100');
-  return (response.data.data.users || []).map((u: any) => ({
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
+  };
+}
+
+export const getMembers = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+} = {}): Promise<PaginatedResult<Member>> => {
+  const { page = 1, limit = 25, search = '', role = 'all', status = 'all' } = params;
+  const query: Record<string, string | number> = { page, limit, sort: '-createdAt' };
+  if (search.trim()) query.search = search.trim();
+  if (role && role !== 'all') query.role = role;
+  if (status && status !== 'all') query.status = status;
+
+  const response = await apiClient.get('/admin/users', { params: query });
+  const users = (response.data.data.users || []).map((u: any) => ({
     id: u._id,
     studentId: u.studentId,
     name: u.name,
@@ -90,6 +168,17 @@ export const getMembers = async (): Promise<Member[]> => {
     joinedAt: u.createdAt,
     lastLogin: u.lastLogin,
   }));
+  const pagination = response.data.data.pagination || {
+    page, limit, total: users.length, pages: users.length ? 1 : 0,
+  };
+  return {
+    data: users,
+    pagination: {
+      ...pagination,
+      hasNext: page * limit < pagination.total,
+      hasPrevious: page > 1,
+    },
+  };
 };
 
 export const createMember = async (data: CreateMemberData): Promise<Member> => {
@@ -98,12 +187,13 @@ export const createMember = async (data: CreateMemberData): Promise<Member> => {
 };
 
 export const updateMemberRole = async (id: string, role: Member['role']): Promise<Member> => {
-  // Backend doesn't have a role update endpoint yet — keep local update
-  const members = await getMembers();
-  const member = members.find(m => m.id === id);
-  if (!member) throw new Error('Member not found');
-  member.role = role;
-  return member;
+  const response = await apiClient.patch(`/admin/users/${id}/role`, { role });
+  return mapUserToMember(response.data.data);
+};
+
+export const updateMemberProfile = async (id: string, data: UpdateMemberData): Promise<Member> => {
+  const response = await apiClient.patch(`/admin/users/${id}/profile`, data);
+  return mapUserToMember(response.data.data);
 };
 
 export const toggleMemberStatus = async (id: string): Promise<Member> => {
@@ -126,8 +216,7 @@ export const toggleMemberStatus = async (id: string): Promise<Member> => {
 };
 
 export const deleteMember = async (id: string): Promise<void> => {
-  // Note: No backend delete endpoint yet — toggle inactive instead
-  await apiClient.patch(`/admin/users/${id}/toggle-active`);
+  await apiClient.delete(`/admin/users/${id}`);
 };
 
 // ---- Blogs ----
@@ -136,9 +225,30 @@ const mapBackendToBlogPost = (blog: IBlog): BlogPost => ({
   // We can keep an 'id' alias if needed, but components are being updated to use _id
 });
 
-export const getBlogs = async (): Promise<BlogPost[]> => {
-  const response = await apiClient.get('/blogs/admin');
-  return response.data.data.map(mapBackendToBlogPost);
+export const getBlogs = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+} = {}): Promise<PaginatedResult<BlogPost>> => {
+  const { page = 1, limit = 25, search = '', status = 'all' } = params;
+  const query: Record<string, string | number> = { page, limit };
+  if (search.trim()) query.search = search.trim();
+  if (status && status !== 'all') query.status = status;
+
+  const response = await apiClient.get('/blogs/admin', { params: query });
+  const blogs = (response.data.data || []).map(mapBackendToBlogPost);
+  const pagination = response.data.pagination || {
+    page, limit, total: blogs.length, pages: blogs.length ? 1 : 0,
+  };
+  return {
+    data: blogs,
+    pagination: {
+      ...pagination,
+      hasNext: page * limit < pagination.total,
+      hasPrevious: page > 1,
+    },
+  };
 };
 
 export const createBlog = async (data: any): Promise<BlogPost> => {
@@ -163,9 +273,30 @@ export const deleteBlog = async (id: string): Promise<void> => {
 };
 
 // ---- Events ----
-export const getEvents = async (): Promise<Event[]> => {
-  const response = await apiClient.get('/events/admin');
-  return response.data.data.map((e: any) => ({ ...e, id: e._id }));
+export const getEvents = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+} = {}): Promise<PaginatedResult<Event>> => {
+  const { page = 1, limit = 25, search = '', status = 'all' } = params;
+  const query: Record<string, string | number> = { page, limit };
+  if (search.trim()) query.search = search.trim();
+  if (status && status !== 'all') query.status = status;
+
+  const response = await apiClient.get('/events/admin', { params: query });
+  const events = (response.data.data || []).map((e: any) => ({ ...e, id: e._id }));
+  const pagination = response.data.pagination || {
+    page, limit, total: events.length, pages: events.length ? 1 : 0,
+  };
+  return {
+    data: events,
+    pagination: {
+      ...pagination,
+      hasNext: page * limit < pagination.total,
+      hasPrevious: page > 1,
+    },
+  };
 };
 
 export const createEvent = async (data: any): Promise<Event> => {
@@ -182,125 +313,4 @@ export const updateEvent = async (id: string, data: Partial<Event>): Promise<Eve
 
 export const deleteEvent = async (id: string): Promise<void> => {
   await apiClient.delete(`/events/${id}`);
-};
-
-// ---- Courses ----
-export const getCourses = async (): Promise<Course[]> => {
-  try {
-    const response = await apiClient.get('/courses');
-    const lmsCourses = response.data.data || [];
-    // Map LMS courses to the existing Course interface for backward compat
-    return lmsCourses.map((c: any) => ({
-      id: c._id,
-      title: c.title,
-      description: c.description || '',
-      coverImage: '',
-      language: '',
-      level: 'beginner' as const,
-      duration: 0,
-      lessons: [],
-      quiz: [],
-      enrolledCount: 0,
-      completionRate: 0,
-      status: 'published' as const,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    }));
-  } catch {
-    // Fallback to mock if API not ready
-    await delay();
-    return [...mockCourses];
-  }
-};
-
-export const createCourse = async (data: Omit<Course, 'id' | 'enrolledCount' | 'completionRate' | 'createdAt' | 'updatedAt'>): Promise<Course> => {
-  try {
-    const response = await apiClient.post('/courses', {
-      title: data.title,
-      description: data.description,
-    });
-    const c = response.data.data;
-    return {
-      id: c._id,
-      title: c.title,
-      description: c.description || '',
-      coverImage: data.coverImage || '',
-      language: data.language || '',
-      framework: data.framework,
-      level: data.level || 'beginner',
-      duration: data.duration || 0,
-      lessons: data.lessons || [],
-      quiz: data.quiz || [],
-      enrolledCount: 0,
-      completionRate: 0,
-      status: data.status || 'draft',
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    };
-  } catch {
-    // Fallback to mock
-    await delay();
-    const course: Course = {
-      ...data,
-      id: String(Date.now()),
-      enrolledCount: 0,
-      completionRate: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    mockCourses.push(course);
-    return course;
-  }
-};
-
-export const updateCourse = async (id: string, data: Partial<Course>): Promise<Course> => {
-  try {
-    const response = await apiClient.put(`/courses/${id}`, {
-      title: data.title,
-      description: data.description,
-    });
-    const c = response.data.data;
-    return {
-      id: c._id,
-      title: c.title,
-      description: c.description || '',
-      coverImage: data.coverImage || '',
-      language: data.language || '',
-      framework: data.framework,
-      level: data.level || 'beginner',
-      duration: data.duration || 0,
-      lessons: data.lessons || [],
-      quiz: data.quiz || [],
-      enrolledCount: data.enrolledCount || 0,
-      completionRate: data.completionRate || 0,
-      status: data.status || 'published',
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    };
-  } catch {
-    await delay();
-    const course = mockCourses.find(c => c.id === id);
-    if (!course) throw new Error('Course not found');
-    Object.assign(course, data, { updatedAt: new Date().toISOString() });
-    return { ...course };
-  }
-};
-
-export const deleteCourse = async (id: string): Promise<void> => {
-  try {
-    await apiClient.delete(`/courses/${id}`);
-  // } catch {
-  //   await delay();
-  //   const idx = mockCourses.findIndex(c => c.id === id);
-  //   if (idx !== -1) mockCourses.splice(idx, 1);
-   } catch (error: any) {
-    // Only fallback to mock for 404 (course backend not implemented)
-    if (error.response?.status === 404) {
-      await delay();
-      const idx = mockCourses.findIndex(c => c.id === id);
-      if (idx !== -1) mockCourses.splice(idx, 1);
-      return;
-    }
-    throw error;
-  }
 };

@@ -5,7 +5,7 @@
 
 import Material, { IMaterial } from "../models/material.model";
 import { extractVideoId, fetchYouTubeMetadata } from "./youtube.service";
-import { uploadPdf, generateSignedDownloadUrl, deletePdf } from "./cloudinary.service";
+import { uploadPdf, generateSignedDownloadUrl, generateSignedViewUrl, deletePdf } from "./cloudinary.service";
 import { ApiError } from "../middleware/errorHandler";
 // ============================================
 // Video Materials
@@ -122,6 +122,24 @@ export const getPdfDownloadUrl = async (
     throw new ApiError(500, "PDF resource missing");
 
   const url = generateSignedDownloadUrl(material.cloudinaryPublicId, 300);
+  return { url, originalName: material.pdfOriginalName || "document.pdf" };
+};
+
+/**
+ * Generate a signed URL for in-browser rendering of a PDF material
+ * Caller must verify enrollment and level unlock before calling this
+ * Uses inline disposition so browsers display the PDF instead of downloading it.
+ */
+export const getPdfViewUrl = async (
+  materialId: string
+): Promise<{ url: string; originalName: string }> => {
+  const material = await Material.findById(materialId);
+  if (!material) throw new ApiError(404, "Material not found");
+  if (material.type !== "pdf") throw new ApiError(400, "Material is not a PDF");
+  if (!material.cloudinaryPublicId)
+    throw new ApiError(500, "PDF resource missing");
+
+  const url = generateSignedViewUrl(material.cloudinaryPublicId, 300);
   return { url, originalName: material.pdfOriginalName || "document.pdf" };
 };
 

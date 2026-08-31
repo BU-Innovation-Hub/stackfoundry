@@ -13,7 +13,7 @@
 import { Router } from "express";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { requireAuth, requireCourseManagement } from "../../middleware/auth";
 import { requireEnrolled, requireLevelUnlocked } from "../../middleware/lms";
 import * as MaterialController from "../../controllers/material.controller";
 import {
@@ -56,7 +56,7 @@ const downloadLimiter = rateLimit({
 router.post(
   "/video",
   requireAuth,
-  requireAdmin,
+    requireCourseManagement,
   uploadLimiter,
   createVideoMaterialValidation,
   MaterialController.createVideoMaterial
@@ -66,7 +66,7 @@ router.post(
 router.post(
   "/pdf",
   requireAuth,
-  requireAdmin,
+    requireCourseManagement,
   uploadLimiter,
   pdfUpload.single("file"),
   uploadPdfMaterialValidation,
@@ -90,11 +90,22 @@ router.get(
   MaterialController.downloadPdf
 );
 
+// Auth + enrolled + level unlocked: view PDF inline in browser
+router.get(
+  "/:id/view",
+  requireAuth,
+  materialIdValidation,
+  requireEnrolled,
+  requireLevelUnlocked,
+  downloadLimiter,
+  MaterialController.viewPdf
+);
+
 // Admin: delete material
 router.delete(
   "/:id",
   requireAuth,
-  requireAdmin,
+    requireCourseManagement,
   materialIdValidation,
   MaterialController.deleteMaterial
 );

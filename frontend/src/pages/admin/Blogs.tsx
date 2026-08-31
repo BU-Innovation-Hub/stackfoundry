@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, Eye, X, Upload } from 'lucide-react';
+import { Plus, Edit3, Trash2, Eye, X, Upload, Search } from 'lucide-react';
 import { BlogPost, IBlog, CATEGORIES, BlogCategory } from '../../types/blog';
 import { getBlogs, createBlog, updateBlog, deleteBlog } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
 import Loader from '../../components/common/Loader';
+import Pagination, { PaginationMeta } from '../../components/common/Pagination';
 import styles from './Blogs.module.css';
 
 type BlogForm = {
@@ -19,26 +20,54 @@ type BlogForm = {
 };
 
 const emptyForm: BlogForm = { title: '', excerpt: '', content: '', author: '', featuredImage: '', tags: '', status: 'draft', category: 'technology', readTime: '5 min read' };
+const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
 
 const Blogs: React.FC = () => {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(emptyMeta);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<BlogForm>(emptyForm);
   const [filter, setFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [preview, setPreview] = useState<BlogPost | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = page) => {
     setLoading(true);
-    const data = await getBlogs();
-    setBlogs(data);
-    setLoading(false);
-  }, []);
+    try {
+      const result = await getBlogs({
+        page: targetPage,
+        limit,
+        search,
+        status: filter,
+      });
+      setBlogs(result.data);
+      setMeta(result.pagination);
+    } catch {
+      setBlogs([]);
+      setMeta(emptyMeta);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, search, filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const resetPage = () => setPage(1);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(resetPage, 350);
+  };
+
+  const handleTab = (t: string) => { setFilter(t); resetPage(); };
 
   const handleOpen = (blog?: BlogPost) => {
     if (blog) {
@@ -67,13 +96,12 @@ const Blogs: React.FC = () => {
     const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean);
     try {
       if (editId) {
-        const updated = await updateBlog(editId, { ...form, tags });
-        setBlogs(prev => prev.map(b => b._id === editId ? updated : b));
+        await updateBlog(editId, { ...form, tags });
       } else {
-        const created = await createBlog({ ...form, tags, authorName: form.author, views: 0, publishedAt: form.status === 'published' ? new Date().toISOString() : undefined });
-        setBlogs(prev => [...prev, created]);
+        await createBlog({ ...form, tags, authorName: form.author, views: 0, publishedAt: form.status === 'published' ? new Date().toISOString() : undefined });
       }
       handleClose();
+      load();
     } catch (error: any) {
       const details = error.response?.data?.details;
       const message = Array.isArray(details) ? details.join('\n') : (error.response?.data?.error || 'Failed to save blog post');
@@ -113,12 +141,12 @@ const Blogs: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this blog post?')) return;
     await deleteBlog(id);
-    setBlogs(prev => prev.filter(b => (b._id as string) !== id));
+    load();
   };
 
-  const filtered = filter === 'all' ? blogs : blogs.filter(b => b.status === filter);
+  const filtered = blogs;
 
-  if (loading) return <Loader text="Loading blogs..." />;
+  if (loading && blogs.length === 0) return <Loader text="Loading blogs..." />;
 
   return (
     <div className={styles.page}>
@@ -135,11 +163,20 @@ const Blogs: React.FC = () => {
       {/* Filters */}
       <div className={styles.tabs}>
         {['all', 'published', 'draft', 'archived'].map((t: string) => (
-          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => setFilter(t)}>
+          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => handleTab(t)}>
             {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-            <span className={styles.tabCount}>{t === 'all' ? blogs.length : blogs.filter((b: BlogPost) => b.status === t).length}</span>
+            {t === filter && meta.total > 0 && <span className={styles.tabCount}>{meta.total}</span>}
           </button>
         ))}
+        <div className={styles.searchBox}>
+          <Search size={15} />
+          <input
+            type="text"
+            placeholder="Search posts…"
+            value={search}
+            onChange={e => handleSearchChange(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Grid */}
@@ -167,6 +204,12 @@ const Blogs: React.FC = () => {
         ))}
         {filtered.length === 0 && <p className={styles.empty}>No blog posts found.</p>}
       </div>
+
+      <Pagination
+        meta={meta}
+        onPageChange={setPage}
+        onPageSizeChange={(l) => { setLimit(l); setPage(1); }}
+      />
 
       {/* Create / Edit Modal */}
       {modalOpen && (

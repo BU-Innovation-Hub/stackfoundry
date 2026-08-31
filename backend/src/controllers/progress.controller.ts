@@ -88,7 +88,7 @@ export const getProgress = async (
 
     // Admin can query other users' progress
     if (req.query.user && typeof req.query.user === "string") {
-      if (currentUser.role !== "admin" && currentUser.id !== req.query.user) {
+      if (!["system_admin", "innovation_hub_admin"].includes(currentUser.role) && currentUser.id !== req.query.user) {
         res.status(403).json({ success: false, error: "Access denied" });
         return;
       }

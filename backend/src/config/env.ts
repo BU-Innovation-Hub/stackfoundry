@@ -35,6 +35,18 @@ export interface Env {
   // YouTube
   YOUTUBE_API_KEY?: string;
 
+  // Email (SMTP for OTP emails)
+  EMAIL_SMTP_HOST?: string;
+  EMAIL_SMTP_PORT: number;
+  EMAIL_SMTP_USER?: string;
+  EMAIL_SMTP_PASS?: string;
+  EMAIL_FROM: string;
+
+  // Password Reset OTP
+  PASSWORD_RESET_OTP_TTL_MINUTES: number;
+  PASSWORD_RESET_OTP_MAX_ATTEMPTS: number;
+  PASSWORD_RESET_TOKEN_TTL_MINUTES: number;
+
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
@@ -78,7 +90,7 @@ export const loadEnv = (): Env => {
     // JWT
     JWT_ACCESS_SECRET,
     JWT_REFRESH_SECRET,
-    ACCESS_TOKEN_EXPIRES_IN: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
+    ACCESS_TOKEN_EXPIRES_IN: process.env.ACCESS_TOKEN_EXPIRES_IN || "24h",
     REFRESH_TOKEN_EXPIRES_IN: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
 
     // Cookies
@@ -97,12 +109,24 @@ export const loadEnv = (): Env => {
     // YouTube
     YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
 
+    // Email (SMTP for OTP emails)
+    EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST,
+    EMAIL_SMTP_PORT: Number(process.env.EMAIL_SMTP_PORT) || 587,
+    EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER,
+    EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS,
+    EMAIL_FROM: process.env.EMAIL_FROM || "StackFoundry <no-reply@stackfoundry.com>",
+
+    // Password Reset OTP
+    PASSWORD_RESET_OTP_TTL_MINUTES: Number(process.env.PASSWORD_RESET_OTP_TTL_MINUTES) || 10,
+    PASSWORD_RESET_OTP_MAX_ATTEMPTS: Number(process.env.PASSWORD_RESET_OTP_MAX_ATTEMPTS) || 5,
+    PASSWORD_RESET_TOKEN_TTL_MINUTES: Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES) || 15,
+
     // Rate Limiting
     RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
     RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 500,
 
     // Admin seed
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@botho.ac.bw",
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@bothouniversity.ac.bw",
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "Admin@123456",
   };
 };

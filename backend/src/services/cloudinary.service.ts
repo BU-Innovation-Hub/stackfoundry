@@ -76,6 +76,24 @@ export const generateSignedDownloadUrl = (
 };
 
 /**
+ * Generate a short-lived signed URL for in-browser PDF rendering.
+ * Same time-limited signing as the download URL, but with attachment:false so
+ * the browser displays the document inline rather than forcing a download.
+ */
+export const generateSignedViewUrl = (
+  publicId: string,
+  expiresInSeconds: number = 300
+): string => {
+  const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
+
+  return cloudinary.utils.private_download_url(publicId, "pdf", {
+    resource_type: "raw",
+    expires_at: expiresAt,
+    attachment: false,
+  });
+};
+
+/**
  * Get a direct Cloudinary URL for server-side streaming/proxying
  */
 export const getCloudinaryResourceUrl = (publicId: string): string => {

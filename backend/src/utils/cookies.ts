@@ -65,7 +65,9 @@ export const getRefreshTokenCookieOptions = (): CookieOptions => {
   return {
     ...getBaseCookieOptions(),
     maxAge: parseExpiryToMs(env.REFRESH_TOKEN_EXPIRES_IN),
-    path: "/api/auth", // Only sent to auth routes - minimizes exposure
+    // Scoped to the actual auth route prefix (/api/v1/auth/refresh) so the
+    // refresh request can receive the cookie. A narrower path than "/" limits exposure.
+    path: "/api/v1/auth",
   };
 };
 
@@ -131,7 +133,7 @@ export const clearAuthCookies = (res: Response): void => {
   // Clear refresh token (must use same path as when set)
   res.cookie(COOKIE_NAMES.REFRESH_TOKEN, "", {
     ...getClearCookieOptions(),
-    path: "/api/auth",
+    path: "/api/v1/auth",
   });
 };
 

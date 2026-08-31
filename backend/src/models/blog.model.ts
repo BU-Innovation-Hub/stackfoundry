@@ -91,7 +91,7 @@ const BlogSchema: Schema<IBlog> = new Schema(
     },
     author: {
       type: Schema.Types.ObjectId,
-      ref: "Student",
+      ref: "User",
       required: [true, "Author is required"],
       index: true,
     },

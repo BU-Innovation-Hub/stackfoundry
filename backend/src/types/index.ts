@@ -13,7 +13,12 @@ import { Types } from "mongoose";
 /**
  * Role names - used for authorization
  */
-export type RoleName = "student" | "admin" | "member" | "instructor";
+export type RoleName =
+  | "student"
+  | "system_admin"
+  | "innovation_hub_admin"
+  | "mentor"
+  | "member";
 
 /**
  * JWT Payload for Access Token
@@ -43,12 +48,13 @@ export interface RefreshTokenPayload {
  */
 export interface AuthUser {
   id: string;
-  studentId: string;
+  studentId?: string;
   email: string;
   name: string;
   surname: string;
   role: RoleName;
   roles: Types.ObjectId[];
+  roleNames?: RoleName[];
 }
 
 /**
@@ -89,7 +95,7 @@ export interface AuthResponse {
   message: string;
   user: {
     id: string;
-    studentId: string;
+    studentId?: string;
     email: string;
     name: string;
     surname: string;
@@ -124,7 +130,7 @@ export interface LoginBody {
  * Admin create user request body
  */
 export interface AdminCreateUserBody {
-  studentId: string;
+  studentId?: string;
   email: string;
   password: string;
   name: string;
@@ -137,6 +143,16 @@ export interface AdminCreateUserBody {
  */
 export interface AdminUpdateRoleBody {
   role: RoleName;
+}
+
+/**
+ * Admin update user profile request body (all fields optional)
+ */
+export interface AdminUpdateUserBody {
+  studentId?: string;
+  email?: string;
+  name?: string;
+  surname?: string;
 }
 
 /**
@@ -169,7 +185,7 @@ export interface StoredRefreshToken {
  */
 export interface UserDocument {
   _id: Types.ObjectId;
-  studentId: string;
+  studentId?: string;
   email: string;
   name: string;
   surname: string;
@@ -179,6 +195,13 @@ export interface UserDocument {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  bio?: string;
+  skills: string[];
+  interests: string[];
+  department?: string;
+  programme?: string;
+  profilePictureUrl?: string;
+  profilePicturePublicId?: string;
 }
 
 /**

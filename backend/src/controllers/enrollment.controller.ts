@@ -9,6 +9,7 @@ import { RequestWithUser } from "../types";
 import { ApiError } from "../middleware/errorHandler";
 import * as EnrollmentService from "../services/enrollment.service";
 import * as LevelService from "../services/level.service";
+import * as CourseService from "../services/course.service";
 
 // ============================================
 // Helpers
@@ -69,7 +70,7 @@ export const getUserEnrollments = async (
     // if (currentUser.id !== userId && currentUser.role !== "admin") {
     //   res.status(403).json({ success: false, error: "Access denied" });
     //   return;
-      if (String(currentUser.id) !== userId && currentUser.role !== "admin") {
+      if (String(currentUser.id) !== userId && !["system_admin", "innovation_hub_admin"].includes(currentUser.role)) {
       throw new ApiError(403, "Access denied");
     }
 
@@ -109,6 +110,9 @@ export const toggleLevelLock = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, id);
 
     // Get current level
     const currentLevel = await LevelService.getLevelById(id);
@@ -152,6 +156,9 @@ export const unlockLevelForAll = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, req.params.id);
+
     const result = await EnrollmentService.unlockLevelForAllStudents(
       req.params.id
     );

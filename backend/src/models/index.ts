@@ -3,7 +3,11 @@
  * Central export for all Mongoose models
  */
 
-export { default as Student, IStudent } from "./user.model";
+import User, { IStudent } from "./user.model";
+
+export { User, IStudent };
+// Temporary source-level alias while consumers migrate from Student to User.
+export { User as Student };
 export { default as Role, IRole } from "./role.model";
 export { default as Blog, IBlog, BlogCategory, BlogStatus } from "./blog.model";
 export { default as Event, IEvent, EventType, EventStatus } from "./event.model";

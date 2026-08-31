@@ -43,7 +43,7 @@ const router = Router();
 router.post(
   "/",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   createBlogValidation,
   BlogController.createBlog
 );
@@ -63,7 +63,7 @@ router.get("/", listBlogsValidation, BlogController.listBlogsPublic);
 router.get(
   "/admin",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   listBlogsValidation,
   BlogController.listBlogsAdmin
 );
@@ -76,7 +76,7 @@ router.get(
 router.get(
   "/stats",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   BlogController.getBlogStats
 );
 
@@ -106,7 +106,7 @@ router.get("/slug/:slug", blogSlugValidation, BlogController.getBlogBySlug);
 router.get(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   blogIdValidation,
   BlogController.getBlogById
 );
@@ -119,7 +119,7 @@ router.get(
 router.put(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   updateBlogValidation,
   BlogController.updateBlog
 );
@@ -132,7 +132,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   blogIdValidation,
   BlogController.deleteBlog
 );

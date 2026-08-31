@@ -40,4 +40,21 @@ export const authService = {
     const response = await api.post('/auth/change-password', data);
     return response.data;
   },
+
+  // ---- Password Reset (OTP) ----
+
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  verifyResetOtp: async (email: string, otp: string): Promise<{ resetToken: string }> => {
+    const response = await api.post('/auth/forgot-password/verify', { email, otp });
+    return { resetToken: response.data.data.resetToken };
+  },
+
+  resetPassword: async (token: string, newPassword: string, confirmNewPassword: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/reset-password', { token, newPassword, confirmNewPassword });
+    return response.data;
+  },
 };

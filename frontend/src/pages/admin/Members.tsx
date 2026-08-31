@@ -1,52 +1,59 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield, UserPlus } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Search, MoreVertical, UserCheck, UserX, Trash2, Shield, UserPlus, Pencil } from 'lucide-react';
 import { Member } from '../../types/admin';
 import { getMembers, updateMemberRole, toggleMemberStatus, deleteMember } from '../../services/adminService';
 import Loader from '../../components/common/Loader';
+import Pagination, { PaginationMeta } from '../../components/common/Pagination';
 import CreateMemberModal from './CreateMember';
+import EditMemberModal from './EditMember';
 import styles from './Members.module.css';
+
+const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
 
 const Members: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
-  const [filtered, setFiltered] = useState<Member[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(emptyMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState<Member | null>(null);
   const [actionError, setActionError] = useState<string>('');
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = page) => {
     setLoading(true);
     setActionError('');
     try {
-      const data = await getMembers();
-      setMembers(data);
+      const result = await getMembers({
+        page: targetPage,
+        limit,
+        search,
+        role: roleFilter,
+        status: statusFilter,
+      });
+      setMembers(result.data);
+      setMeta(result.pagination);
     } catch (err: any) {
       setActionError(err.response?.data?.error || 'Failed to load members');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, search, roleFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    let result = members;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(m =>
-        m.name.toLowerCase().includes(q) ||
-        m.surname.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.studentId.toLowerCase().includes(q)
-      );
-    }
-    if (roleFilter !== 'all') result = result.filter(m => m.role === roleFilter);
-    if (statusFilter !== 'all') result = result.filter(m => (statusFilter === 'active' ? m.isActive : !m.isActive));
-    setFiltered(result);
-  }, [members, search, roleFilter, statusFilter]);
+  const resetPage = () => setPage(1);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(resetPage, 350);
+  };
 
   const handleRoleChange = async (id: string, role: Member['role']) => {
     setActionError('');
@@ -77,20 +84,20 @@ const Members: React.FC = () => {
     setActionError('');
     try {
       await deleteMember(id);
-      setMembers(prev => prev.filter(m => m.id !== id));
+      load();
     } catch (err: any) {
       setActionError(err.response?.data?.error || 'Failed to delete member');
     }
     setOpenMenu(null);
   };
 
-  const handleMemberCreated = (member: Member) => {
-    setMembers(prev => [member, ...prev]);
-  };
+  const handleMemberCreated = () => { load(); };
+  const handleMemberUpdated = () => { load(); };
 
-  const roles: Member['role'][] = ['student', 'member', 'instructor', 'admin'];
+  // system_admin is intentionally excluded — it cannot be assigned via role management
+  const roles: Member['role'][] = ['student', 'innovation_hub_admin', 'mentor', 'member'];
 
-  if (loading) return <Loader text="Loading members..." />;
+  if (loading && members.length === 0) return <Loader text="Loading members..." />;
 
   return (
     <div className={styles.page}>
@@ -116,6 +123,14 @@ const Members: React.FC = () => {
         />
       )}
 
+      {editTarget && (
+        <EditMemberModal
+          member={editTarget}
+          onClose={() => setEditTarget(null)}
+          onUpdated={handleMemberUpdated}
+        />
+      )}
+
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
@@ -124,18 +139,19 @@ const Members: React.FC = () => {
             type="text"
             placeholder="Search by name, email, or student ID…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearchChange(e.target.value)}
           />
         </div>
         <div className={styles.filters}>
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+          <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); resetPage(); }}>
             <option value="all">All Roles</option>
             <option value="student">Student</option>
             <option value="member">Member</option>
-            <option value="instructor">Instructor</option>
-            <option value="admin">Admin</option>
+            <option value="system_admin">System Administrator</option>
+            <option value="innovation_hub_admin">Innovation Hub Administrator</option>
+            <option value="mentor">Mentor</option>
           </select>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); resetPage(); }}>
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -144,7 +160,7 @@ const Members: React.FC = () => {
       </div>
 
       {/* Count */}
-      <p className={styles.count}>{filtered.length} member{filtered.length !== 1 ? 's' : ''} found</p>
+      <p className={styles.count}>{meta.total} member{meta.total !== 1 ? 's' : ''} found</p>
 
       {/* Table */}
       <div className={styles.tableWrapper}>
@@ -161,7 +177,7 @@ const Members: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(m => (
+            {members.map(m => (
               <tr key={m.id}>
                 <td>
                   <div className={styles.memberCell}>
@@ -172,7 +188,7 @@ const Members: React.FC = () => {
                     </div>
                   </div>
                 </td>
-                <td className={styles.mono}>{m.studentId}</td>
+                <td className={styles.mono}>{m.studentId || '—'}</td>
                 <td>
                   <span className={`${styles.roleBadge} ${styles[`role_${m.role}`]}`}>
                     {m.role}
@@ -200,6 +216,10 @@ const Members: React.FC = () => {
                         ))}
                       </div>
                       <div className={styles.dropdownDivider} />
+                      <button className={styles.dropdownItem} onClick={() => { setEditTarget(m); setOpenMenu(null); }}>
+                        <Pencil size={14} />
+                        Edit Profile
+                      </button>
                       <button className={styles.dropdownItem} onClick={() => handleToggleStatus(m.id)}>
                         {m.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
                         {m.isActive ? 'Deactivate' : 'Activate'}
@@ -213,12 +233,18 @@ const Members: React.FC = () => {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {members.length === 0 && (
               <tr><td colSpan={7} className={styles.empty}>No members match your criteria.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        meta={meta}
+        onPageChange={setPage}
+        onPageSizeChange={(l) => { setLimit(l); setPage(1); }}
+      />
     </div>
   );
 };
