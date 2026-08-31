@@ -75,6 +75,9 @@ export const loadEnv = (): Env => {
     if (!process.env.MONGO_URI) {
       throw new Error("MONGO_URI must be set in production!");
     }
+    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+     throw new Error("Admin credentials must be set in production!");
+    }
   }
 
   return {

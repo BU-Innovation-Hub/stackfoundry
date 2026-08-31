@@ -88,7 +88,11 @@ const StudentSchema: Schema<IStudent> = new Schema(
       lowercase: true,
       trim: true,
       index: true,
-      match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"],
+      match: [
+        // /^[A-Za-z0-9._%+-]+@bothouniversity\.com$/,
+        /^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@bothouniversity\.com$/,
+        "Email must be from @bothouniversity.com domain",
+      ],
     },
     name: {
       type: String,
