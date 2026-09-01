@@ -141,7 +141,7 @@ const EventSchema: Schema<IEvent> = new Schema(
         },
         author: {
             type: Schema.Types.ObjectId,
-            ref: "Student",
+            ref: "User",
             required: [true, "Author is required"],
             index: true,
         },

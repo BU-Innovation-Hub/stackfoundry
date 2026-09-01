@@ -193,6 +193,13 @@ export const lmsDownloadPdf = async (
   return res.data.data;
 };
 
+export const lmsViewPdf = async (
+  materialId: string
+): Promise<{ url: string; originalName: string }> => {
+  const res = await api.get(`/materials/${materialId}/view`);
+  return res.data.data;
+};
+
 export const lmsDeleteMaterial = async (id: string): Promise<void> => {
   await api.delete(`/materials/${id}`);
 };

@@ -100,6 +100,10 @@ export const updateCourse = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+
+    await CourseService.assertCanManageCourse(user, req.params.id);
+
     const { title, description, coverImage } = req.body;
     
     const updates: { title?: string; description?: string; coverImage?: string } = {};
@@ -124,6 +128,10 @@ export const deleteCourse = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+
+    await CourseService.assertCanManageCourse(user, req.params.id);
+
     await CourseService.deleteCourse(req.params.id);
     res.json({ success: true, message: "Course deleted" });
   } catch (error) {

@@ -10,15 +10,50 @@
  */
 
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import * as AuthController from "../../controllers/auth.controller";
 import { requireAuth } from "../../middleware/auth";
 import {
   registerValidation,
   loginValidation,
   changePasswordValidation,
+  forgotPasswordValidation,
+  verifyOtpValidation,
+  resetPasswordValidation,
 } from "../../utils/validation";
 
 const router = Router();
+
+// ============================================
+// Rate Limiters (brute-force protection for sensitive endpoints)
+// ============================================
+
+/** Generous-but-bounded: 5 OTP requests / 15 min / IP */
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many password reset requests. Please try again later." },
+});
+
+/** 10 OTP verifications / 15 min / IP */
+const verifyOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many verification attempts. Please try again later." },
+});
+
+/** 5 password resets / 15 min / IP */
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many password reset attempts. Please try again later." },
+});
 
 // ============================================
 // Public Routes (no authentication required)
@@ -80,6 +115,42 @@ router.post(
   requireAuth,
   changePasswordValidation,
   AuthController.changePassword
+);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request a 5-digit OTP for password reset (enumeration-safe)
+ * @access  Public
+ */
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  forgotPasswordValidation,
+  AuthController.forgotPassword
+);
+
+/**
+ * @route   POST /api/auth/forgot-password/verify
+ * @desc    Verify the 5-digit OTP and receive a single-use reset token
+ * @access  Public
+ */
+router.post(
+  "/forgot-password/verify",
+  verifyOtpLimiter,
+  verifyOtpValidation,
+  AuthController.verifyPasswordResetOtp
+);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Complete the password reset using the reset token
+ * @access  Public
+ */
+router.post(
+  "/reset-password",
+  resetPasswordLimiter,
+  resetPasswordValidation,
+  AuthController.resetPassword
 );
 
 export default router;

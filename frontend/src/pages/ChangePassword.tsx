@@ -1,58 +1,48 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
-import { authService, ChangePasswordData } from '../services/authService';
+import { ChevronLeft, MailCheck } from 'lucide-react';
+import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import OtpModal from '../components/common/OtpModal';
 import styles from './ChangePassword.module.css';
 
+const RESET_TOKEN_KEY = 'prf_reset_token';
+
+/**
+ * Change Password (authenticated users)
+ * Flow: click "Send Code" -> OTP emailed -> verify via OtpModal -> redirected to
+ * /reset-password to set the new password.
+ */
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user } = useAuth();
 
-  const [form, setForm] = useState<ChangePasswordData>({
-    currentPassword: '',
-    newPassword: '',
-    confirmNewPassword: '',
-  });
   const [error, setError] = useState('');
-  const [details, setDetails] = useState<string[]>([]);
-  const [success, setSuccess] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const email = user?.email || '';
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setDetails([]);
-    setSuccess('');
-
-    // Client-side confirmation match check
-    if (form.newPassword !== form.confirmNewPassword) {
-      setError('New password and confirmation do not match');
+  const handleSendCode = async () => {
+    if (!email) {
+      setError('Could not determine your account email. Please log in again.');
       return;
     }
-
-    setSubmitting(true);
+    setError('');
+    setSending(true);
     try {
-      const result = await authService.changePassword(form);
-      setSuccess(result.message || 'Password updated successfully.');
-      // After successful password change, force logout after a short delay
-      setTimeout(async () => {
-        await logout();
-        navigate('/login');
-      }, 2000);
+      await authService.requestPasswordReset(email);
+      setShowOtp(true);
     } catch (err: any) {
-      const data = err.response?.data;
-      setError(data?.error || 'Failed to change password');
-      if (Array.isArray(data?.details)) {
-        setDetails(data.details);
-      }
+      setError(err.response?.data?.error || 'Failed to send verification code. Please try again.');
     } finally {
-      setSubmitting(false);
+      setSending(false);
     }
+  };
+
+  const handleVerified = (resetToken: string) => {
+    sessionStorage.setItem(RESET_TOKEN_KEY, resetToken);
+    navigate('/reset-password', { state: { email } });
   };
 
   return (
@@ -70,73 +60,41 @@ const ChangePassword: React.FC = () => {
       <main className={styles.main}>
         <div className={styles.card}>
           <h2>Change Password</h2>
-          <p>Enter your current password and choose a new one.</p>
+          <p>
+            For your security, we'll email a 5-digit verification code to
+            {' '}<strong>{email || 'your account email'}</strong>.
+            Once verified, you'll be able to set a new password.
+          </p>
 
-          {error && (
-            <div className={styles.error}>
-              {error}
-              {details.length > 0 && (
-                <ul className={styles.errorList}>
-                  {details.map((d, i) => (
-                    <li key={i}>{d}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          {error && <div className={styles.error}>{error}</div>}
 
-          {success && <div className={styles.success}>{success}</div>}
+          <button
+            type="button"
+            className={styles.submitBtn}
+            onClick={handleSendCode}
+            disabled={sending}
+          >
+            {sending ? 'Sending code…' : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                <MailCheck size={16} />
+                Send Verification Code
+              </span>
+            )}
+          </button>
 
-          <form onSubmit={handleSubmit}>
-            <div className={styles.field}>
-              <label htmlFor="cp-current">Current Password</label>
-              <input
-                id="cp-current"
-                name="currentPassword"
-                type="password"
-                value={form.currentPassword}
-                onChange={handleChange}
-                required
-                autoFocus
-              />
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="cp-new">New Password</label>
-              <input
-                id="cp-new"
-                name="newPassword"
-                type="password"
-                value={form.newPassword}
-                onChange={handleChange}
-                required
-                minLength={8}
-              />
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="cp-confirm">Confirm New Password</label>
-              <input
-                id="cp-confirm"
-                name="confirmNewPassword"
-                type="password"
-                value={form.confirmNewPassword}
-                onChange={handleChange}
-                required
-                minLength={8}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className={styles.submitBtn}
-              disabled={submitting || !!success}
-            >
-              {submitting ? 'Updating…' : 'Update Password'}
-            </button>
-          </form>
+          <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.85rem', color: '#666' }}>
+            This will sign you out on all devices once your password is changed.
+          </p>
         </div>
       </main>
+
+      {showOtp && (
+        <OtpModal
+          email={email}
+          onClose={() => setShowOtp(false)}
+          onVerified={handleVerified}
+        />
+      )}
     </div>
   );
 };

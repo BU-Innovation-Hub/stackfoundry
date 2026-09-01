@@ -43,7 +43,7 @@ const CourseSchema: Schema<ICourse> = new Schema(
     },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "Student",
+      ref: "User",
       required: true,
     },
   },

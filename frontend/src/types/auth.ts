@@ -1,10 +1,24 @@
+export type RoleName =
+  | 'student'
+  | 'system_admin'
+  | 'innovation_hub_admin'
+  | 'mentor'
+  | 'member';
+
 export interface User {
   id: string;
-  studentId: string;
+  studentId?: string;
   email: string;
   name: string;
   surname: string;
-  role: 'student' | 'admin' | 'member' | 'instructor';
+  role: RoleName;
+  bio?: string;
+  skills?: string[];
+  interests?: string[];
+  department?: string;
+  programme?: string;
+  profilePicture?: string;
+  profilePictureUrl?: string;
 }
 
 export interface AuthResponse {

@@ -7,13 +7,13 @@
  */
 
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { requireAuth, requireCourseManagement } from "../../middleware/auth";
 import * as TopicController from "../../controllers/topic.controller";
 import { updateTopicValidation, topicIdValidation } from "../../utils/courseValidation";
 
 const router = Router();
 
-router.put("/:id", requireAuth, requireAdmin, updateTopicValidation, TopicController.updateTopic);
-router.delete("/:id", requireAuth, requireAdmin, topicIdValidation, TopicController.deleteTopic);
+router.put("/:id", requireAuth, requireCourseManagement, updateTopicValidation, TopicController.updateTopic);
+router.delete("/:id", requireAuth, requireCourseManagement, topicIdValidation, TopicController.deleteTopic);
 
 export default router;

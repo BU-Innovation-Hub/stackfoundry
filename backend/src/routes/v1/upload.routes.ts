@@ -5,7 +5,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import cloudinary from '../../config/cloudinary';
-import { requireAuth, requireAdmin } from '../../middleware/auth';
+import { requireAuth, requireContentManagement } from '../../middleware/auth';
+import { RequestWithUser } from '../../types';
+import * as ProfileService from '../../services/profile.service';
+import { recordAuditEvent } from '../../utils/audit';
 
 const router = Router();
 
@@ -30,9 +33,32 @@ const upload = multer({
  * Protected: admin only
  */
 router.post(
+    '/profile-picture',
+    requireAuth,
+    upload.single('image'),
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const file = (req as any).file;
+            if (!file) { res.status(400).json({ success: false, error: 'No image file provided' }); return; }
+            const result: any = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    { folder: 'innovation-hub/profiles', resource_type: 'image', transformation: [{ width: 512, height: 512, crop: 'fill', gravity: 'auto' }, { quality: 'auto', fetch_format: 'auto' }] },
+                    (error: any, uploadResult: any) => error ? reject(error) : resolve(uploadResult)
+                );
+                stream.end(file.buffer);
+            });
+            const user = (req as RequestWithUser).user;
+            const updated = await ProfileService.setProfilePicture(user.id, result.secure_url, result.public_id);
+            recordAuditEvent({ eventType: 'business', action: 'user.profile_picture_updated', actorId: user.id, targetType: 'User', targetId: user.id, success: true, requestId: res.getHeader('X-Request-Id')?.toString() });
+            res.json({ success: true, data: { url: updated.profilePictureUrl, publicId: updated.profilePicturePublicId } });
+        } catch (error) { next(error); }
+    }
+);
+
+router.post(
     '/image',
     requireAuth,
-    requireAdmin,
+    requireContentManagement,
     upload.single('image'),
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {

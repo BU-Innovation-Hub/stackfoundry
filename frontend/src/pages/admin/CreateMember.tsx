@@ -11,12 +11,12 @@ interface Props {
 }
 
 const INITIAL: CreateMemberData = {
-  studentId: '',
   email: '',
   password: '',
   name: '',
   surname: '',
   role: 'student',
+  studentId: '',
 };
 
 const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
@@ -96,6 +96,27 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
               </div>
             )}
 
+            <div className={styles.field}>
+              <label htmlFor="cm-role">Role</label>
+              <select
+                id="cm-role"
+                name="role"
+                value={form.role}
+                onChange={(e) => setForm(prev => ({
+                  ...prev,
+                  role: e.target.value as CreateMemberData['role'],
+                  studentId: e.target.value === 'student' ? prev.studentId : '',
+                }))}
+                required
+              >
+                <option value="student">Student</option>
+                <option value="system_admin">System Administrator</option>
+                <option value="innovation_hub_admin">Innovation Hub Administrator</option>
+                <option value="mentor">Mentor</option>
+                <option value="member">Member</option>
+              </select>
+            </div>
+
             <div className={styles.row}>
               <div className={styles.field}>
                 <label htmlFor="cm-name">Name</label>
@@ -120,7 +141,7 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
               </div>
             </div>
 
-            <div className={styles.field}>
+            {form.role === 'student' && <div className={styles.field}>
               <label htmlFor="cm-studentId">Student ID</label>
               <input
                 id="cm-studentId"
@@ -129,7 +150,7 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
                 onChange={handleChange}
                 required
               />
-            </div>
+            </div>}
 
             <div className={styles.field}>
               <label htmlFor="cm-email">Email</label>
@@ -157,21 +178,6 @@ const CreateMemberModal: React.FC<Props> = ({ onClose, onCreated }) => {
               />
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="cm-role">Role</label>
-              <select
-                id="cm-role"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                required
-              >
-                <option value="student">Student</option>
-                <option value="member">Member</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
           </div>
 
           <div className={styles.footer}>

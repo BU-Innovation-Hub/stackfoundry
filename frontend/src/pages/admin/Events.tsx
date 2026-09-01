@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search } from 'lucide-react';
 import { Event } from '../../types/admin';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
 import Loader from '../../components/common/Loader';
+import Pagination, { PaginationMeta } from '../../components/common/Pagination';
 import styles from './Events.module.css';
 
 type EventForm = {
@@ -20,6 +21,7 @@ type EventForm = {
 };
 
 const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', location: '', type: 'workshop', registrationLink: '', status: 'draft' };
+const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
 
 const typeColors: Record<Event['type'], string> = {
   workshop: '#2563eb',
@@ -30,22 +32,49 @@ const typeColors: Record<Event['type'], string> = {
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(emptyMeta);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [filter, setFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = page) => {
     setLoading(true);
-    const data = await getEvents();
-    setEvents(data);
-    setLoading(false);
-  }, []);
+    try {
+      const result = await getEvents({
+        page: targetPage,
+        limit,
+        search,
+        status: filter,
+      });
+      setEvents(result.data);
+      setMeta(result.pagination);
+    } catch {
+      setEvents([]);
+      setMeta(emptyMeta);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, search, filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const resetPage = () => setPage(1);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(resetPage, 350);
+  };
+
+  const handleTab = (t: string) => { setFilter(t); resetPage(); };
 
   const handleOpen = (event?: Event) => {
     if (event) {
@@ -105,23 +134,27 @@ const Events: React.FC = () => {
       // If eventDate not set, derive from date field
       eventDate: form.eventDate || form.date,
     };
-    if (editId) {
-      const updated = await updateEvent(editId, payload);
-      setEvents(prev => prev.map(e => e._id === editId ? updated : e));
-    } else {
-      const created = await createEvent(payload);
-      setEvents(prev => [...prev, created]);
+    try {
+      if (editId) {
+        await updateEvent(editId, payload);
+      } else {
+        await createEvent(payload);
+      }
+      handleClose();
+      load();
+    } catch (error: any) {
+      const message = error.response?.data?.error || 'Failed to save event';
+      alert(`Error: ${message}`);
     }
-    handleClose();
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this event?')) return;
     await deleteEvent(id);
-    setEvents(prev => prev.filter(e => e._id !== id));
+    load();
   };
 
-  const filtered = filter === 'all' ? events : events.filter(e => e.status === filter);
+  const filtered = events;
 
   const getStatusLabel = (status: Event['status']) => {
     switch (status) {
@@ -131,7 +164,7 @@ const Events: React.FC = () => {
     }
   };
 
-  if (loading) return <Loader text="Loading events..." />;
+  if (loading && events.length === 0) return <Loader text="Loading events..." />;
 
   return (
     <div className={styles.page}>
@@ -148,11 +181,20 @@ const Events: React.FC = () => {
       {/* Filters */}
       <div className={styles.tabs}>
         {['all', 'draft', 'published', 'archived'].map(t => (
-          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => setFilter(t)}>
+          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => handleTab(t)}>
             {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-            <span className={styles.tabCount}>{t === 'all' ? events.length : events.filter(e => e.status === t).length}</span>
+            {t === filter && meta.total > 0 && <span className={styles.tabCount}>{meta.total}</span>}
           </button>
         ))}
+        <div className={styles.searchBox}>
+          <Search size={15} />
+          <input
+            type="text"
+            placeholder="Search events…"
+            value={search}
+            onChange={e => handleSearchChange(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Grid */}
@@ -185,6 +227,12 @@ const Events: React.FC = () => {
           ))}
         {filtered.length === 0 && <p className={styles.empty}>No events found.</p>}
       </div>
+
+      <Pagination
+        meta={meta}
+        onPageChange={setPage}
+        onPageSizeChange={(l) => { setLimit(l); setPage(1); }}
+      />
 
       {/* Modal */}
       {modalOpen && (

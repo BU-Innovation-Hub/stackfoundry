@@ -32,7 +32,7 @@ export const requireEnrolled = async (
     }
 
     // Admins bypass enrollment check
-    if (user.role === "admin") {
+    if (["system_admin", "innovation_hub_admin"].includes(user.role)) {
       return next();
     }
 
@@ -106,7 +106,7 @@ export const requireLevelUnlocked = async (
     }
 
     // Admins bypass
-    if (user.role === "admin") {
+    if (["system_admin", "innovation_hub_admin"].includes(user.role)) {
       return next();
     }
 

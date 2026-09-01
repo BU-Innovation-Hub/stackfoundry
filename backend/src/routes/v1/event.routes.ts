@@ -43,7 +43,7 @@ const router = Router();
 router.post(
   "/",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   createEventValidation,
   EventController.createEvent
 );
@@ -63,7 +63,7 @@ router.get("/", listEventsValidation, EventController.listEventsPublic);
 router.get(
   "/admin",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   listEventsValidation,
   EventController.listEventsAdmin
 );
@@ -76,7 +76,7 @@ router.get(
 router.get(
   "/stats",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   EventController.getEventStats
 );
 
@@ -106,7 +106,7 @@ router.get("/slug/:slug", eventSlugValidation, EventController.getEventBySlug);
 router.get(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   eventIdValidation,
   EventController.getEventById
 );
@@ -119,7 +119,7 @@ router.get(
 router.put(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   updateEventValidation,
   EventController.updateEvent
 );
@@ -132,7 +132,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth,
-  requireRole(["admin"]),
+  requireRole(["innovation_hub_admin"]),
   eventIdValidation,
   EventController.deleteEvent
 );

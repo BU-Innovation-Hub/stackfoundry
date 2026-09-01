@@ -10,7 +10,7 @@
  */
 
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { requireAuth, requireCourseManagement } from "../../middleware/auth";
 import * as LevelController from "../../controllers/level.controller";
 import * as TopicController from "../../controllers/topic.controller";
 import * as EnrollmentController from "../../controllers/enrollment.controller";
@@ -25,20 +25,20 @@ const router = Router();
 
 // Level operations
 router.get("/:id", requireAuth, levelIdValidation, LevelController.getLevelById);
-router.put("/:id", requireAuth, requireAdmin, updateLevelValidation, LevelController.updateLevel);
-router.delete("/:id", requireAuth, requireAdmin, levelIdValidation, LevelController.deleteLevel);
+router.put("/:id", requireAuth, requireCourseManagement, updateLevelValidation, LevelController.updateLevel);
+router.delete("/:id", requireAuth, requireCourseManagement, levelIdValidation, LevelController.deleteLevel);
 
 // Admin: toggle lock status (updates level + all enrollments)
-router.patch("/:id/toggle-lock", requireAuth, requireAdmin, levelIdValidation, EnrollmentController.toggleLevelLock);
+router.patch("/:id/toggle-lock", requireAuth, requireCourseManagement, levelIdValidation, EnrollmentController.toggleLevelLock);
 
 // Admin: unlock level for all enrolled students (without changing lockedByDefault)
-router.patch("/:id/unlock-all", requireAuth, requireAdmin, levelIdValidation, EnrollmentController.unlockLevelForAll);
+router.patch("/:id/unlock-all", requireAuth, requireCourseManagement, levelIdValidation, EnrollmentController.unlockLevelForAll);
 
 // Topics nested under level
 router.post(
   "/:levelId/topics",
   requireAuth,
-  requireAdmin,
+  requireCourseManagement,
   createTopicValidation,
   TopicController.createTopic
 );

@@ -297,11 +297,91 @@ export const changePassword = async (
 
     // Clear cookies to force re-login with new password
     clearAuthCookies(res);
-    // Clear cookies to force re-login with new password
-    clearAuthCookies(res);
     res.status(200).json({
       success: true,
       message: "Password updated successfully. Please log in again.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================
+// Password Reset (OTP) Controllers
+// ============================================
+
+/**
+ * Request a password reset OTP (forgot password)
+ * POST /api/auth/forgot-password
+ * Enumeration-safe: always returns success even for unknown emails
+ */
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+
+    const { email } = req.body as { email: string };
+    await AuthService.requestPasswordReset(email);
+
+    res.status(200).json({
+      success: true,
+      message: "If an account exists for this email, a 5-digit reset code has been sent.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify a password reset OTP
+ * POST /api/auth/forgot-password/verify
+ * Returns a single-use reset token on success
+ */
+export const verifyPasswordResetOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+
+    const { email, otp } = req.body as { email: string; otp: string };
+    const { resetToken } = await AuthService.verifyPasswordResetOtp(email, otp);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified. You can now set a new password.",
+      data: { resetToken },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Complete the password reset
+ * POST /api/auth/reset-password
+ * Requires the single-use reset token issued after OTP verification
+ */
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+
+    const { token, newPassword } = req.body as { token: string; newPassword: string };
+    await AuthService.confirmPasswordReset(token, newPassword);
+
+    // Clear cookies in case the user has an existing session
+    clearAuthCookies(res);
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully. Please log in with your new password.",
     });
   } catch (error) {
     next(error);

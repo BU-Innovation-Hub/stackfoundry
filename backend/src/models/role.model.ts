@@ -1,6 +1,6 @@
 /**
  * Role Model
- * Defines user roles for authorization (student, admin, member, instructor)
+ * Defines the platform roles used by authorization.
  */
 
 import mongoose, { Schema, Document, Model } from "mongoose";
@@ -27,7 +27,7 @@ const RoleSchema: Schema<IRole> = new Schema(
       type: String,
       required: [true, "Role name is required"],
       unique: true,
-      enum: ["student", "admin", "member", "instructor"],
+       enum: ["student", "system_admin", "innovation_hub_admin", "mentor", "member"],
       lowercase: true,
       trim: true,
       index: true,

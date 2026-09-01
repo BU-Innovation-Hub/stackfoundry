@@ -33,7 +33,7 @@ const ProgressSchema: Schema<IProgress> = new Schema(
   {
     user: {
       type: Schema.Types.ObjectId,
-      ref: "Student",
+      ref: "User",
       required: [true, "User reference is required"],
       index: true,
     },

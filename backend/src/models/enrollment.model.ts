@@ -27,7 +27,7 @@ const EnrollmentSchema: Schema<IEnrollment> = new Schema(
   {
     user: {
       type: Schema.Types.ObjectId,
-      ref: "Student",
+      ref: "User",
       required: [true, "User reference is required"],
       index: true,
     },

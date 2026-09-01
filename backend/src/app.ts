@@ -12,6 +12,7 @@ import rateLimit from "express-rate-limit";
 import apiRouter from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { getEnv } from "./config/env";
+import { auditHttpRequest } from "./middleware/audit";
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use(express.json({ limit: "1mb" }));
 
 // URL encoded body parser
 app.use(express.urlencoded({ extended: true }));
+app.use(auditHttpRequest);
 
 // ============================================
 // Logging

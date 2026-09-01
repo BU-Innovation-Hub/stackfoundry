@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
-  Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
-  BookOpen, Play, Calendar, FileText, ArrowRight, Clock, Tag,
+   Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
+   BookOpen, Calendar, FileText, ArrowRight, Clock, Tag,
   Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers,
 } from 'lucide-react';
 import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMaterials, lmsGetProgress } from '../services/lmsService';
@@ -51,7 +51,7 @@ const Dashboard: React.FC = () => {
   const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
   const [courseTab, setCourseTab] = useState<'learning' | 'catalog'>('learning');
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'system_admin' || user?.role === 'innovation_hub_admin';
 
   /* -------- Fetch all data -------- */
   const fetchData = useCallback(async () => {
@@ -233,7 +233,7 @@ const Dashboard: React.FC = () => {
             <div className={styles.avatar}>{user?.name?.charAt(0)}{user?.surname?.charAt(0)}</div>
             <div>
               <p className={styles.profileName}>{user?.name} {user?.surname}</p>
-              <p className={styles.profileRole}>{user?.role === 'admin' ? 'Administrator' : `ID: ${user?.studentId}`}</p>
+              <p className={styles.profileRole}>{isAdmin ? 'Administrator' : `ID: ${user?.studentId || 'Not provided'}`}</p>
             </div>
           </div>
 
@@ -254,6 +254,7 @@ const Dashboard: React.FC = () => {
             {isAdmin && (
               <Link to="/admin" className={styles.sidebarLink}><Shield size={16} /> Admin Panel</Link>
             )}
+            <Link to="/profile" className={styles.sidebarLink}><User size={16} /> My Profile</Link>
             <Link to="/change-password" className={styles.sidebarLink}><KeyRound size={16} /> Change Password</Link>
           </div>
         </aside>

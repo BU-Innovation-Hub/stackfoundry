@@ -1,3 +1,5 @@
+import { RoleName } from './auth';
+
 // ============================================
 // Admin Dashboard Types
 // Easy to share with backend later
@@ -5,11 +7,11 @@
 
 export interface Member {
   id: string;
-  studentId: string;
+  studentId?: string;
   name: string;
   surname: string;
   email: string;
-  role: 'student' | 'admin' | 'member' | 'instructor';
+  role: RoleName;
   isActive: boolean;
   joinedAt: string;
   lastLogin?: string;
@@ -76,14 +78,14 @@ export interface Course {
 }
 
 export interface DashboardStats {
-  totalMembers: number;
-  activeMembers: number;
-  totalBlogs: number;
-  publishedBlogs: number;
-  totalEvents: number;
-  upcomingEvents: number;
+  totalMembers?: number;
+  activeMembers?: number;
+  totalBlogs?: number;
+  publishedBlogs?: number;
+  totalEvents?: number;
+  upcomingEvents?: number;
   totalCourses: number;
   publishedCourses: number;
-  recentRegistrations: Member[];
+  recentRegistrations?: Member[];
   popularCourses: Course[];
 }

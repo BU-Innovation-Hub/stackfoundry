@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../utils/emailValidation';
 import styles from './Login.module.css';
+import { ADMIN_ROLES, getRoleHome } from '../utils/roleRouting';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
@@ -34,15 +35,16 @@ const Login: React.FC = () => {
         email: normalizedEmail,
       });
       // Redirect back to the page the user came from (e.g., event registration)
-      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
-      if (redirectUrl) {
-        sessionStorage.removeItem('redirectAfterLogin');
-        navigate(redirectUrl);
-      } else if (loggedInUser.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+       const isAdminRole = ADMIN_ROLES.includes(loggedInUser.role);
+       const isAdminPath = redirectUrl?.startsWith('/admin');
+       if (redirectUrl && (!isAdminPath || isAdminRole)) {
+         sessionStorage.removeItem('redirectAfterLogin');
+         navigate(redirectUrl);
+       } else {
+         if (redirectUrl) sessionStorage.removeItem('redirectAfterLogin');
+         navigate(getRoleHome(loggedInUser.role));
+       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
@@ -91,7 +93,7 @@ const Login: React.FC = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="you@bothouniversity.com"
+                  placeholder="you@bothouniversity.ac.bw"
                   value={formData.email}
                   onChange={handleChange}
                   required

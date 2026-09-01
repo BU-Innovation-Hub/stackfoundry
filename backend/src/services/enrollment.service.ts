@@ -3,7 +3,6 @@
  * Business logic for enrolling students in courses and managing level unlocks
  */
 
-import mongoose from "mongoose";
 import Enrollment, { IEnrollment } from "../models/enrollment.model";
 import Level from "../models/level.model";
 import Course from "../models/course.model";
@@ -157,40 +156,20 @@ export const unlockNextLevel = async (
 
   if (!nextLevel) return { unlocked: false }; // No next level
 
-  // Use session for atomicity
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-
-    const enrollment = await Enrollment.findOne({
+  // Atomic, race-safe guarded addToSet: only modifies if the level isn't already unlocked
+  // Works on standalone, replica set, and sharded MongoDB (no transactions needed)
+  const result = await Enrollment.updateOne(
+    {
       user: userId,
       course: currentLevel.course,
-    }).session(session);
+      levelsUnlocked: { $ne: nextLevel._id },
+    },
+    { $addToSet: { levelsUnlocked: nextLevel._id } }
+  );
 
-    if (!enrollment) {
-      await session.abortTransaction();
-      return { unlocked: false };
-    }
-
-    // Check if already unlocked
-    const alreadyUnlocked = enrollment.levelsUnlocked.some(
-      (id) => id.toString() === nextLevel._id.toString()
-    );
-
-    if (alreadyUnlocked) {
-      await session.abortTransaction();
-      return { unlocked: false };
-    }
-
-    enrollment.levelsUnlocked.push(nextLevel._id);
-    await enrollment.save({ session });
-
-    await session.commitTransaction();
-    return { unlocked: true, nextLevel };
-  } catch (err) {
-    await session.abortTransaction();
-    throw err;
-  } finally {
-    session.endSession();
+  if (result.modifiedCount === 0) {
+    return { unlocked: false }; // Not enrolled or already unlocked
   }
+
+  return { unlocked: true, nextLevel };
 };

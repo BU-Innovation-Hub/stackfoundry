@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X, ScrollText } from 'lucide-react';
+import { RoleName } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
 import styles from './AdminLayout.module.css';
 
-const navItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/members', icon: Users, label: 'Members', end: false },
-  { to: '/admin/blogs', icon: FileText, label: 'Blogs', end: false },
-  { to: '/admin/events', icon: Calendar, label: 'Events', end: false },
-  { to: '/admin/courses', icon: BookOpen, label: 'Courses', end: false },
+const navItems: Array<{ to: string; icon: typeof LayoutDashboard; label: string; end: boolean; roles: RoleName[] }> = [
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true, roles: ['system_admin', 'innovation_hub_admin', 'mentor'] },
+  { to: '/admin/members', icon: Users, label: 'Manage Users', end: false, roles: ['system_admin', 'innovation_hub_admin'] },
+  { to: '/admin/audit-logs', icon: ScrollText, label: 'Audit Logs', end: false, roles: ['system_admin'] },
+  { to: '/admin/courses', icon: BookOpen, label: 'Courses', end: false, roles: ['innovation_hub_admin', 'mentor'] },
+  { to: '/admin/blogs', icon: FileText, label: 'Blogs', end: false, roles: ['innovation_hub_admin'] },
+  { to: '/admin/events', icon: Calendar, label: 'Events', end: false, roles: ['innovation_hub_admin'] },
 ];
 
 const AdminLayout: React.FC = () => {
@@ -38,7 +40,7 @@ const AdminLayout: React.FC = () => {
         </div>
 
         <nav className={styles.nav}>
-          {navItems.map(({ to, icon: Icon, label, end }) => (
+          {navItems.filter(item => user?.role && item.roles.includes(user.role)).map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}
               to={to}

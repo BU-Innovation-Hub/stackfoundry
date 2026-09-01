@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import {
   lmsGetCourse, lmsGetMaterials, lmsGetTopics, lmsGetProgress,
-  lmsUpdateProgress, lmsDownloadPdf, lmsGetMyEnrollments
+  lmsUpdateProgress, lmsViewPdf, lmsDownloadPdf, lmsGetMyEnrollments
 } from '../services/lmsService';
 import { LmsCourse, LmsLevel, LmsTopic, LmsMaterial, LmsProgress, LmsEnrollment } from '../types/lms';
 import { useYouTubePlayer, PlayerState } from '../hooks/useYouTubePlayer';
@@ -45,6 +45,9 @@ const CourseLearn: React.FC = () => {
   const [expandedLevel, setExpandedLevel] = useState<string | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
   const [seekBlockedToast, setSeekBlockedToast] = useState<string | null>(null);
+  const [pdfView, setPdfView] = useState<{ url: string; materialId: string } | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
 
   // Get initial maxWatched from saved progress
   const initialMaxWatched = useMemo(() => {
@@ -178,7 +181,7 @@ const CourseLearn: React.FC = () => {
 
   /* -------- Helpers -------- */
   const isLevelUnlocked = (levelId: string): boolean => {
-    if (user?.role === 'admin') return true;
+    if (user?.role === 'system_admin' || user?.role === 'innovation_hub_admin') return true;
 
     // Levels with lockedByDefault === false are always available
     const level = levels.find(l => l._id === levelId);
@@ -220,20 +223,40 @@ const CourseLearn: React.FC = () => {
     setSelectedMaterial(material);
   };
 
+  /**
+   * Open a PDF in the in-app viewer. Loading/opening the document marks it
+   * as complete (per product requirement). Uses a separate view endpoint that
+   * returns a short-lived signed URL with inline disposition.
+   */
+  const handleViewPdf = async (materialId: string) => {
+    setPdfLoading(true);
+    setPdfError('');
+    try {
+      const { url } = await lmsViewPdf(materialId);
+      setPdfView({ url, materialId });
+
+      // Opening/loading the document marks it complete (if not already)
+      const existing = getMaterialProgress(materialId);
+      if (!existing?.completed) {
+        const result = await lmsUpdateProgress(materialId, 1);
+        setProgressMap(prev => ({ ...prev, [materialId]: result.progress }));
+        if (result.newLevelUnlocked) {
+          refreshEnrollment();
+        }
+      }
+    } catch (err: any) {
+      setPdfError(err?.response?.data?.error || 'Failed to open PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const handleDownloadPdf = async (materialId: string) => {
     try {
       const { url } = await lmsDownloadPdf(materialId);
       window.open(url, '_blank');
-
-      // Mark PDF as viewed
-      const result = await lmsUpdateProgress(materialId, 1);
-      setProgressMap(prev => ({ ...prev, [materialId]: result.progress }));
-
-      if (result.newLevelUnlocked) {
-        refreshEnrollment();
-      }
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Download failed');
+      setPdfError(err?.response?.data?.error || 'Download failed');
     }
   };
 
@@ -495,18 +518,66 @@ const CourseLearn: React.FC = () => {
 
                 {selectedMaterial.type === 'pdf' && (
                   <div className={styles.pdfSection}>
-                    <p>📄 {selectedMaterial.pdfOriginalName || 'PDF Document'}</p>
-                    {selectedMaterial.pdfSizeBytes && (
-                      <span className={styles.pdfSize}>
-                        {(selectedMaterial.pdfSizeBytes / 1024 / 1024).toFixed(1)} MB
-                      </span>
+                    <div className={styles.pdfHeader}>
+                      <div className={styles.pdfMeta}>
+                        <FileText size={18} className={styles.pdfIcon} />
+                        <div>
+                          <p className={styles.pdfTitle}>{selectedMaterial.pdfOriginalName || 'PDF Document'}</p>
+                          {selectedMaterial.pdfSizeBytes && (
+                            <span className={styles.pdfSize}>
+                              {(selectedMaterial.pdfSizeBytes / 1024 / 1024).toFixed(1)} MB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        className={styles.downloadBtn}
+                        onClick={() => handleDownloadPdf(selectedMaterial._id)}
+                      >
+                        <Download size={18} /> Download
+                      </button>
+                    </div>
+
+                    {pdfError && (
+                      <div className={styles.pdfError}>
+                        <AlertCircle size={18} /> {pdfError}
+                      </div>
                     )}
-                    <button
-                      className={styles.downloadBtn}
-                      onClick={() => handleDownloadPdf(selectedMaterial._id)}
-                    >
-                      <Download size={18} /> Download PDF
-                    </button>
+
+                    <div className={styles.pdfViewerWrap}>
+                      {pdfView?.materialId === selectedMaterial._id ? (
+                        <iframe
+                          className={styles.pdfViewer}
+                          title={selectedMaterial.title}
+                          src={pdfView.url}
+                          onLoad={() => setPdfLoading(false)}
+                        />
+                      ) : (
+                        <>
+                          {pdfLoading && (
+                            <div className={styles.pdfPlaceholder}>
+                              <Loader text="Loading PDF…" />
+                            </div>
+                          )}
+                          {!pdfLoading && (
+                            <div className={styles.pdfPlaceholder}>
+                              <FileText size={40} />
+                              <h3>Ready to read</h3>
+                              <p>Open the PDF to read it in the app</p>
+                              <button
+                                className={styles.openPdfBtn}
+                                onClick={() => handleViewPdf(selectedMaterial._id)}
+                              >
+                                <FileText size={18} /> Open PDF
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {pdfView?.materialId === selectedMaterial._id && pdfLoading && (
+                        <div className={styles.pdfLoadingOverlay}><Loader text="Loading PDF…" /></div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

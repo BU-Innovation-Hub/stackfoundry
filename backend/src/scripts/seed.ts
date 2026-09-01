@@ -1,6 +1,6 @@
 /**
  * Database Seed Script
- * Creates initial roles, admin account, and sample blogs
+ * Creates initial roles, demo accounts, and sample content
  *
  * Run with: npx ts-node src/scripts/seed.ts
  */
@@ -38,22 +38,66 @@ const ROLES = [
     description: "Member with additional access to community features",
   },
   {
-    name: "instructor" as const,
-    description: "Instructor who can create and manage course content",
+    name: "mentor" as const,
+    description: "Mentor who can support innovation hub users",
   },
   {
-    name: "admin" as const,
+    name: "system_admin" as const,
     description: "Administrator with full system access",
+  },
+  {
+    name: "innovation_hub_admin" as const,
+    description: "Innovation Hub administrator who manages hub operations",
   },
 ];
 
 const ADMIN_USER = {
   studentId: "ADMIN-001",
-  email: process.env.ADMIN_EMAIL || "admin@bothouniversity.com",
+  email: process.env.ADMIN_EMAIL || "admin@bothouniversity.ac.bw",
   password: process.env.ADMIN_PASSWORD || "Admin@123456",
   name: "System",
   surname: "Administrator",
 };
+
+const SEEDED_USERS = [
+  {
+    role: "system_admin" as const,
+    studentId: ADMIN_USER.studentId,
+    email: ADMIN_USER.email,
+    password: ADMIN_USER.password,
+    name: ADMIN_USER.name,
+    surname: ADMIN_USER.surname,
+  },
+  {
+    role: "innovation_hub_admin" as const,
+    email: process.env.INNOVATION_HUB_ADMIN_EMAIL || "hub.admin@bothouniversity.com",
+    password: process.env.INNOVATION_HUB_ADMIN_PASSWORD || "HubAdmin@123456",
+    name: "Innovation Hub",
+    surname: "Administrator",
+  },
+  {
+    role: "mentor" as const,
+    email: process.env.MENTOR_EMAIL || "mentor@bothouniversity.com",
+    password: process.env.MENTOR_PASSWORD || "Mentor@123456",
+    name: "Demo",
+    surname: "Mentor",
+  },
+  {
+    role: "student" as const,
+    studentId: "STU-DEMO-001",
+    email: process.env.STUDENT_EMAIL || "student@bothouniversity.com",
+    password: process.env.STUDENT_PASSWORD || "Student@123456",
+    name: "Demo",
+    surname: "Student",
+  },
+  {
+    role: "member" as const,
+    email: process.env.MEMBER_EMAIL || "member@bothouniversity.com",
+    password: process.env.MEMBER_PASSWORD || "Member@123456",
+    name: "Demo",
+    surname: "Member",
+  },
+];
 
 const SAMPLE_BLOGS = [
   {
@@ -356,40 +400,39 @@ async function seedRoles(): Promise<void> {
   }
 }
 
-async function seedAdminUser(): Promise<void> {
-  console.log("\n👤 Seeding admin user...");
+async function seedUsers(): Promise<void> {
+  console.log("\n👤 Seeding demo accounts...");
 
-  // Check if admin exists
-  const existingAdmin = await Student.findOne({ email: ADMIN_USER.email });
+  for (const userData of SEEDED_USERS) {
+    const existing = await Student.findOne({ email: userData.email });
+    if (existing) {
+      console.log(`   ✓ ${userData.role} account "${userData.email}" already exists`);
+      continue;
+    }
 
-  if (existingAdmin) {
-    console.log(`   ✓ Admin user "${ADMIN_USER.email}" already exists`);
-    return;
+    const role = await Role.findOne({ name: userData.role });
+    if (!role) throw new Error(`Role "${userData.role}" not found. Run role seed first.`);
+
+    if (userData.role === "innovation_hub_admin" && await Student.exists({ roles: role._id })) {
+      console.log("   ✓ An innovation hub admin already exists; skipping demo hub admin");
+      continue;
+    }
+
+    const passwordHash = await bcrypt.hash(userData.password, 12);
+    await Student.create({
+      studentId: userData.studentId,
+      email: userData.email.toLowerCase(),
+      name: userData.name,
+      surname: userData.surname,
+      passwordHash,
+      roles: [role._id],
+      refreshTokens: [],
+      isActive: true,
+    });
+    console.log(`   ✓ Created ${userData.role} account "${userData.email}"`);
+    console.log(`     Password: ${userData.password}`);
   }
-
-  // Get admin role
-  const adminRole = await Role.findOne({ name: "admin" });
-  if (!adminRole) {
-    throw new Error("Admin role not found. Run role seed first.");
-  }
-
-  // Hash password
-  const passwordHash = await bcrypt.hash(ADMIN_USER.password, 12);
-
-  // Create admin user
-  await Student.create({
-    studentId: ADMIN_USER.studentId,
-    email: ADMIN_USER.email,
-    name: ADMIN_USER.name,
-    surname: ADMIN_USER.surname,
-    passwordHash,
-    roles: [adminRole._id],
-    isActive: true,
-  });
-
-  console.log(`   ✓ Created admin user "${ADMIN_USER.email}"`);
-  console.log(`   ⚠️  Default password: ${ADMIN_USER.password}`);
-  console.log(`   ⚠️  CHANGE THIS PASSWORD IN PRODUCTION!`);
+  console.log("   ⚠️ Change seeded passwords outside development environments.");
 }
 
 async function seedBlogs(): Promise<void> {
@@ -594,7 +637,7 @@ async function main(): Promise<void> {
 
     // Run seeds
     await seedRoles();
-    await seedAdminUser();
+    await seedUsers();
     await seedBlogs();
     await seedEvents();
     await seedLMS();

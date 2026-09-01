@@ -7,6 +7,8 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import { ApiError } from "../middleware/errorHandler";
 import * as LevelService from "../services/level.service";
+import * as CourseService from "../services/course.service";
+import { RequestWithUser } from "../types";
 
 // ============================================
 // Helpers
@@ -36,6 +38,9 @@ export const createLevel = async (
     handleValidationErrors(req);
     const { courseId } = req.params;
     const { levelNumber, name, lockedByDefault } = req.body;
+
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageCourse(user, courseId);
 
     const level = await LevelService.createLevel({
       course: courseId,
@@ -97,6 +102,9 @@ export const updateLevel = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, req.params.id);
+
     const { name, levelNumber, lockedByDefault } = req.body;
     const level = await LevelService.updateLevel(req.params.id, {
       name,
@@ -120,6 +128,9 @@ export const deleteLevel = async (
 ): Promise<void> => {
   try {
     handleValidationErrors(req);
+    const user = (req as RequestWithUser).user;
+    await CourseService.assertCanManageLevel(user, req.params.id);
+
     await LevelService.deleteLevel(req.params.id);
     res.json({ success: true, message: "Level deleted" });
   } catch (error) {

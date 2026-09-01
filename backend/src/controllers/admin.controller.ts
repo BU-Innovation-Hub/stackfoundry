@@ -12,8 +12,9 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
 import * as AdminService from "../services/admin.service";
-import { AdminCreateUserBody, AdminUpdateRoleBody } from "../types";
+import { AdminCreateUserBody, AdminUpdateRoleBody, AdminUpdateUserBody } from "../types";
 import { ApiError } from "../middleware/errorHandler";
+import { RequestWithUser } from "../types";
 
 // ============================================
 // Helpers
@@ -50,12 +51,38 @@ export const createUser = async (
     handleValidationErrors(req);
 
     const body: AdminCreateUserBody = req.body;
-    const user = await AdminService.createUser(body);
+    const actor = (req as RequestWithUser).user;
+    const user = await AdminService.createUser(body, actor);
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update a user's profile (admin-only)
+ * PATCH /api/v1/admin/users/:id/profile
+ */
+export const updateUserProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    handleValidationErrors(req);
+
+    const body: AdminUpdateUserBody = req.body;
+    const result = await AdminService.updateUserProfile(req.params.id, body, (req as RequestWithUser).user);
+
+    res.status(200).json({
+      success: true,
+      message: "User profile updated successfully",
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -75,7 +102,7 @@ export const updateUserRole = async (
     handleValidationErrors(req);
 
     const { role }: AdminUpdateRoleBody = req.body;
-    const result = await AdminService.updateUserRole(req.params.id, role);
+    const result = await AdminService.updateUserRole(req.params.id, role, (req as RequestWithUser).user);
 
     res.status(200).json({
       success: true,
@@ -99,7 +126,7 @@ export const toggleUserActive = async (
   try {
     handleValidationErrors(req);
 
-    const result = await AdminService.toggleUserActive(req.params.id);
+    const result = await AdminService.toggleUserActive(req.params.id, (req as RequestWithUser).user);
 
     res.status(200).json({
       success: true,
@@ -123,7 +150,7 @@ export const deleteUser = async (
   try {
     handleValidationErrors(req);
 
-    await AdminService.deleteUser(req.params.id);
+    await AdminService.deleteUser(req.params.id, (req as RequestWithUser).user);
 
     res.status(200).json({
       success: true,
