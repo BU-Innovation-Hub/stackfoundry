@@ -38,10 +38,12 @@ export interface IStudent extends Document {
   bio?: string;
   skills: string[];
   interests: string[];
+  faculty?: string;
   department?: string;
   programme?: string;
   profilePictureUrl?: string;
   profilePicturePublicId?: string;
+  collaborationOptIn: boolean;
   createdAt: Date;
   updatedAt: Date;
 
@@ -133,10 +135,12 @@ const StudentSchema: Schema<IStudent> = new Schema(
     bio: { type: String, trim: true, maxlength: 1000 },
     skills: { type: [String], default: [], maxlength: 30 },
     interests: { type: [String], default: [], maxlength: 30 },
+    faculty: { type: String, trim: true, maxlength: 150, index: true },
     department: { type: String, trim: true, maxlength: 150 },
     programme: { type: String, trim: true, maxlength: 150 },
     profilePictureUrl: { type: String, trim: true },
     profilePicturePublicId: { type: String, trim: true },
+    collaborationOptIn: { type: Boolean, default: false, index: true },
   },
   {
     timestamps: true,

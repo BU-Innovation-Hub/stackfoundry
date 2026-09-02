@@ -5,6 +5,7 @@ dotenv.config();
 import app from "./app";
 import { loadEnv } from "./config/env";
 import { connectDatabase } from "./config/database";
+import { ensureInnovationClassifications } from "./services/innovation.service";
 
 const env = loadEnv();
 
@@ -14,6 +15,7 @@ let server: ReturnType<typeof app.listen> | undefined;
 connectDatabase(env.MONGO_URI)
   .then(() => {
     console.log(" Connected to MongoDB");
+    return ensureInnovationClassifications();
   })
   .catch((err) => {
     console.error(" Failed to connect to MongoDB:", err);

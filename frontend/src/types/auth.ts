@@ -15,8 +15,10 @@ export interface User {
   bio?: string;
   skills?: string[];
   interests?: string[];
+  faculty?: string;
   department?: string;
   programme?: string;
+  collaborationOptIn?: boolean;
   profilePicture?: string;
   profilePictureUrl?: string;
 }

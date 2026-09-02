@@ -55,6 +55,11 @@ export interface AuthUser {
   role: RoleName;
   roles: Types.ObjectId[];
   roleNames?: RoleName[];
+  faculty?: string;
+  department?: string;
+  skills?: string[];
+  interests?: string[];
+  collaborationOptIn?: boolean;
 }
 
 /**
@@ -198,10 +203,12 @@ export interface UserDocument {
   bio?: string;
   skills: string[];
   interests: string[];
+  faculty?: string;
   department?: string;
   programme?: string;
   profilePictureUrl?: string;
   profilePicturePublicId?: string;
+  collaborationOptIn: boolean;
 }
 
 /**

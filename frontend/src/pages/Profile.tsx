@@ -12,8 +12,10 @@ const emptyForm: ProfileUpdateData = {
   bio: '',
   skills: [],
   interests: [],
+  faculty: '',
   department: '',
   programme: '',
+  collaborationOptIn: false,
 };
 
 const Profile: React.FC = () => {
@@ -33,8 +35,10 @@ const Profile: React.FC = () => {
           bio: user.bio || '',
           skills: user.skills || [],
           interests: user.interests || [],
+          faculty: user.faculty || '',
           department: user.department || '',
           programme: user.programme || '',
+          collaborationOptIn: user.collaborationOptIn || false,
         });
       })
       .catch(err => setError(err.response?.data?.error || 'Failed to load your profile'))
@@ -110,9 +114,11 @@ const Profile: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <div className={styles.field}><label htmlFor="profile-bio">Bio</label><textarea id="profile-bio" value={form.bio} onChange={e => updateField('bio', e.target.value)} rows={4} placeholder="Tell the community a little about yourself" /></div>
             <div className={styles.grid}>
+              <div className={styles.field}><label htmlFor="profile-faculty">Faculty</label><input id="profile-faculty" value={form.faculty} onChange={e => updateField('faculty', e.target.value)} placeholder="Faculty or major division" /></div>
               <div className={styles.field}><label htmlFor="profile-department">Department</label><input id="profile-department" value={form.department} onChange={e => updateField('department', e.target.value)} /></div>
               <div className={styles.field}><label htmlFor="profile-programme">Programme</label><input id="profile-programme" value={form.programme} onChange={e => updateField('programme', e.target.value)} /></div>
             </div>
+            <label className={styles.field}><span>Collaboration preferences</span><span><input type="checkbox" checked={form.collaborationOptIn} onChange={e => setForm(prev => ({ ...prev, collaborationOptIn: e.target.checked }))} /> Allow authenticated users to find me as a collaborator</span></label>
             <div className={styles.grid}>
               <div className={styles.field}><label htmlFor="profile-skills">Skills</label><input id="profile-skills" value={form.skills.join(', ')} onChange={e => updateList('skills', e.target.value)} placeholder="React, Research, Design" /></div>
               <div className={styles.field}><label htmlFor="profile-interests">Interests</label><input id="profile-interests" value={form.interests.join(', ')} onChange={e => updateList('interests', e.target.value)} placeholder="Startups, AI, Community" /></div>

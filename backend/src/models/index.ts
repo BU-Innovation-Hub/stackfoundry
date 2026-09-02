@@ -19,3 +19,7 @@ export { default as Topic, ITopic } from "./topic.model";
 export { default as Material, IMaterial } from "./material.model";
 export { default as Enrollment, IEnrollment } from "./enrollment.model";
 export { default as Progress, IProgress } from "./progress.model";
+export {
+  InnovationCategory, DevelopmentStage, Idea, Feedback, Project, ProjectDiscussion,
+  ProjectFile, MentorProfile, MentorRequest, MentorshipSession, Showcase, Notification,
+} from "./innovation.model";

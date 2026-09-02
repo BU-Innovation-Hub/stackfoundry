@@ -5,7 +5,7 @@ import * as ProfileService from "../services/profile.service";
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const actor = (req as RequestWithUser).user;
-    const allowed = ["name", "surname", "email", "bio", "skills", "interests", "department", "programme"];
+    const allowed = ["name", "surname", "email", "bio", "skills", "interests", "faculty", "department", "programme", "collaborationOptIn"];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
     const user = await ProfileService.updateProfile(actor.id, updates);
     res.json({ success: true, data: user });

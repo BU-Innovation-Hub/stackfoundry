@@ -4,7 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
    Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
    BookOpen, Calendar, FileText, ArrowRight, Clock, Tag,
-  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers,
+   Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers, Lightbulb,
 } from 'lucide-react';
 import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMaterials, lmsGetProgress } from '../services/lmsService';
 import { LmsCourse, LmsEnrollment, LmsProgress } from '../types/lms';
@@ -248,6 +248,7 @@ const Dashboard: React.FC = () => {
                 <span>{item.label}</span>
               </button>
             ))}
+            {user?.role === 'student' && <Link to="/innovation" className={styles.navItem}><Lightbulb size={18} /><span>Innovation Workspace</span></Link>}
           </nav>
 
           <div className={styles.sidebarFooter}>

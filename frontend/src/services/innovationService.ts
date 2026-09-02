@@ -1,0 +1,48 @@
+import { api } from './apiClient';
+import { Collaborator, Discussion, Idea, InnovationClassification, Mentor, Notification, Project, Showcase, UploadResult } from '../types/innovation';
+
+type Envelope<T> = { data: T };
+const data = <T,>(response: { data: Envelope<T> }) => response.data.data;
+const root = '/innovation';
+export const innovationService = {
+  classifications: () => api.get<Envelope<{ categories: InnovationClassification[]; stages: InnovationClassification[] }>>(`${root}/categories-and-stages`).then(data),
+  createClassification: (type: 'categories' | 'stages', name: string) => api.post<Envelope<InnovationClassification>>(`${root}/categories-and-stages/${type}`, { name }).then(data),
+  updateClassification: (type: string, id: string, body: Partial<InnovationClassification>) => api.patch<Envelope<InnovationClassification>>(`${root}/categories-and-stages/${type}/${id}`, body).then(data),
+  ideas: (params?: Record<string, string>) => api.get<Envelope<Idea[]>>(`${root}/ideas`, { params }).then(data),
+  idea: (id: string) => api.get<Envelope<Idea>>(`${root}/ideas/${id}`).then(data),
+  createIdea: (body: Partial<Idea>) => api.post<Envelope<Idea>>(`${root}/ideas`, body).then(data),
+  updateIdea: (id: string, body: Partial<Idea>) => api.patch<Envelope<Idea>>(`${root}/ideas/${id}`, body).then(data),
+  submitIdea: (id: string) => api.post<Envelope<Idea>>(`${root}/ideas/${id}/submit`).then(data),
+  feedback: (id: string) => api.get<Envelope<any[]>>(`${root}/ideas/${id}/feedback`).then(data),
+  reviewIdea: (id: string, body: { status: string; note?: string }) => api.post<Envelope<Idea>>(`${root}/ideas/${id}/review`, body).then(data),
+  assignIdeaReviewer: (id: string, mentorId: string, note?: string) => api.post(`${root}/ideas/${id}/review-assignments`, { mentorId, note }).then(data),
+  reviewAssignments: (all = false) => api.get<Envelope<any[]>>(`${root}/review-assignments`, { params: all ? { all: 'true' } : undefined }).then(data),
+  addFeedback: (id: string, body: Record<string, any>) => api.post(`${root}/ideas/${id}/feedback`, body).then(data),
+  projects: (all = false) => api.get<Envelope<Project[]>>(`${root}/projects`, { params: all ? { all: 'true' } : undefined }).then(data),
+  invitations: () => api.get<Envelope<any[]>>(`${root}/invitations`).then(data),
+  project: (id: string) => api.get<Envelope<Project>>(`${root}/projects/${id}`).then(data),
+  createProject: (body: Partial<Project>) => api.post<Envelope<Project>>(`${root}/projects`, body).then(data),
+  invite: (id: string, email: string, role: string) => api.post<Envelope<Project>>(`${root}/projects/${id}/invitations`, { email, role }).then(data),
+  respondInvitation: (id: string, accepted: boolean) => api.post<Envelope<Project>>(`${root}/projects/${id}/invitations/respond`, { accepted }).then(data),
+  inviteIdeaMember: (id: string, email: string, role: string) => api.post<Envelope<Idea>>(`${root}/ideas/${id}/invitations`, { email, role }).then(data),
+  respondIdeaInvitation: (id: string, accepted: boolean) => api.post<Envelope<Idea>>(`${root}/ideas/${id}/invitations/respond`, { accepted }).then(data),
+  discussions: (id: string) => api.get<Envelope<Discussion[]>>(`${root}/projects/${id}/discussions`).then(data),
+  addDiscussion: (id: string, message: string) => api.post<Envelope<Discussion>>(`${root}/projects/${id}/discussions`, { message }).then(data),
+  files: (id: string) => api.get<Envelope<any[]>>(`${root}/projects/${id}/files`).then(data),
+  uploadProjectFile: (id: string, file: File) => { const form = new FormData(); form.append('file', file); return api.post<Envelope<any>>(`${root}/projects/${id}/files`, form).then(data); },
+  upload: (file: Blob, name: string) => { const form = new FormData(); form.append('file', file, name); return api.post<Envelope<UploadResult>>(`${root}/upload`, form).then(data); },
+  collaborators: (q?: string) => api.get<Envelope<Collaborator[]>>(`${root}/collaborators`, { params: q ? { q } : undefined }).then(data),
+  mentors: (expertise?: string, includePending = false) => api.get<Envelope<Mentor[]>>(`${root}/mentors`, { params: { ...(expertise ? { expertise } : {}), ...(includePending ? { includePending: 'true' } : {}) } }).then(data),
+  mentorProfile: (body: Record<string, any>) => api.post(`${root}/mentors/profile`, body).then(data),
+  approveMentor: (id: string, approved: boolean) => api.patch<Envelope<Mentor>>(`${root}/mentors/${id}/approval`, { approved }).then(data),
+  requestMentor: (id: string, message: string) => api.post(`${root}/mentors/${id}/requests`, { message }).then(data),
+  updateMentorRequest: (id: string, body: Record<string, any>) => api.patch(`${root}/mentor-requests/${id}`, body).then(data),
+  replyMentorRequest: (id: string, message: string) => api.post(`${root}/mentor-requests/${id}/replies`, { message }).then(data),
+  sessions: () => api.get<Envelope<any[]>>(`${root}/mentorship-sessions`).then(data),
+  sessionMessage: (id: string, message: string) => api.post(`${root}/mentorship-sessions/${id}/messages`, { message }).then(data),
+  showcase: () => api.get<Envelope<Showcase[]>>(`${root}/showcase`).then(data),
+  adminShowcase: () => api.get<Envelope<Showcase[]>>(`${root}/showcase/admin`).then(data),
+  updateShowcase: (id: string, body: { approved: boolean; published: boolean }) => api.patch<Envelope<Showcase>>(`${root}/showcase/${id}`, body).then(data),
+  notifications: () => api.get<Envelope<Notification[]>>(`${root}/notifications`).then(data),
+  readNotification: (id: string) => api.patch<Envelope<Notification>>(`${root}/notifications/${id}/read`).then(data),
+};
