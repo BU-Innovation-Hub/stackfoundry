@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../utils/emailValidation';
 import styles from './Register.module.css';
 
 const Register: React.FC = () => {
@@ -34,10 +35,17 @@ const Register: React.FC = () => {
       return;
     }
 
+    const normalizedEmail = formData.email.trim().toLowerCase();
+
+    if (!isBothoUniversityEmail(normalizedEmail)) {
+      setError(BOTHO_EMAIL_ERROR);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { confirmPassword, ...data } = formData;
-      await register(data);
+      await register({ ...data, email: normalizedEmail });
       // Redirect back to the page the user came from (e.g., event registration)
       const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
@@ -168,7 +176,7 @@ const Register: React.FC = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="your botho email"
+                  placeholder="you@bothouniversity.com"
                   value={formData.email}
                   onChange={handleChange}
                   required

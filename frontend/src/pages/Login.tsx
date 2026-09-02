@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../utils/emailValidation';
 import styles from './Login.module.css';
 import { ADMIN_ROLES, getRoleHome } from '../utils/roleRouting';
 
@@ -18,10 +19,21 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
+
+  const normalizedEmail = formData.email.trim().toLowerCase();
+
+  if (!isBothoUniversityEmail(normalizedEmail)) {
+      setError(BOTHO_EMAIL_ERROR);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const loggedInUser = await login(formData);
+      const loggedInUser = await login({
+        ...formData,
+        email: normalizedEmail,
+      });
       // Redirect back to the page the user came from (e.g., event registration)
        const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
        const isAdminRole = ADMIN_ROLES.includes(loggedInUser.role);

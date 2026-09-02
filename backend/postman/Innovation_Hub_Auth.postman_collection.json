@@ -84,7 +84,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"studentId\": \"STU-2024-001\",\n    \"email\": \"john.doe@student.botho.ac.bw\",\n    \"password\": \"SecurePass123\",\n    \"name\": \"John\",\n    \"surname\": \"Doe\"\n}"
+              "raw": "{\n    \"studentId\": \"STU-2024-001\",\n    \"email\": \"john.doe@bothouniversity.com\",\n    \"password\": \"SecurePass123\",\n    \"name\": \"John\",\n    \"surname\": \"Doe\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/register",
@@ -131,7 +131,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"john.doe@student.botho.ac.bw\",\n    \"password\": \"SecurePass123\"\n}"
+              "raw": "{\n    \"email\": \"john.doe@bothouniversity.com\",\n    \"password\": \"SecurePass123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/login",
@@ -172,7 +172,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"admin@botho.ac.bw\",\n    \"password\": \"Admin@123456\"\n}"
+              "raw": "{\n    \"email\": \"admin@bothouniversity.com\",\n    \"password\": \"Admin@123456\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/login",
@@ -613,7 +613,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"admin@botho.ac.bw\",\n    \"password\": \"wrongpassword\"\n}"
+              "raw": "{\n    \"email\": \"admin@bothouniversity.com\",\n    \"password\": \"wrongpassword\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/login",
