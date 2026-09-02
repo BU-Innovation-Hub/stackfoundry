@@ -37,6 +37,11 @@ interface SendMailOptions {
   text: string;
 }
 
+/** Generic transactional email used by domain notifications. */
+export const sendNotificationEmail = async (to: string, subject: string, text: string): Promise<void> => {
+  await sendMail({ to, subject, text });
+};
+
 const sendMail = async ({ to, subject, text }: SendMailOptions): Promise<void> => {
   const env = getEnv();
 

@@ -5,8 +5,10 @@ export interface ProfileUpdateData {
   bio: string;
   skills: string[];
   interests: string[];
+  faculty: string;
   department: string;
   programme: string;
+  collaborationOptIn: boolean;
 }
 
 export const profileService = {

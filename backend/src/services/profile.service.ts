@@ -10,8 +10,10 @@ export interface ProfileUpdates {
   bio?: string;
   skills?: string[];
   interests?: string[];
+  faculty?: string;
   department?: string;
   programme?: string;
+  collaborationOptIn?: boolean;
 }
 
 export const getProfile = async (id: string): Promise<IStudent> => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X, ScrollText } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X, ScrollText, Lightbulb, UserRound } from 'lucide-react';
 import { RoleName } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
 import styles from './AdminLayout.module.css';
@@ -12,6 +12,9 @@ const navItems: Array<{ to: string; icon: typeof LayoutDashboard; label: string;
   { to: '/admin/courses', icon: BookOpen, label: 'Courses', end: false, roles: ['innovation_hub_admin', 'mentor'] },
   { to: '/admin/blogs', icon: FileText, label: 'Blogs', end: false, roles: ['innovation_hub_admin'] },
   { to: '/admin/events', icon: Calendar, label: 'Events', end: false, roles: ['innovation_hub_admin'] },
+  { to: '/admin/innovation', icon: Lightbulb, label: 'Innovation Workspace', end: false, roles: ['innovation_hub_admin', 'mentor'] },
+  { to: '/admin/mentor-profile', icon: UserRound, label: 'MentorProfile', end: true, roles: ['mentor'] },
+  { to: '/admin/innovation/governance', icon: Lightbulb, label: 'Innovation governance', end: false, roles: ['system_admin'] },
 ];
 
 const AdminLayout: React.FC = () => {

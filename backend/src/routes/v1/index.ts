@@ -21,6 +21,7 @@ import materialRouter from "./material.routes";
 import enrollmentRouter from "./enrollment.routes";
 import progressRouter from "./progress.routes";
 import auditRouter from "./audit.routes";
+import innovationRouter from "./innovation.routes";
 
 const v1 = Router();
 
@@ -54,5 +55,7 @@ v1.use("/materials", materialRouter);
 v1.use("/", enrollmentRouter); // mounts /enroll and /enrollments/*
 v1.use("/progress", progressRouter);
 v1.use("/audit-logs", auditRouter);
+// Innovation Hub domain API
+v1.use("/innovation", innovationRouter);
 
 export default v1;

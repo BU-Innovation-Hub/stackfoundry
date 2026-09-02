@@ -20,6 +20,7 @@ const Navbar: React.FC = () => {
     { name: 'Founders', href: '/#founders' },
     { name: 'Blog', href: '/#blog' },
     { name: 'Contact', href: '/#contact' },
+    { name: 'Showcase', href: '/showcase' },
   ];
 
   return (
@@ -28,6 +29,7 @@ const Navbar: React.FC = () => {
         <Link to="/" className={styles.logo}>
           <span className={styles.logoText}>InHub</span>
           <span className={styles.logoAccent}>+</span>
+          <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>StackFoundry</span>
         </Link>
 
         <nav className={`${styles.nav} ${isMobileMenuOpen ? styles.open : ''}`}>
