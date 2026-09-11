@@ -25,17 +25,17 @@ const Collaborators: React.FC = () => {
         <button className={styles.button}><Search size={16} /> Search</button>
       </form>
       {loading ? <p className={styles.empty}>Searching...</p> : (
-        <div className={styles.ideaGrid}>
+        <div className={styles.projectGrid}>
           {items.length ? items.map(item => (
-            <div className={styles.ideaCard} key={item._id}>
-              <div className={styles.ideaCardHeader}>
+            <div className={styles.projectCard} key={item._id}>
+              <div className={styles.projectCardHeader}>
                 <span className={styles.badge}>Collaborator</span>
               </div>
-              <h3 className={styles.ideaCardTitle}>{item.name} {item.surname}</h3>
-              <p className={styles.ideaCardDesc}>{item.faculty || item.department || 'Innovation community member'}</p>
+              <h3 className={styles.projectCardTitle}>{item.name} {item.surname}</h3>
+              <p className={styles.projectCardDesc}>{item.faculty || item.department || 'Innovation community member'}</p>
               <p className={styles.muted}>{(item.skills || []).join(' \u00b7 ')}</p>
-              <div className={styles.ideaCardFooter}>
-                <span className={styles.ideaCardOwner}><Mail size={12} /> {item.email}</span>
+              <div className={styles.projectCardFooter}>
+                <span className={styles.projectCardOwner}><Mail size={12} /> {item.email}</span>
                 <a className={styles.manageBtn} href={`mailto:${item.email}`}>Contact</a>
               </div>
             </div>

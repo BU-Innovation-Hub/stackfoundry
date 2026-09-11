@@ -6,11 +6,12 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
-    "build": "tsc",
+    "dev": "ts-node --transpile-only src/server.ts",
+    "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc",
     "test": "jest",
-    "seed": "ts-node src/scripts/seed.ts",
-    "migrate:users": "ts-node src/scripts/migrate-users.ts"
+    "seed": "ts-node --transpile-only src/scripts/seed.ts",
+    "migrate:users": "ts-node --transpile-only src/scripts/migrate-users.ts",
+    "migrate:projects": "ts-node --transpile-only src/scripts/migrate-ideas-to-projects.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

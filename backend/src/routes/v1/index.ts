@@ -22,6 +22,9 @@ import enrollmentRouter from "./enrollment.routes";
 import progressRouter from "./progress.routes";
 import auditRouter from "./audit.routes";
 import innovationRouter from "./innovation.routes";
+import projectsRouter from "./projects.routes";
+import invitesRouter from "./invites.routes";
+import ideasLegacyRouter from "./ideas.routes";
 
 const v1 = Router();
 
@@ -57,5 +60,10 @@ v1.use("/progress", progressRouter);
 v1.use("/audit-logs", auditRouter);
 // Innovation Hub domain API
 v1.use("/innovation", innovationRouter);
+// GitHub-style Project repository API (new canonical surface)
+v1.use("/projects", projectsRouter);
+v1.use("/invites", invitesRouter);
+// Backward-compatible deprecation window: old /api/v1/ideas clients get 410 + pointer, never a silent break.
+v1.use("/ideas", ideasLegacyRouter);
 
 export default v1;

@@ -16,21 +16,21 @@ export const Showcase: React.FC = () => {
         <div className={styles.brand}>
           <div>
             <h1>Innovation showcase</h1>
-            <p>Ideas becoming real-world impact.</p>
+            <p>Projects becoming real-world impact.</p>
           </div>
         </div>
       </header>
       <main className={styles.main}>
-        <div className={styles.ideaGrid}>
+        <div className={styles.projectGrid}>
           {items.length ? items.map(s => (
-            <div className={styles.ideaCard} key={s._id}>
-              <div className={styles.ideaCardHeader}>
+            <div className={styles.projectCard} key={s._id}>
+              <div className={styles.projectCardHeader}>
                 <span className={styles.badge}>Showcase</span>
               </div>
-              <h3 className={styles.ideaCardTitle}>{s.title || s.idea?.title}</h3>
-              <p className={styles.ideaCardDesc}>{s.summary || s.idea?.solution || s.idea?.problem}</p>
-              <div className={styles.ideaCardFooter}>
-                <span className={styles.ideaCardOwner}>Published</span>
+              <h3 className={styles.projectCardTitle}>{s.title || s.project?.title}</h3>
+              <p className={styles.projectCardDesc}>{s.summary || s.project?.solution || s.project?.problem}</p>
+              <div className={styles.projectCardFooter}>
+                <span className={styles.projectCardOwner}>Published</span>
                 <Link className={styles.manageBtn} to={`/showcase/${s._id}`}>View</Link>
               </div>
             </div>
@@ -56,12 +56,12 @@ export const ShowcaseDetail: React.FC = () => {
           <>
             <Link to="/showcase" className={styles.homeLink}>Back to showcase</Link>
             <div className={styles.hero}>
-              <h2>{s.title || s.idea?.title}</h2>
-              <p>{s.summary || s.idea?.solution}</p>
+              <h2>{s.title || s.project?.title}</h2>
+              <p>{s.summary || s.project?.solution}</p>
             </div>
             <article className={styles.card}>
               <h3>The opportunity</h3>
-              <p>{s.idea?.problem}</p>
+              <p>{s.project?.problem}</p>
             </article>
           </>
         ) : (

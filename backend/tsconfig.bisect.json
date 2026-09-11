@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src/models/project.model.ts", "src/types/index.ts"],
+  "exclude": ["node_modules", "dist", "src/__tests__"]
+}

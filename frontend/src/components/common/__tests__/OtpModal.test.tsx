@@ -60,10 +60,8 @@ describe('OtpModal', () => {
     fireEvent.change(screen.getByLabelText(/5-digit verification code/i), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
 
-    await waitFor(() => {
-      expect(mockedAuth.verifyResetOtp).toHaveBeenCalledWith('user@bothouniversity.ac.bw', '12345');
-      expect(onVerified).toHaveBeenCalledWith('tok-123');
-    });
+    await waitFor(() => expect(mockedAuth.verifyResetOtp).toHaveBeenCalledWith('user@bothouniversity.ac.bw', '12345'));
+    await waitFor(() => expect(onVerified).toHaveBeenCalledWith('tok-123'));
   });
 
   it('shows an error and clears the input when verification fails', async () => {
@@ -76,10 +74,8 @@ describe('OtpModal', () => {
     fireEvent.change(input, { target: { value: '99999' } });
     fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText(/invalid otp/i)).toBeInTheDocument();
-      expect(input.value).toBe('');
-    });
+    expect(await screen.findByText(/invalid otp/i)).toBeInTheDocument();
+    expect(input.value).toBe('');
   });
 
   it('shows the resend cooldown instead of a resend button initially', () => {

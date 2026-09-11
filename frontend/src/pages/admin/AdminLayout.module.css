@@ -157,6 +157,10 @@
   flex-direction: column;
 }
 
+.workspaceLayout .main {
+  margin-left: 0;
+}
+
 .menuBtn {
   display: none;
   position: fixed;
@@ -175,6 +179,10 @@
 .content {
   flex: 1;
   padding: 2rem;
+}
+
+.workspaceLayout .content {
+  padding: 0;
 }
 
 /* ---- Overlay ---- */

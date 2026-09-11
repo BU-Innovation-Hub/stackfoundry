@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, Calendar, BookOpen, LogOut, Menu, X, ScrollText, Lightbulb, UserRound } from 'lucide-react';
 import { RoleName } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -19,8 +19,14 @@ const navItems: Array<{ to: string; icon: typeof LayoutDashboard; label: string;
 
 const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const isInnovationWorkspace =
+    location.pathname === '/admin/innovation' ||
+    ['/projects', '/my-projects', '/collaborators', '/mentors', '/mentorship', '/notifications']
+      .some(segment => location.pathname.startsWith(`/admin/innovation${segment}`));
 
   const handleLogout = async () => {
     await logout();
@@ -28,12 +34,12 @@ const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className={styles.layout}>
+    <div className={`${styles.layout} ${isInnovationWorkspace ? styles.workspaceLayout : ''}`}>
       {/* Mobile overlay */}
-      {sidebarOpen && <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />}
+      {!isInnovationWorkspace && sidebarOpen && <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
+      {!isInnovationWorkspace && <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHeader}>
           <span className={styles.brand}>TECH<span className={styles.brandAccent}>+</span></span>
           <span className={styles.brandSub}>Admin</span>
@@ -70,13 +76,13 @@ const AdminLayout: React.FC = () => {
             <span>Logout</span>
           </button>
         </div>
-      </aside>
+      </aside>}
 
       {/* Main content */}
       <div className={styles.main}>
-        <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
+        {!isInnovationWorkspace && <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
           <Menu size={22} />
-        </button>
+        </button>}
         <div className={styles.content}>
           <Outlet />
         </div>

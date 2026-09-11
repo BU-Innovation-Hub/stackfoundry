@@ -30,22 +30,13 @@ const IdeaSchema = new Schema({
 }, { timestamps: true });
 IdeaSchema.index({ title: "text", problem: "text", solution: "text" });
 
-const ProjectSchema = new Schema({
-  name: { type: String, required: true, trim: true }, description: String, owner: ref,
-  visibility: { type: String, enum: ["public", "private"], default: "private", index: true },
-  status: { type: String, enum: ["active", "archived"], default: "active" },
-  team: [{ user: ref, role: { type: String, enum: ["owner", "co_owner", "researcher", "developer", "designer", "business", "advisor", "viewer"] }, accepted: { type: Boolean, default: false }, invitedAt: { type: Date, default: Date.now } }],
-  collaborationRequired: { type: Boolean, default: true }, tags: stringArray,
-}, { timestamps: true });
-ProjectSchema.index({ name: "text", description: "text", tags: "text" });
-
 const DiscussionSchema = new Schema({ project: { type: Schema.Types.ObjectId, ref: "Project", required: true, index: true }, author: ref, parent: { type: Schema.Types.ObjectId, ref: "ProjectDiscussion", default: null }, message: { type: String, required: true }, createdAt: { type: Date, default: Date.now } });
 const FileSchema = new Schema({ project: { type: Schema.Types.ObjectId, ref: "Project", required: true }, uploadedBy: ref, name: String, mimeType: String, bytes: Number, publicId: { type: String, required: true }, resourceType: String, access: { type: String, enum: ["team", "owner"], default: "team" } }, { timestamps: true });
 
 const MentorProfileSchema = new Schema({ user: { ...ref, unique: true }, bio: String, expertise: stringArray, availability: String, approved: { type: Boolean, default: false, index: true }, approvedBy: { type: Schema.Types.ObjectId, ref: "User" }, approvedAt: Date }, { timestamps: true });
 const MentorRequestSchema = new Schema({ mentor: ref, requester: ref, message: String, status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" }, replies: [{ author: ref, message: String, at: { type: Date, default: Date.now } }], feedback: [FeedbackSchema], history: [{ status: String, by: ref, at: { type: Date, default: Date.now }, note: String }] }, { timestamps: true });
 const SessionSchema = new Schema({ mentor: ref, mentee: ref, request: { type: Schema.Types.ObjectId, ref: "MentorRequest" }, messages: [{ author: ref, message: String, at: { type: Date, default: Date.now } }], scheduledFor: Date, status: { type: String, enum: ["unscheduled", "scheduled", "complete", "cancelled"], default: "unscheduled" } }, { timestamps: true });
-const ShowcaseSchema = new Schema({ idea: { type: Schema.Types.ObjectId, ref: "Idea", required: true, unique: true }, title: String, summary: String, approved: { type: Boolean, default: false }, published: { type: Boolean, default: false }, approvedBy: { type: Schema.Types.ObjectId, ref: "User" }, publishedAt: Date }, { timestamps: true });
+const ShowcaseSchema = new Schema({ idea: { type: Schema.Types.ObjectId, ref: "Idea" }, project: { type: Schema.Types.ObjectId, ref: "Project", index: true }, title: String, summary: String, approved: { type: Boolean, default: false }, published: { type: Boolean, default: false }, approvedBy: { type: Schema.Types.ObjectId, ref: "User" }, publishedAt: Date }, { timestamps: true });
 const NotificationSchema = new Schema({ recipient: ref, type: String, title: String, message: String, link: String, readAt: Date, emailSentAt: Date, dueAt: Date }, { timestamps: true });
 NotificationSchema.index({ recipient: 1, readAt: 1, createdAt: -1 });
 
@@ -68,7 +59,6 @@ export const InnovationCategory = model("InnovationCategory", InnovationClassifi
 export const DevelopmentStage = model("DevelopmentStage", InnovationClassificationSchema);
 export const Idea = model("Idea", IdeaSchema);
 export const Feedback = model("Feedback", FeedbackSchema);
-export const Project = model("Project", ProjectSchema);
 export const ProjectDiscussion = model("ProjectDiscussion", DiscussionSchema);
 export const ProjectFile = model("ProjectFile", FileSchema);
 export const MentorProfile = model("MentorProfile", MentorProfileSchema);

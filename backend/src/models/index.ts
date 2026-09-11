@@ -20,6 +20,8 @@ export { default as Material, IMaterial } from "./material.model";
 export { default as Enrollment, IEnrollment } from "./enrollment.model";
 export { default as Progress, IProgress } from "./progress.model";
 export {
-  InnovationCategory, DevelopmentStage, Idea, Feedback, Project, ProjectDiscussion,
+  InnovationCategory, DevelopmentStage, Idea, Feedback, ProjectDiscussion,
   ProjectFile, MentorProfile, MentorRequest, MentorshipSession, Showcase, Notification,
 } from "./innovation.model";
+export { ReviewAssignment } from "./innovation.model";
+export { Project, ProjectInvite, Comment, Review } from "./project.model";

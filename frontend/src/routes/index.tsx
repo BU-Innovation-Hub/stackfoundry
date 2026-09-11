@@ -17,10 +17,8 @@ import Profile from '../pages/Profile';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import WorkspaceLayout from '../pages/innovation/WorkspaceLayout';
 import Overview from '../pages/innovation/Overview';
-import Ideas from '../pages/innovation/Ideas';
-import IdeaEditor from '../pages/innovation/IdeaEditor';
-import IdeaDetail from '../pages/innovation/IdeaDetail';
 import Projects from '../pages/innovation/Projects';
+import ProjectEditor from '../pages/innovation/ProjectEditor';
 import ProjectDetail from '../pages/innovation/ProjectDetail';
 import Collaborators from '../pages/innovation/Collaborators';
 import Mentors from '../pages/innovation/Mentors';
@@ -45,6 +43,22 @@ import Blogs from '../pages/admin/Blogs';
 import Events from '../pages/admin/Events';
 import Courses from '../pages/admin/Courses';
 import AuditLogs from '../pages/admin/AuditLogs';
+
+const innovationChildren = (
+  <>
+    <Route index element={<Overview />} />
+    <Route path="projects" element={<Projects />} />
+    <Route path="my-projects" element={<Projects mine />} />
+    <Route path="projects/new" element={<ProjectEditor />} />
+    <Route path="projects/:id" element={<ProjectDetail />} />
+    <Route path="projects/:id/edit" element={<ProjectEditor />} />
+    <Route path="collaborators" element={<Collaborators />} />
+    <Route path="mentors" element={<Mentors />} />
+    <Route path="mentors/:id" element={<MentorProfile />} />
+    <Route path="mentorship" element={<Mentorship />} />
+    <Route path="notifications" element={<Notifications />} />
+  </>
+);
 
 const AppRoutes: React.FC = () => (
   <BrowserRouter>
@@ -94,20 +108,8 @@ const AppRoutes: React.FC = () => (
           </ProtectedRoute>
         }
       />
-      <Route path="/innovation" element={<ProtectedRoute roles={['student', 'mentor', 'innovation_hub_admin', 'system_admin']}><WorkspaceLayout /></ProtectedRoute>}>
-        <Route index element={<Overview />} />
-        <Route path="ideas" element={<Ideas />} />
-        <Route path="my-ideas" element={<Ideas />} />
-        <Route path="ideas/new" element={<IdeaEditor />} />
-        <Route path="ideas/:id" element={<IdeaDetail />} />
-        <Route path="ideas/:id/edit" element={<IdeaEditor />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="projects/:id" element={<ProjectDetail />} />
-        <Route path="collaborators" element={<Collaborators />} />
-        <Route path="mentors" element={<Mentors />} />
-        <Route path="mentors/:id" element={<MentorProfile />} />
-        <Route path="mentorship" element={<Mentorship />} />
-        <Route path="notifications" element={<Notifications />} />
+      <Route path="/innovation" element={<ProtectedRoute roles={['student', 'member', 'mentor', 'innovation_hub_admin', 'system_admin']}><WorkspaceLayout /></ProtectedRoute>}>
+        {innovationChildren}
       </Route>
 
       {/* Admin routes — role-protected */}
@@ -128,18 +130,7 @@ const AppRoutes: React.FC = () => (
         <Route path="innovation/categories-and-stages" element={<ProtectedRoute roles={['system_admin','innovation_hub_admin']} unauthorizedTo="/admin"><ClassificationAdmin /></ProtectedRoute>} />
         <Route path="innovation/moderation" element={<ProtectedRoute roles={['system_admin','innovation_hub_admin']} unauthorizedTo="/admin"><InnovationModeration /></ProtectedRoute>} />
         <Route path="innovation" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><WorkspaceLayout /></ProtectedRoute>}>
-          <Route index element={<Overview />} />
-          <Route path="ideas" element={<Ideas />} />
-          <Route path="my-ideas" element={<Ideas />} />
-          <Route path="ideas/new" element={<IdeaEditor />} />
-          <Route path="ideas/:id" element={<IdeaDetail />} />
-          <Route path="ideas/:id/edit" element={<IdeaEditor />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="projects/:id" element={<ProjectDetail />} />
-          <Route path="collaborators" element={<Collaborators />} />
-          <Route path="mentors" element={<Mentors />} />
-          <Route path="mentorship" element={<Mentorship />} />
-          <Route path="notifications" element={<Notifications />} />
+          {innovationChildren}
         </Route>
         <Route path="innovation/governance" element={<ProtectedRoute roles={['system_admin']} unauthorizedTo="/admin"><InnovationGovernance /></ProtectedRoute>}>
           <Route index element={<Navigate to="categories-and-stages" replace />} />

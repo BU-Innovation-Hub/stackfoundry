@@ -10,10 +10,9 @@ const WorkspaceLayout: React.FC = () => {
   const base = location.pathname.startsWith('/admin/innovation') ? '/admin/innovation' : '/innovation';
   const links = [
     [base, 'Overview'],
-    [`${base}/ideas/new`, 'Submit Idea'],
-    [`${base}/my-ideas`, 'My Ideas'],
-    [`${base}/ideas`, 'Explore Ideas'],
-    [`${base}/projects`, 'Collaboration']
+    [`${base}/my-projects`, base === '/admin/innovation' ? 'Project' : 'My Projects'],
+    [`${base}/projects`, 'Explore'],
+    [`${base}/collaborators`, 'Collaborators'],
   ];
 
   const dashboardLink = user?.role === 'student' || user?.role === 'member' ? '/dashboard' : '/admin';
@@ -24,8 +23,11 @@ const WorkspaceLayout: React.FC = () => {
         <div className={styles.brand}>
           <div>
             <h1><Lightbulb size={25} /> Innovation workspace</h1>
-            <p>Turn promising ideas into meaningful impact.</p>
+            <p>Turn promising projects into meaningful impact.</p>
           </div>
+          <Link className={styles.dashboardLink} to={dashboardLink}>
+            <ArrowLeft size={16} /> Back to dashboard
+          </Link>
         </div>
         <nav className={styles.nav}>
           {links.map(([to, label]) => (
@@ -37,9 +39,6 @@ const WorkspaceLayout: React.FC = () => {
       </header>
       <main className={styles.main}>
         <Outlet />
-        <Link className={styles.homeLink} to={dashboardLink}>
-          <ArrowLeft size={16} /> Back to dashboard
-        </Link>
       </main>
     </div>
   );

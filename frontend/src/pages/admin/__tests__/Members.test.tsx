@@ -34,9 +34,7 @@ const openRowMenu = async () => {
   render(<Members />);
   // Wait for the table row to render, then open the row action menu
   await screen.findByText('alice@bothouniversity.ac.bw');
-  const menuButtons = screen.getAllByRole('button').filter(
-    (btn) => btn.querySelector('svg') && !btn.textContent?.trim()
-  );
+  const menuButtons = screen.getAllByRole('button', { name: '' });
   fireEvent.click(menuButtons[menuButtons.length - 1]);
 };
 
@@ -46,15 +44,12 @@ describe('Members page - role change dropdown', () => {
   it('does not offer system_admin as an assignable role', async () => {
     await openRowMenu();
 
-    const dropdown = document.querySelector('[class*="dropdown"]') as HTMLElement;
-    expect(dropdown).toBeInTheDocument();
-
-    const roleButtons = Array.from(dropdown.querySelectorAll('button')).map((b) => b.textContent);
-    expect(roleButtons).toContain('student');
-    expect(roleButtons).toContain('innovation_hub_admin');
-    expect(roleButtons).toContain('mentor');
-    expect(roleButtons).toContain('member');
-    expect(roleButtons).not.toContain('system_admin');
+    expect(screen.getByText('Change Role')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /student/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /innovation_hub_admin/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mentor/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /member/i }).find(button => button.textContent?.trim() === 'member')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /system_admin/i })).not.toBeInTheDocument();
   });
 
   it('offers the Edit Profile action', async () => {

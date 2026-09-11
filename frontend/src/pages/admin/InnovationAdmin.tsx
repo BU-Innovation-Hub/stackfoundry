@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { innovationService } from '../../services/innovationService';
-import { Idea, InnovationClassification, Mentor, Showcase } from '../../types/innovation';
+import { Project, InnovationClassification, Mentor, Showcase } from '../../types/innovation';
 import styles from '../innovation/Innovation.module.css';
 
 export const ClassificationAdmin: React.FC = () => {
@@ -13,29 +13,29 @@ export const ClassificationAdmin: React.FC = () => {
 };
 
 const InnovationModeration: React.FC = () => {
-  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [pendingMentors, setPendingMentors] = useState<Mentor[]>([]);
   const [showcase, setShowcase] = useState<Showcase[]>([]);
   const [selectedMentor, setSelectedMentor] = useState<Record<string, string>>({});
-  const load = async () => { const [items, profiles, showcaseItems] = await Promise.all([innovationService.ideas({ moderation: 'true', status: 'submitted' }), innovationService.mentors(undefined, true), innovationService.adminShowcase()]); setIdeas(items); setMentors(profiles.filter(item => item.approved)); setPendingMentors(profiles.filter(item => !item.approved)); setShowcase(showcaseItems); };
+  const load = async () => { const [items, profiles, showcaseItems] = await Promise.all([innovationService.projects({ status: 'submitted' }), innovationService.mentors(undefined, true), innovationService.adminShowcase()]); setProjects(items); setMentors(profiles.filter(item => item.approved)); setPendingMentors(profiles.filter(item => !item.approved)); setShowcase(showcaseItems); };
   useEffect(() => { load().catch(() => undefined); }, []);
 
   return (
     <div>
       <div className={styles.grid}>
         <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
-          <h3>Idea reviews</h3>
-          {ideas.length === 0 && <p className={styles.muted}>No pending ideas.</p>}
-          <div className={styles.ideaGrid}>
-            {ideas.map(item => (
-              <div className={styles.ideaCard} key={item._id}>
-                <div className={styles.ideaCardHeader}>
-                  <span className={styles.badge}>{item.status.replace('_', ' ')}</span>
+          <h3>Project reviews</h3>
+          {projects.length === 0 && <p className={styles.muted}>No pending projects.</p>}
+          <div className={styles.projectGrid}>
+            {projects.map(item => (
+              <div className={styles.projectCard} key={item._id}>
+                <div className={styles.projectCardHeader}>
+                  <span className={styles.badge}>{item.status.replace(/_/g, ' ')}</span>
                 </div>
-                <h3 className={styles.ideaCardTitle}>{item.title}</h3>
-                <p className={styles.ideaCardDesc}>{item.problem || 'No problem statement.'}</p>
-                <div className={styles.ideaCardFooter} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+                <h3 className={styles.projectCardTitle}>{item.title}</h3>
+                <p className={styles.projectCardDesc}>{item.problem || 'No problem statement.'}</p>
+                <div className={styles.projectCardFooter} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
                   <select
                     value={selectedMentor[item._id] || ''}
                     onChange={event => setSelectedMentor({ ...selectedMentor, [item._id]: event.target.value })}
@@ -47,13 +47,13 @@ const InnovationModeration: React.FC = () => {
                     <button
                       className={styles.button}
                       disabled={!selectedMentor[item._id]}
-                      onClick={() => innovationService.assignIdeaReviewer(item._id, selectedMentor[item._id]).then(load)}
+                      onClick={() => innovationService.assignReviewer(item._id, selectedMentor[item._id]).then(load)}
                     >
                       Request review
                     </button>
                     <button
                       className={styles.button}
-                      onClick={() => innovationService.reviewIdea(item._id, { status: 'approved' }).then(() => setIdeas(ideas.filter(idea => idea._id !== item._id)))}
+                      onClick={() => innovationService.reviewProject(item._id, { toStatus: 'approved', decision: 'approve' }).then(() => setProjects(projects.filter(p => p._id !== item._id)))}
                     >
                       Approve
                     </button>
@@ -80,7 +80,7 @@ const InnovationModeration: React.FC = () => {
           {showcase.filter(item => !item.published).length === 0 && <p className={styles.muted}>No showcase requests.</p>}
           {showcase.filter(item => !item.published).map(item => (
             <div className={styles.row} key={item._id}>
-              <span>{item.title || item.idea?.title}</span>
+              <span>{item.title || (typeof item.project === 'object' ? item.project?.title : '')}</span>
               <button className={styles.button} onClick={() => innovationService.updateShowcase(item._id, { approved: true, published: true }).then(load)}>Publish</button>
             </div>
           ))}
