@@ -14,13 +14,18 @@ type EventForm = {
   date: string;
   time: string;
   eventDate: string;
+  startDate: string;
+  endDate: string;
   location: string;
+  locationType: 'physical' | 'virtual';
+  requireApproval: boolean;
+  capacity: string;
   type: Event['type'];
   registrationLink: string;
   status: Event['status'];
 };
 
-const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', location: '', type: 'workshop', registrationLink: '', status: 'draft' };
+const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', startDate: '', endDate: '', location: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
 const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
 
 const typeColors: Record<Event['type'], string> = {
@@ -42,6 +47,8 @@ const Events: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [uploading, setUploading] = useState(false);
+  const [attendeeEvent, setAttendeeEvent] = useState<Event | null>(null);
+  const [attendees, setAttendees] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,7 +93,12 @@ const Events: React.FC = () => {
         date: event.date,
         time: event.time,
         eventDate: event.eventDate ? event.eventDate.substring(0, 10) : '',
+        startDate: event.startDate ? event.startDate.substring(0, 16) : '',
+        endDate: event.endDate ? event.endDate.substring(0, 16) : '',
         location: event.location || '',
+        locationType: event.locationType || 'physical',
+        requireApproval: event.requireApproval || false,
+        capacity: event.capacity ? String(event.capacity) : '',
         type: event.type,
         registrationLink: event.registrationLink || '',
         status: event.status,
@@ -133,6 +145,9 @@ const Events: React.FC = () => {
       ...form,
       // If eventDate not set, derive from date field
       eventDate: form.eventDate || form.date,
+      startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
+      endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
+      capacity: form.capacity ? Number(form.capacity) : null,
     };
     try {
       if (editId) {
@@ -152,6 +167,20 @@ const Events: React.FC = () => {
     if (!window.confirm('Delete this event?')) return;
     await deleteEvent(id);
     load();
+  };
+
+  const openAttendees = async (event: Event) => {
+    setAttendeeEvent(event);
+    try { const response = await apiClient.get(`/events/${event._id}/attendees`); setAttendees(response.data.data || []); }
+    catch { setAttendees([]); }
+  };
+
+  const decideAttendee = async (attendanceId: string, decision: 'approved' | 'rejected') => {
+    if (!attendeeEvent) return;
+    try {
+      await apiClient.patch(`/events/${attendeeEvent._id}/attendees/${attendanceId}`, { decision });
+      setAttendees(prev => prev.map(item => item._id === attendanceId ? { ...item, status: decision } : item));
+    } catch (error: any) { alert(error.response?.data?.error || 'Unable to update attendee'); }
   };
 
   const filtered = events;
@@ -219,6 +248,10 @@ const Events: React.FC = () => {
                 <span>Views: {event.views}</span>
                 <span>By: {event.authorName}</span>
               </div>
+              <div className={styles.cardDetails}>
+                <span>Going: {event.attendeeCount || 0}{event.capacity ? ` / ${event.capacity}` : ''}</span>
+                <button className={styles.attendeesBtn} onClick={() => openAttendees(event)}>Manage attendees</button>
+              </div>
               <div className={styles.cardFooter}>
                 <button className={styles.editBtn} onClick={() => handleOpen(event)}><Edit3 size={15} /> Edit</button>
                 <button className={styles.deleteBtn} onClick={() => handleDelete(event._id)}><Trash2 size={15} /></button>
@@ -261,9 +294,36 @@ const Events: React.FC = () => {
                   <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
                 </label>
               </div>
+              <div className={styles.row}>
+                <label className={styles.field}>
+                  <span>Start date and time</span>
+                  <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value, date: e.target.value.substring(0, 10) })} />
+                </label>
+                <label className={styles.field}>
+                  <span>End date and time</span>
+                  <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+                </label>
+              </div>
               <label className={styles.field}>
-                <span>Location</span>
+                <span>{form.locationType === 'virtual' ? 'Virtual location label' : 'Physical location'}</span>
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
+              </label>
+              <div className={styles.row}>
+                <label className={styles.field}>
+                  <span>Location type</span>
+                  <select value={form.locationType} onChange={e => setForm({ ...form, locationType: e.target.value as EventForm['locationType'] })}>
+                    <option value="physical">Physical</option>
+                    <option value="virtual">Virtual</option>
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span>Capacity (optional)</span>
+                  <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Unlimited" />
+                </label>
+              </div>
+              <label className={styles.checkboxField}>
+                <input type="checkbox" checked={form.requireApproval} onChange={e => setForm({ ...form, requireApproval: e.target.checked })} />
+                <span>Require approval for student requests</span>
               </label>
               <label className={styles.field}>
                 <span>Event Date (for sorting)</span>
@@ -327,6 +387,20 @@ const Events: React.FC = () => {
               <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.date}>
                 {editId ? 'Update' : 'Create'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {attendeeEvent && (
+        <div className={styles.overlay} onClick={() => setAttendeeEvent(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}><h2>Attendees: {attendeeEvent.title}</h2><button className={styles.closeBtn} onClick={() => setAttendeeEvent(null)}><X size={20} /></button></div>
+            <div className={styles.attendeeList}>
+              {attendees.length === 0 ? <p className={styles.empty}>No attendance requests yet.</p> : attendees.map(item => {
+                const person = item.user || {};
+                return <div className={styles.attendeeRow} key={item._id}><div><strong>{person.name} {person.surname}</strong><small>{person.email}</small></div><span className={styles[`status_${item.status}`]}>{item.status}</span>{attendeeEvent.requireApproval && item.status === 'pending' && <div><button className={styles.approveBtn} onClick={() => decideAttendee(item._id, 'approved')}>Approve</button><button className={styles.rejectBtn} onClick={() => decideAttendee(item._id, 'rejected')}>Reject</button></div>}</div>;
+              })}
             </div>
           </div>
         </div>

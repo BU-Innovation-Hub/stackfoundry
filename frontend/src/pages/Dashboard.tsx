@@ -10,7 +10,7 @@ import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMate
 import { LmsCourse, LmsEnrollment, LmsProgress } from '../types/lms';
 import { api as apiClient } from '../services/apiClient';
 import { IBlog } from '../types/blog';
-import { getEvents, getEventBySlug } from '../services/eventService';
+import { getEvents, getEventBySlug, getMyEventAttendance, joinEvent, cancelEventAttendance, EventAttendance, getMyEvents } from '../services/eventService';
 import { IEvent } from '../types/event';
 import styles from './Dashboard.module.css';
 
@@ -46,6 +46,10 @@ const Dashboard: React.FC = () => {
   // Event filter
   const [eventSearch, setEventSearch] = useState('');
   const [eventType, setEventType] = useState('all');
+  const [eventTab, setEventTab] = useState<'upcoming' | 'going' | 'past'>('upcoming');
+  const [goingEvents, setGoingEvents] = useState<IEvent[]>([]);
+  const [eventAttendance, setEventAttendance] = useState<EventAttendance | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   // Course stats: materialCount + progress %
   const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
@@ -143,8 +147,7 @@ const Dashboard: React.FC = () => {
   };
 
   const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = { workshop: '#4f46e5', hackathon: '#D64A2A', meetup: '#8b5cf6', conference: '#0d9488' };
-    return colors[type] || '#888';
+    return '#D64A2A';
   };
 
   /* -------- Blog detail -------- */
@@ -168,12 +171,26 @@ const Dashboard: React.FC = () => {
     try {
       const data = await getEventBySlug(slug);
       setSelectedEvent(data);
+      try {
+        const attendance = await getMyEventAttendance(data._id);
+        setEventAttendance(attendance);
+        if (attendance?.googleMeetLink) setSelectedEvent(prev => prev ? { ...prev, googleMeetLink: attendance.googleMeetLink } : prev);
+      } catch {
+        setEventAttendance(null);
+      }
     } catch {
       setSelectedEvent(null);
     } finally {
       setDetailLoading(false);
     }
   };
+
+  const eventStart = (event: IEvent) => event.startDate || event.eventDate;
+
+  useEffect(() => {
+    if (activeView !== 'events' || eventTab !== 'going') return;
+    getMyEvents('going').then(setGoingEvents).catch(() => setGoingEvents([]));
+  }, [activeView, eventTab]);
 
   /* -------- Filtered lists -------- */
   const filteredBlogs = useMemo(() => {
@@ -188,18 +205,35 @@ const Dashboard: React.FC = () => {
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
-    return allEvents.filter(e => new Date(e.eventDate) >= now);
+    return allEvents.filter(e => new Date(eventStart(e)) >= now);
   }, [allEvents]);
 
   const filteredEvents = useMemo(() => {
-    let result = allEvents;
+    let result = eventTab === 'going' ? goingEvents : allEvents;
+    if (eventTab === 'upcoming') result = result.filter(e => new Date(eventStart(e)) >= new Date());
+    if (eventTab === 'past') result = result.filter(e => new Date(eventStart(e)) < new Date());
     if (eventType !== 'all') result = result.filter(e => e.type === eventType);
     if (eventSearch.trim()) {
       const q = eventSearch.toLowerCase();
       result = result.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
     }
     return result;
-  }, [allEvents, eventType, eventSearch]);
+  }, [allEvents, goingEvents, eventTab, eventType, eventSearch]);
+
+  const handleAttendance = async () => {
+    if (!selectedEvent) return;
+    setAttendanceLoading(true);
+    try {
+      const next = eventAttendance?.status === 'approved' || eventAttendance?.status === 'pending'
+        ? await cancelEventAttendance(selectedEvent._id)
+        : await joinEvent(selectedEvent._id);
+      setEventAttendance(next);
+      if (next.googleMeetLink) setSelectedEvent(prev => prev ? { ...prev, googleMeetLink: next.googleMeetLink } : prev);
+      setAllEvents(prev => prev.map(event => event._id === selectedEvent._id ? { ...event, attendeeCount: Math.max(0, (event.attendeeCount || 0) + (next.status === 'cancelled' ? -1 : 1)) } : event));
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Unable to update attendance');
+    } finally { setAttendanceLoading(false); }
+  };
 
   const blogCategories = ['all', 'technology', 'entrepreneurship', 'events', 'tutorials', 'news', 'community'];
   const eventTypes = ['all', 'workshop', 'hackathon', 'meetup', 'conference'];
@@ -398,8 +432,8 @@ const Dashboard: React.FC = () => {
                         {upcomingEvents.slice(0, 3).map(event => (
                           <div key={event._id} className={styles.eventCard} onClick={() => openEvent(event.slug)}>
                             <div className={styles.eventDate}>
-                              <span className={styles.eventDay}>{new Date(event.eventDate).getDate()}</span>
-                              <span className={styles.eventMonth}>{new Date(event.eventDate).toLocaleString(undefined, { month: 'short' })}</span>
+                               <span className={styles.eventDay}>{new Date(eventStart(event)).getDate()}</span>
+                               <span className={styles.eventMonth}>{new Date(eventStart(event)).toLocaleString(undefined, { month: 'short' })}</span>
                             </div>
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
@@ -622,6 +656,11 @@ const Dashboard: React.FC = () => {
                       onChange={e => setEventSearch(e.target.value)}
                     />
                     <div className={styles.filterTabs}>
+                      {(['upcoming', 'going', 'past'] as const).map(tab => (
+                        <button key={tab} className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`} onClick={() => setEventTab(tab)}>{tab}</button>
+                      ))}
+                    </div>
+                    <div className={styles.filterTabs}>
                       {eventTypes.map(t => (
                         <button
                           key={t}
@@ -639,12 +678,12 @@ const Dashboard: React.FC = () => {
                   ) : (
                     <div className={styles.eventGrid}>
                       {filteredEvents.map(event => {
-                        const past = new Date(event.eventDate) < new Date();
+                         const past = new Date(eventStart(event)) < new Date();
                         return (
                           <div key={event._id} className={`${styles.eventCard} ${past ? styles.pastCard : ''}`} onClick={() => openEvent(event.slug)}>
                             <div className={styles.eventDate}>
-                              <span className={styles.eventDay}>{new Date(event.eventDate).getDate()}</span>
-                              <span className={styles.eventMonth}>{new Date(event.eventDate).toLocaleString(undefined, { month: 'short' })}</span>
+                               <span className={styles.eventDay}>{new Date(eventStart(event)).getDate()}</span>
+                               <span className={styles.eventMonth}>{new Date(eventStart(event)).toLocaleString(undefined, { month: 'short' })}</span>
                             </div>
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
@@ -671,13 +710,20 @@ const Dashboard: React.FC = () => {
                     <div className={styles.loadingState}><Loader2 className={styles.spinner} size={28} /> Loading event...</div>
                   ) : selectedEvent ? (
                     <div className={styles.eventDetailView}>
+                      <div className={styles.eventDetailHeader}>
                       <div className={styles.eventType} style={{ color: getTypeColor(selectedEvent.type), fontSize: '0.75rem' }}>
                         <Tag size={13} /> {selectedEvent.type}
+                      </div>
+                        {new Date(eventStart(selectedEvent)) >= new Date() && (
+                          <button className={styles.registerEventBtn} onClick={handleAttendance} disabled={attendanceLoading || eventAttendance?.status === 'rejected'}>
+                            {attendanceLoading ? 'Updating...' : eventAttendance?.status === 'approved' ? 'Cancel Attendance' : eventAttendance?.status === 'pending' ? 'Cancel Request' : selectedEvent.capacity !== null && selectedEvent.capacity !== undefined && selectedEvent.attendeeCount >= selectedEvent.capacity ? 'Event Full' : 'Join Event'}
+                          </button>
+                        )}
                       </div>
                       <h1 className={styles.articleTitle}>{selectedEvent.title}</h1>
 
                       <div className={styles.articleMeta}>
-                        <span><Calendar size={14} /> {selectedEvent.date}</span>
+                         <span><Calendar size={14} /> {formatDate(eventStart(selectedEvent))}</span>
                         <span><Clock size={14} /> {selectedEvent.time}</span>
                         {selectedEvent.location && <span><MapPin size={14} /> {selectedEvent.location}</span>}
                         <span><Eye size={14} /> {selectedEvent.views} views</span>
@@ -698,7 +744,7 @@ const Dashboard: React.FC = () => {
                         <div className={styles.detailCard}>
                           <h4>Event Details</h4>
                           <div className={styles.detailGrid}>
-                            <div><span className={styles.detailLabel}>Date</span><span>{selectedEvent.date}</span></div>
+                             <div><span className={styles.detailLabel}>Date</span><span>{formatDate(eventStart(selectedEvent))}</span></div>
                             <div><span className={styles.detailLabel}>Time</span><span>{selectedEvent.time}</span></div>
                             <div><span className={styles.detailLabel}>Type</span><span style={{ textTransform: 'capitalize' }}>{selectedEvent.type}</span></div>
                             {selectedEvent.location && <div><span className={styles.detailLabel}>Location</span><span>{selectedEvent.location}</span></div>}
@@ -706,7 +752,10 @@ const Dashboard: React.FC = () => {
                           </div>
                         </div>
 
-                        {selectedEvent.registrationLink && new Date(selectedEvent.eventDate) >= new Date() && (
+                         {selectedEvent.googleMeetLink && eventAttendance?.status === 'approved' && (
+                           <a href={selectedEvent.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join Google Meet <ExternalLink size={14} /></a>
+                         )}
+                         {selectedEvent.registrationLink && new Date(selectedEvent.eventDate) >= new Date() && (
                           <a href={selectedEvent.registrationLink} target="_blank" rel="noopener noreferrer" className={styles.registerEventBtn}>
                             Register Now <ExternalLink size={14} />
                           </a>

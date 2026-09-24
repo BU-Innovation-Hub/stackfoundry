@@ -9,7 +9,7 @@
  * - View tracking
  */
 
-import Event, { IEvent, EventStatus, EventType } from "../models/event.model";
+import Event, { IEvent, EventStatus, EventType, EventLocationType } from "../models/event.model";
 import { ApiError } from "../middleware/errorHandler";
 import { Types } from "mongoose";
 
@@ -23,9 +23,16 @@ export interface CreateEventData {
     date: string;
     time: string;
     eventDate: Date;
+    startDate?: Date;
+    endDate?: Date;
     type: EventType;
     image?: string;
     location?: string;
+    locationType?: EventLocationType;
+    requireApproval?: boolean;
+    capacity?: number | null;
+    googleCalendarEventId?: string | null;
+    googleMeetLink?: string | null;
     registrationLink?: string;
     status?: EventStatus;
 }
@@ -36,9 +43,16 @@ export interface UpdateEventData {
     date?: string;
     time?: string;
     eventDate?: Date;
+    startDate?: Date;
+    endDate?: Date;
     type?: EventType;
     image?: string;
     location?: string;
+    locationType?: EventLocationType;
+    requireApproval?: boolean;
+    capacity?: number | null;
+    googleCalendarEventId?: string | null;
+    googleMeetLink?: string | null;
     registrationLink?: string;
     status?: EventStatus;
 }
@@ -70,6 +84,20 @@ export interface AuthorInfo {
     surname: string;
 }
 
+const normalizeLegacyDates = <T extends Partial<IEvent>>(event: T): T => {
+    if (!event.startDate) {
+        const legacyDate = event.date ? new Date(event.date) : undefined;
+        if (legacyDate && !Number.isNaN(legacyDate.getTime())) {
+            event.eventDate = legacyDate;
+            event.startDate = legacyDate;
+            event.endDate = legacyDate;
+        }
+    }
+    const publicEvent = normalizeLegacyDates(event);
+    delete publicEvent.googleMeetLink;
+    return publicEvent;
+};
+
 // ============================================
 // Service Functions
 // ============================================
@@ -94,7 +122,7 @@ export const createEvent = async (
         publishedAt: data.status === "published" ? new Date() : undefined,
     });
 
-    return event;
+    return normalizeLegacyDates(event);
 };
 
 /**
@@ -111,7 +139,7 @@ export const getEventById = async (id: string): Promise<IEvent> => {
         throw new ApiError(404, "Event not found");
     }
 
-    return event;
+    return normalizeLegacyDates(event);
 };
 
 /**
@@ -127,7 +155,9 @@ export const getEventBySlug = async (slug: string): Promise<IEvent> => {
     // Increment views asynchronously (fire-and-forget)
     Event.incrementViews(event._id.toString()).catch(console.error);
 
-    return event;
+    const publicEvent = normalizeLegacyDates(event);
+    delete publicEvent.googleMeetLink;
+    return publicEvent;
 };
 
 /**
@@ -242,7 +272,7 @@ export const listEvents = async (
     const pages = Math.ceil(total / limit);
 
     return {
-        events: events as IEvent[],
+        events: (events as IEvent[]).map(normalizeLegacyDates),
         pagination: {
             page,
             limit,
@@ -266,7 +296,7 @@ export const getFeaturedEvents = async (limit: number = 4): Promise<IEvent[]> =>
         .limit(limit)
         .lean();
 
-    return events as IEvent[];
+    return events.map(normalizeLegacyDates) as IEvent[];
 };
 
 /**
@@ -281,7 +311,7 @@ export const getEventsByType = async (
         .limit(limit)
         .lean();
 
-    return events as IEvent[];
+    return events.map(normalizeLegacyDates) as IEvent[];
 };
 
 /**

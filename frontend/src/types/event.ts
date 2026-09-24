@@ -10,6 +10,7 @@ export const EVENT_TYPES = [
 
 export type EventType = (typeof EVENT_TYPES)[number];
 export type EventStatus = 'draft' | 'published' | 'archived';
+export type EventLocationType = 'physical' | 'virtual';
 
 export interface IEvent {
     _id: string;
@@ -19,9 +20,16 @@ export interface IEvent {
     date: string;       // Display date e.g., "Feb 15, 2026"
     time: string;       // Display time e.g., "10:00 AM - 4:00 PM"
     eventDate: string;  // ISO date for sorting
+    startDate?: string;
+    endDate?: string;
     type: EventType;
     image?: string | null;
     location?: string | null;
+    locationType: EventLocationType;
+    requireApproval: boolean;
+    capacity?: number | null;
+    attendeeCount: number;
+    googleMeetLink?: string | null;
     registrationLink?: string | null;
     author: string;
     authorName: string;

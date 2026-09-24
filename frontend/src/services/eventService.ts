@@ -1,5 +1,5 @@
-import { api } from './apiClient';
 import { IEvent } from '../types/event';
+import { api } from './apiClient';
 
 interface EventListResponse {
     success: boolean;
@@ -45,5 +45,25 @@ export const getEvents = async (params?: {
  */
 export const getEventBySlug = async (slug: string): Promise<IEvent> => {
     const response = await api.get<EventDetailResponse>(`/events/slug/${slug}`);
+    return response.data.data;
+};
+
+export type AttendanceStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export interface EventAttendance { _id: string; event: string; user: string; status: AttendanceStatus; googleMeetLink?: string | null; }
+
+export const getMyEventAttendance = async (eventId: string): Promise<EventAttendance | null> => {
+    const response = await api.get<{ data: EventAttendance | null }>(`/events/${eventId}/attendance`);
+    return response.data.data;
+};
+export const joinEvent = async (eventId: string): Promise<EventAttendance> => {
+    const response = await api.post<{ data: EventAttendance }>(`/events/${eventId}/join`);
+    return response.data.data;
+};
+export const cancelEventAttendance = async (eventId: string): Promise<EventAttendance> => {
+    const response = await api.post<{ data: EventAttendance }>(`/events/${eventId}/cancel`);
+    return response.data.data;
+};
+export const getMyEvents = async (status: 'upcoming' | 'going' | 'past'): Promise<IEvent[]> => {
+    const response = await api.get<{ data: IEvent[] }>('/events/mine', { params: { status } });
     return response.data.data;
 };

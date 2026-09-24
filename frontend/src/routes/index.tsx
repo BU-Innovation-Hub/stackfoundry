@@ -88,7 +88,7 @@ const AppRoutes: React.FC = () => (
         <Route index element={<AdminDashboard />} />
         <Route path="members" element={<ProtectedRoute roles={['system_admin', 'innovation_hub_admin']} unauthorizedTo="/admin"><Members /></ProtectedRoute>} />
         <Route path="blogs" element={<ProtectedRoute roles={['innovation_hub_admin']} unauthorizedTo="/admin"><Blogs /></ProtectedRoute>} />
-        <Route path="events" element={<ProtectedRoute roles={['innovation_hub_admin']} unauthorizedTo="/admin"><Events /></ProtectedRoute>} />
+        <Route path="events" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Events /></ProtectedRoute>} />
         <Route path="courses" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Courses /></ProtectedRoute>} />
         <Route path="audit-logs" element={<ProtectedRoute roles={['system_admin']} unauthorizedTo="/admin"><AuditLogs /></ProtectedRoute>} />
       </Route>

@@ -22,12 +22,19 @@ import * as EventService from "../services/event.service";
 import { ApiError } from "../middleware/errorHandler";
 import { RequestWithUser } from "../types";
 import { EVENT_TYPES, EventType, EventStatus } from "../models/event.model";
+import { syncEventToGoogle, deleteEventFromGoogle } from "../services/google-calendar.service";
+import { notifyEventAttendees } from "../services/event-attendance.service";
 
 // ============================================
 // Constants
 // ============================================
 
 const VALID_EVENT_STATUSES: EventStatus[] = ["draft", "published", "archived"];
+
+const canManageEvent = (req: Request, authorId: string): boolean => {
+    const user = (req as RequestWithUser).user;
+    return user.role !== "mentor" || user.id === authorId;
+};
 
 // ============================================
 // Helpers
@@ -97,9 +104,14 @@ export const createEvent = async (
             date,
             time,
             eventDate,
+            startDate,
+            endDate,
             type,
             image,
             location,
+            locationType,
+            requireApproval,
+            capacity,
             registrationLink,
             status
         } = req.body;
@@ -116,15 +128,28 @@ export const createEvent = async (
                 date,
                 time,
                 eventDate: new Date(eventDate),
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined,
                 type,
                 image,
                 location,
+                locationType,
+                requireApproval,
+                capacity: capacity === undefined || capacity === null || capacity === "" ? null : Number(capacity),
                 registrationLink,
                 status
             },
             { id: user.id, name: user.name, surname: user.surname }
         );
 
+        if (event.status === "published") {
+            try {
+                const googleData = await syncEventToGoogle(event);
+                if (Object.keys(googleData).length) await EventService.updateEvent(event._id.toString(), googleData);
+            } catch (calendarError) {
+                console.error("Google Calendar event creation failed:", calendarError);
+            }
+        }
         res.status(201).json({
             success: true,
             message: "Event created successfully",
@@ -148,6 +173,8 @@ export const getEventById = async (
         handleValidationErrors(req);
 
         const event = await EventService.getEventById(req.params.id);
+
+        if (!canManageEvent(req, event.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
 
         res.status(200).json({
             success: true,
@@ -176,9 +203,14 @@ export const updateEvent = async (
             date,
             time,
             eventDate,
+            startDate,
+            endDate,
             type,
             image,
             location,
+            locationType,
+            requireApproval,
+            capacity,
             registrationLink,
             status
         } = req.body;
@@ -191,6 +223,9 @@ export const updateEvent = async (
             type,
             image,
             location,
+            locationType,
+            requireApproval,
+            capacity: capacity === undefined || capacity === null || capacity === "" ? undefined : Number(capacity),
             registrationLink,
             status,
         };
@@ -199,8 +234,22 @@ export const updateEvent = async (
         if (eventDate) {
             updateData.eventDate = new Date(eventDate);
         }
+        if (startDate) updateData.startDate = new Date(startDate);
+        if (endDate) updateData.endDate = new Date(endDate);
 
+        const existingEvent = await EventService.getEventById(req.params.id);
+        if (!canManageEvent(req, existingEvent.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
         const event = await EventService.updateEvent(req.params.id, updateData);
+        await notifyEventAttendees(event._id.toString(), "updated");
+
+        if (event.status === "published") {
+            try {
+                const googleData = await syncEventToGoogle(event);
+                if (Object.keys(googleData).length) await EventService.updateEvent(event._id.toString(), googleData);
+            } catch (calendarError) {
+                console.error("Google Calendar event synchronization failed:", calendarError);
+            }
+        }
 
         res.status(200).json({
             success: true,
@@ -224,6 +273,10 @@ export const deleteEvent = async (
     try {
         handleValidationErrors(req);
 
+        const event = await EventService.getEventById(req.params.id);
+        if (!canManageEvent(req, event.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
+        await notifyEventAttendees(event._id.toString(), "cancelled");
+        try { await deleteEventFromGoogle(event); } catch (calendarError) { console.error("Google Calendar deletion failed:", calendarError); }
         await EventService.deleteEvent(req.params.id);
 
         res.status(200).json({
@@ -248,6 +301,7 @@ export const listEventsAdmin = async (
         handleValidationErrors(req);
 
         const { page, limit, type, status, search } = req.query;
+        const user = (req as RequestWithUser).user;
 
         // Validate type and status against valid enum values
         const validatedType = parseEventType(type);
@@ -260,6 +314,7 @@ export const listEventsAdmin = async (
                 type: validatedType,
                 status: validatedStatus,
                 search: search as string,
+                authorId: user.role === "mentor" ? user.id : undefined,
             },
             true // isAdmin
         );

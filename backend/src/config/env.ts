@@ -35,6 +35,12 @@ export interface Env {
   // YouTube
   YOUTUBE_API_KEY?: string;
 
+  // Google Calendar
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REFRESH_TOKEN?: string;
+  GOOGLE_CALENDAR_ID?: string;
+
   // Email (SMTP for OTP emails)
   EMAIL_SMTP_HOST?: string;
   EMAIL_SMTP_PORT: number;
@@ -111,6 +117,11 @@ export const loadEnv = (): Env => {
 
     // YouTube
     YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
+    GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID || "primary",
 
     // Email (SMTP for OTP emails)
     EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST,

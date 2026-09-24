@@ -24,6 +24,7 @@ const EVENT_TYPES = [
 
 type EventType = (typeof EVENT_TYPES)[number];
 type EventStatus = "draft" | "published" | "archived";
+type EventLocationType = "physical" | "virtual";
 
 // ============================================
 // Interface
@@ -37,9 +38,17 @@ export interface IEvent extends Document {
     date: string; // Display date e.g., "Feb 15, 2026"
     time: string; // Display time e.g., "10:00 AM - 4:00 PM"
     eventDate: Date; // Actual date for sorting/filtering
+    startDate?: Date;
+    endDate?: Date;
     type: EventType;
     image?: string;
     location?: string;
+    locationType: EventLocationType;
+    requireApproval: boolean;
+    capacity?: number | null;
+    attendeeCount: number;
+    googleCalendarEventId?: string | null;
+    googleMeetLink?: string | null;
     registrationLink?: string;
     author: Types.ObjectId; // Reference to Student (admin)
     authorName: string; // Denormalized for display
@@ -115,6 +124,14 @@ const EventSchema: Schema<IEvent> = new Schema(
             required: [true, "Event date is required"],
             index: true,
         },
+        startDate: {
+            type: Date,
+            index: true,
+        },
+        endDate: {
+            type: Date,
+            index: true,
+        },
         type: {
             type: String,
             required: [true, "Event type is required"],
@@ -132,6 +149,33 @@ const EventSchema: Schema<IEvent> = new Schema(
             type: String,
             trim: true,
             maxlength: [500, "Location cannot exceed 500 characters"],
+            default: null,
+        },
+        locationType: {
+            type: String,
+            enum: ["physical", "virtual"],
+            default: "physical",
+        },
+        requireApproval: {
+            type: Boolean,
+            default: false,
+        },
+        capacity: {
+            type: Number,
+            min: [1, "Capacity must be greater than zero"],
+            default: null,
+        },
+        attendeeCount: {
+            type: Number,
+            min: 0,
+            default: 0,
+        },
+        googleCalendarEventId: {
+            type: String,
+            default: null,
+        },
+        googleMeetLink: {
+            type: String,
             default: null,
         },
         registrationLink: {
@@ -188,6 +232,9 @@ EventSchema.index({ title: "text", description: "text" });
 // ============================================
 
 EventSchema.pre("save", async function () {
+    if (!this.startDate) this.startDate = this.eventDate;
+    if (!this.endDate) this.endDate = this.startDate;
+    if (this.startDate) this.eventDate = this.startDate;
     // Generate slug only for new documents without an existing slug
     if (!this.slug) {
         const baseSlug = generateSlug(this.title);
@@ -264,4 +311,4 @@ const Event: EventModel =
     mongoose.model<IEvent, EventModel>("Event", EventSchema);
 
 export default Event;
-export { EVENT_TYPES, EventType, EventStatus };
+export { EVENT_TYPES, EventType, EventStatus, EventLocationType };
