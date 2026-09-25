@@ -71,6 +71,27 @@ const sendMail = async ({ to, subject, text }: SendMailOptions): Promise<void> =
   console.log("==========================================");
 };
 
+export const sendEventNotification = async (
+  to: string,
+  name: string,
+  kind: "joined" | "approved" | "rejected" | "cancelled" | "updated",
+  title: string,
+  date: Date
+): Promise<void> => {
+  const messages = {
+    joined: "Your request to join has been received",
+    approved: "You are approved to attend",
+    rejected: "Your request to attend was rejected",
+    cancelled: "Your attendance was cancelled",
+    updated: "Event details were updated",
+  };
+  await sendMail({
+    to,
+    subject: `${messages[kind]}: ${title}`,
+    text: [`Hi ${name},`, "", `${messages[kind]} for ${title}.`, `Event date: ${date.toISOString()}`, "", "StackFoundry"].join("\n"),
+  });
+};
+
 /**
  * Send the 5-digit password reset OTP to a user's email address
  */

@@ -41,6 +41,16 @@ export const createEventValidation = [
     .isISO8601()
     .withMessage("Event date must be a valid date"),
 
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+
+  body("endDate")
+    .optional()
+    .isISO8601()
+    .withMessage("End date must be a valid date"),
+
   body("type")
     .trim()
     .notEmpty()
@@ -59,6 +69,21 @@ export const createEventValidation = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Location cannot exceed 500 characters"),
+
+  body("locationType")
+    .optional()
+    .isIn(["physical", "virtual"])
+    .withMessage("Location type must be physical or virtual"),
+
+  body("requireApproval")
+    .optional()
+    .isBoolean()
+    .withMessage("Require approval must be a boolean"),
+
+  body("capacity")
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
     .optional()
@@ -110,6 +135,16 @@ export const updateEventValidation = [
     .isISO8601()
     .withMessage("Event date must be a valid date"),
 
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+
+  body("endDate")
+    .optional()
+    .isISO8601()
+    .withMessage("End date must be a valid date"),
+
   body("type")
     .optional()
     .trim()
@@ -127,6 +162,21 @@ export const updateEventValidation = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Location cannot exceed 500 characters"),
+
+  body("locationType")
+    .optional()
+    .isIn(["physical", "virtual"])
+    .withMessage("Location type must be physical or virtual"),
+
+  body("requireApproval")
+    .optional()
+    .isBoolean()
+    .withMessage("Require approval must be a boolean"),
+
+  body("capacity")
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
     .optional()

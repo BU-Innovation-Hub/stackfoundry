@@ -1,11 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight, Plus, Activity } from 'lucide-react';
+import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight, Plus, Activity, Clock, MapPin, Eye } from 'lucide-react';
 import { DashboardStats } from '../../types/admin';
 import { getDashboardStats } from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
 import Loader from '../../components/common/Loader';
 import styles from './Dashboard.module.css';
+
+const eventTypeColors: Record<string, string> = {
+  workshop: '#2563eb',
+  hackathon: '#D64A2A',
+  meetup: '#16a34a',
+  conference: '#d97706',
+};
+
+const eventStart = (event: { startDate?: string; eventDate: string }) => event.startDate || event.eventDate;
+
+const formatEventDate = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatEventTime = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+};
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -36,7 +57,7 @@ const AdminDashboard: React.FC = () => {
     { icon: BookOpen, label: 'Courses', value: stats.totalCourses, sub: `${stats.publishedCourses} published`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/courses' },
   ].filter(card => card.value !== undefined &&
     (!isSystemAdmin || card.link === '/admin/members') &&
-    (!isMentor || card.link === '/admin/courses'));
+    (!isMentor || card.link === '/admin/courses' || card.link === '/admin/events'));
 
   const quickActions = [
     { label: 'New Blog', icon: FileText, link: '/admin/blogs', color: '#8b5cf6' },
@@ -45,7 +66,47 @@ const AdminDashboard: React.FC = () => {
     { label: 'Members', icon: Users, link: '/admin/members', color: '#3b82f6' },
   ].filter(action =>
     isSystemAdmin ? action.link === '/admin/members' :
-    isMentor ? action.link === '/admin/courses' : true
+    isMentor ? action.link === '/admin/courses' || action.link === '/admin/events' : true
+  );
+
+  const recentEvents = stats.recentEvents || [];
+  const eventsCard = !isSystemAdmin && (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <h3><Calendar size={18} /> Upcoming Events</h3>
+        <Link to="/admin/events" className={styles.viewAll}>View All</Link>
+      </div>
+      <div className={styles.eventList}>
+        {recentEvents.length === 0 ? (
+          <p className={styles.emptyText}>No upcoming events.</p>
+        ) : recentEvents.map(e => {
+          const start = eventStart(e);
+          return (
+            <div key={e._id} className={styles.eventRow}>
+              <span className={styles.eventTypeBadge} style={{ background: `${eventTypeColors[e.type] || '#D64A2A'}18`, color: eventTypeColors[e.type] || '#D64A2A' }}>
+                {e.type}
+              </span>
+              <div className={styles.eventInfo}>
+                <span className={styles.eventName}>{e.title}</span>
+                <span className={styles.eventMeta}>
+                  <Clock size={12} /> {formatEventDate(start)} &middot; {formatEventTime(start)}
+                  {e.location && <><MapPin size={12} /> {e.location}</>}
+                  <Eye size={12} /> {e.views} views
+                </span>
+              </div>
+              <div className={styles.eventStats}>
+                <span className={`${styles.badge} ${e.status === 'published' ? styles.badgeGreen : styles.badgeGray}`}>
+                  {e.status === 'published' ? 'Live' : e.status === 'draft' ? 'Draft' : 'Archived'}
+                </span>
+                <span className={styles.eventGoing}>
+                  {e.attendeeCount || 0}{e.capacity ? ` / ${e.capacity}` : ''} going
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 
   return (
@@ -94,6 +155,9 @@ const AdminDashboard: React.FC = () => {
 
       {/* Bottom section */}
       <div className={styles.bottomGrid}>
+        {/* Events */}
+        {eventsCard}
+
         {/* Recent Registrations */}
         {stats.recentRegistrations && <div className={styles.card}>
           <div className={styles.cardHeader}>
@@ -119,7 +183,7 @@ const AdminDashboard: React.FC = () => {
         </div>}
 
         {/* Popular Courses */}
-        {!isSystemAdmin && <div className={styles.card}>
+        {!isSystemAdmin && (!isMentor || stats.popularCourses.length > 0) && <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h3><TrendingUp size={18} /> Popular Courses</h3>
             <Link to="/admin/courses" className={styles.viewAll}>View All</Link>

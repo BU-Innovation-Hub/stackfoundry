@@ -2,7 +2,7 @@
 
 /* ========== Page & Layout ========== */
 .page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f4f6f9;
   display: flex;
   flex-direction: column;
@@ -17,6 +17,7 @@
   background: #fff;
   border-bottom: 1px solid #e2e8f0;
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -60,6 +61,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  height: calc(100vh - 58px);
 }
 
 /* ========== Sidebar ========== */
@@ -71,6 +73,9 @@
   flex-direction: column;
   flex-shrink: 0;
   overflow-y: auto;
+  position: sticky;
+  top: 0;
+  height: 100%;
 }
 
 .sidebarProfile {
@@ -180,6 +185,7 @@
   overflow-y: auto;
   padding: 1.5rem 2rem 3rem;
   min-width: 0;
+  min-height: 0;
 }
 
 /* Page title */
@@ -351,6 +357,13 @@
   margin-bottom: 1.25rem;
 }
 
+.filterBarRow {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .searchInput {
   padding: 0.55rem 0.9rem;
   border: 1px solid #e2e8f0;
@@ -363,6 +376,17 @@
   transition: border-color 0.2s;
 }
 .searchInput:focus { border-color: #D64A2A; }
+
+.searchInputRight {
+  margin-left: auto;
+  max-width: 320px;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .filterBarRow { flex-direction: column; align-items: stretch; }
+  .searchInputRight { margin-left: 0; max-width: none; }
+}
 
 .filterTabs {
   display: flex;
@@ -637,7 +661,7 @@
 .courseCard {
   display: flex;
   flex-direction: column;
-  background: #f8f9fb;
+  background: #fff;
   border: 1px solid #e8eaf0;
   border-radius: 12px;
   padding: 1.1rem;
@@ -833,9 +857,7 @@
   transform: translateY(-2px);
 }
 
-.pastCard {
-  opacity: 0.6;
-}
+.pastCard { opacity: 1; }
 
 .eventDate {
   display: flex;
@@ -875,6 +897,7 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.2rem;
+  color: rgb(214, 74, 42) !important;
 }
 
 .eventCardBody h4 {
@@ -900,6 +923,15 @@
   display: flex;
   align-items: center;
   gap: 0.2rem;
+}
+
+.eventViews {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-top: 0.3rem;
 }
 
 /* ========== Article / Blog Detail ========== */
@@ -1007,6 +1039,13 @@
   max-width: 760px;
 }
 
+.eventDetailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .eventDetailBody {
   margin-top: 1.5rem;
 }
@@ -1090,7 +1129,7 @@
 }
 
 @media (max-width: 768px) {
-  .shell { flex-direction: column; }
+  .shell { flex-direction: column; height: calc(100vh - 54px); }
   .sidebar {
     width: 100%;
     flex-direction: row;
@@ -1124,4 +1163,5 @@
   .articleTitle {
     font-size: 1.25rem;
   }
+  .eventDetailHeader { flex-direction: column; }
 }

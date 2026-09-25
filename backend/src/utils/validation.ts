@@ -42,12 +42,6 @@ export const registerValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail()
-    .custom((email: string) => {
-      if (!isBothoUniversityEmail(email)) {
-        throw new Error(BOTHO_EMAIL_ERROR);
-      }
-      return true;
-    })
     .isLength({ max: 100 })
     .withMessage("Email cannot exceed 100 characters"),
   bothoEmailRule(),
@@ -151,12 +145,6 @@ export const adminCreateUserValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail()
-    .custom((email: string) => {
-      if (!isBothoUniversityEmail(email)) {
-        throw new Error(BOTHO_EMAIL_ERROR);
-      }
-      return true;
-    })
     .isLength({ max: 100 })
     .withMessage("Email cannot exceed 100 characters"),
   bothoEmailRule(),

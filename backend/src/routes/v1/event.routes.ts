@@ -20,6 +20,7 @@
 
 import { Router } from "express";
 import * as EventController from "../../controllers/event.controller";
+import * as AttendanceController from "../../controllers/event-attendance.controller";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   createEventValidation,
@@ -43,7 +44,7 @@ const router = Router();
 router.post(
   "/",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   createEventValidation,
   EventController.createEvent
 );
@@ -63,7 +64,7 @@ router.get("/", listEventsValidation, EventController.listEventsPublic);
 router.get(
   "/admin",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   listEventsValidation,
   EventController.listEventsAdmin
 );
@@ -74,10 +75,10 @@ router.get(
  * @access  Private (admin only)
  */
 router.get(
-  "/stats",
-  requireAuth,
-  requireRole(["innovation_hub_admin"]),
-  EventController.getEventStats
+    "/stats",
+    requireAuth,
+    requireRole(["innovation_hub_admin", "mentor"]),
+    EventController.getEventStats
 );
 
 /**
@@ -98,6 +99,8 @@ router.get("/slug/:slug", eventSlugValidation, EventController.getEventBySlug);
 // Parameterized Routes (after static routes)
 // ============================================
 
+router.get("/mine", requireAuth, requireRole(["student", "member"]), AttendanceController.listMine);
+
 /**
  * @route   GET /api/v1/events/:id
  * @desc    Get event by ID
@@ -106,7 +109,7 @@ router.get("/slug/:slug", eventSlugValidation, EventController.getEventBySlug);
 router.get(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   eventIdValidation,
   EventController.getEventById
 );
@@ -119,7 +122,7 @@ router.get(
 router.put(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   updateEventValidation,
   EventController.updateEvent
 );
@@ -132,9 +135,15 @@ router.put(
 router.delete(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   eventIdValidation,
   EventController.deleteEvent
 );
+
+router.get("/:id/attendance", requireAuth, requireRole(["student", "member"]), AttendanceController.mine);
+router.post("/:id/join", requireAuth, requireRole(["student", "member"]), AttendanceController.join);
+router.post("/:id/cancel", requireAuth, requireRole(["student", "member"]), AttendanceController.cancel);
+router.get("/:id/attendees", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.list);
+router.patch("/:id/attendees/:attendanceId", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.decide);
 
 export default router;

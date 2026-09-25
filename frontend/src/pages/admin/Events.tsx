@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search, Eye } from 'lucide-react';
 import { Event } from '../../types/admin';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
@@ -11,17 +11,26 @@ type EventForm = {
   title: string;
   description: string;
   image: string;
-  date: string;
-  time: string;
-  eventDate: string;
+  startDate: string;
+  endDate: string;
   location: string;
+  locationType: 'physical' | 'virtual';
+  requireApproval: boolean;
+  capacity: string;
   type: Event['type'];
   registrationLink: string;
   status: Event['status'];
 };
 
-const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', location: '', type: 'workshop', registrationLink: '', status: 'draft' };
+const emptyForm: EventForm = { title: '', description: '', image: '', startDate: '', endDate: '', location: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
 const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
+
+const toDateTimeLocal = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+};
 
 const typeColors: Record<Event['type'], string> = {
   workshop: '#2563eb',
@@ -42,6 +51,8 @@ const Events: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [uploading, setUploading] = useState(false);
+  const [attendeeEvent, setAttendeeEvent] = useState<Event | null>(null);
+  const [attendees, setAttendees] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,10 +94,12 @@ const Events: React.FC = () => {
         title: event.title,
         description: event.description,
         image: event.image || '',
-        date: event.date,
-        time: event.time,
-        eventDate: event.eventDate ? event.eventDate.substring(0, 10) : '',
+        startDate: (event.startDate || event.eventDate) ? toDateTimeLocal(event.startDate || event.eventDate) : '',
+        endDate: event.endDate ? toDateTimeLocal(event.endDate) : '',
         location: event.location || '',
+        locationType: event.locationType || 'physical',
+        requireApproval: event.requireApproval || false,
+        capacity: event.capacity ? String(event.capacity) : '',
         type: event.type,
         registrationLink: event.registrationLink || '',
         status: event.status,
@@ -129,11 +142,22 @@ const Events: React.FC = () => {
   };
 
   const handleSave = async () => {
+    const startDate = form.startDate ? new Date(form.startDate) : null;
+    if (!startDate || Number.isNaN(startDate.getTime())) {
+      alert('Please choose a valid start date and time.');
+      return;
+    }
+    const endDate = form.endDate ? new Date(form.endDate) : startDate;
     const payload = {
       ...form,
-      // If eventDate not set, derive from date field
-      eventDate: form.eventDate || form.date,
+      date: startDate.toISOString().substring(0, 10),
+      time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
+      eventDate: startDate.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      capacity: form.capacity ? Number(form.capacity) : null,
     };
+
     try {
       if (editId) {
         await updateEvent(editId, payload);
@@ -152,6 +176,20 @@ const Events: React.FC = () => {
     if (!window.confirm('Delete this event?')) return;
     await deleteEvent(id);
     load();
+  };
+
+  const openAttendees = async (event: Event) => {
+    setAttendeeEvent(event);
+    try { const response = await apiClient.get(`/events/${event._id}/attendees`); setAttendees(response.data.data || []); }
+    catch { setAttendees([]); }
+  };
+
+  const decideAttendee = async (attendanceId: string, decision: 'approved' | 'rejected') => {
+    if (!attendeeEvent) return;
+    try {
+      await apiClient.patch(`/events/${attendeeEvent._id}/attendees/${attendanceId}`, { decision });
+      setAttendees(prev => prev.map(item => item._id === attendanceId ? { ...item, status: decision } : item));
+    } catch (error: any) { alert(error.response?.data?.error || 'Unable to update attendee'); }
   };
 
   const filtered = events;
@@ -216,8 +254,12 @@ const Events: React.FC = () => {
                 {event.location && <span><MapPin size={14} /> {event.location}</span>}
               </div>
               <div className={styles.cardDetails}>
-                <span>Views: {event.views}</span>
+                <span><Eye size={14} /> {event.views} views</span>
                 <span>By: {event.authorName}</span>
+              </div>
+              <div className={styles.cardDetails}>
+                <span>Going: {event.attendeeCount || 0}{event.capacity ? ` / ${event.capacity}` : ''}</span>
+                <button className={styles.attendeesBtn} onClick={() => openAttendees(event)}>Manage attendees</button>
               </div>
               <div className={styles.cardFooter}>
                 <button className={styles.editBtn} onClick={() => handleOpen(event)}><Edit3 size={15} /> Edit</button>
@@ -253,21 +295,35 @@ const Events: React.FC = () => {
               </label>
               <div className={styles.row}>
                 <label className={styles.field}>
-                  <span>Date</span>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                  <span>Start date and time</span>
+                  <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
                 </label>
                 <label className={styles.field}>
-                  <span>Time</span>
-                  <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+                  <span>End date and time</span>
+                  <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
                 </label>
               </div>
               <label className={styles.field}>
                 <span>Location</span>
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
               </label>
-              <label className={styles.field}>
-                <span>Event Date (for sorting)</span>
-                <input type="date" value={form.eventDate} onChange={e => setForm({ ...form, eventDate: e.target.value })} />
+              <div className={styles.row}>
+                <label className={styles.field}>
+                  <span>Location type</span>
+                  <select value={form.locationType} onChange={e => setForm({ ...form, locationType: e.target.value as EventForm['locationType'] })}>
+                    <option value="physical">Physical</option>
+                    <option value="virtual">Virtual</option>
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span>Capacity (optional)</span>
+                  <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Unlimited" />
+                </label>
+              </div>
+              <label className={styles.switchField}>
+                <input type="checkbox" checked={form.requireApproval} onChange={e => setForm({ ...form, requireApproval: e.target.checked })} />
+                <span className={styles.switchTrack}><span className={styles.switchThumb} /></span>
+                <span>Require approval for student requests</span>
               </label>
               <div className={styles.field}>
                 <span>Event Image</span>
@@ -324,9 +380,23 @@ const Events: React.FC = () => {
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.cancelBtn} onClick={handleClose}>Cancel</button>
-              <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.date}>
+              <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.startDate}>
                 {editId ? 'Update' : 'Create'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {attendeeEvent && (
+        <div className={styles.overlay} onClick={() => setAttendeeEvent(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}><h2>Attendees: {attendeeEvent.title}</h2><button className={styles.closeBtn} onClick={() => setAttendeeEvent(null)}><X size={20} /></button></div>
+            <div className={styles.attendeeList}>
+              {attendees.length === 0 ? <p className={styles.empty}>No attendance requests yet.</p> : attendees.map(item => {
+                const person = item.user || {};
+                return <div className={styles.attendeeRow} key={item._id}><div><strong>{person.name} {person.surname}</strong><small>{person.email}</small></div><span className={styles[`status_${item.status}`]}>{item.status}</span>{attendeeEvent.requireApproval && item.status === 'pending' && <div><button className={styles.approveBtn} onClick={() => decideAttendee(item._id, 'approved')}>Approve</button><button className={styles.rejectBtn} onClick={() => decideAttendee(item._id, 'rejected')}>Reject</button></div>}</div>;
+              })}
             </div>
           </div>
         </div>

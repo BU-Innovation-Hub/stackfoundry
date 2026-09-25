@@ -11,7 +11,7 @@ const navItems: Array<{ to: string; icon: typeof LayoutDashboard; label: string;
   { to: '/admin/audit-logs', icon: ScrollText, label: 'Audit Logs', end: false, roles: ['system_admin'] },
   { to: '/admin/courses', icon: BookOpen, label: 'Courses', end: false, roles: ['innovation_hub_admin', 'mentor'] },
   { to: '/admin/blogs', icon: FileText, label: 'Blogs', end: false, roles: ['innovation_hub_admin'] },
-  { to: '/admin/events', icon: Calendar, label: 'Events', end: false, roles: ['innovation_hub_admin'] },
+  { to: '/admin/events', icon: Calendar, label: 'Events', end: false, roles: ['innovation_hub_admin', 'mentor'] },
 ];
 
 const AdminLayout: React.FC = () => {

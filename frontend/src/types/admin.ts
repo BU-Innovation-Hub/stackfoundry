@@ -29,9 +29,16 @@ export interface Event {
   date: string;
   time: string;
   eventDate: string;
+  startDate?: string;
+  endDate?: string;
   type: 'workshop' | 'hackathon' | 'meetup' | 'conference';
   image?: string;
   location?: string;
+  locationType: 'physical' | 'virtual';
+  requireApproval: boolean;
+  capacity?: number | null;
+  attendeeCount: number;
+  googleMeetLink?: string | null;
   registrationLink?: string;
   author: string;
   authorName: string;
@@ -88,4 +95,5 @@ export interface DashboardStats {
   publishedCourses: number;
   recentRegistrations?: Member[];
   popularCourses: Course[];
+  recentEvents?: Event[];
 }

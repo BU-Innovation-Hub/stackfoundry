@@ -40,9 +40,24 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
     const response = await apiClient.get('/admin/dashboard');
     const stats = response.data?.data?.stats ?? {};
     if (role === 'mentor') {
+      // Mentors are scoped to events they authored; stats endpoint applies the same scope
+      const [eventList, eventStatsRes] = await Promise.all([
+        apiClient.get('/events/admin', { params: { page: 1, limit: 50 } }).catch(() => ({ data: { data: [] } })),
+        apiClient.get('/events/stats').catch(() => ({ data: { data: { total: 0, upcoming: 0 } } })),
+      ]);
+      const events: Event[] = (eventList.data?.data || []).map((e: any) => ({ ...e, id: e._id }));
+      const eventStats = eventStatsRes.data?.data || {};
+      const now = Date.now();
+      const eventStart = (e: Event) => new Date(e.startDate || e.eventDate).getTime();
       return {
         totalCourses: stats.totalCourses || 0,
         publishedCourses: stats.publishedCourses || 0,
+        totalEvents: eventStats.total || 0,
+        upcomingEvents: eventStats.upcoming || 0,
+        recentEvents: events
+          .filter(e => e.status === 'published' && eventStart(e) >= now)
+          .sort((a, b) => eventStart(a) - eventStart(b))
+          .slice(0, 4),
         popularCourses: [],
       };
     }
@@ -56,10 +71,11 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
     };
   }
   // Fetch real data from multiple endpoints in parallel
-  const [dashRes, blogStatsRes, eventStatsRes, membersRes, coursesRes] = await Promise.all([
+  const [dashRes, blogStatsRes, eventStatsRes, eventListRes, membersRes, coursesRes] = await Promise.all([
     apiClient.get('/admin/dashboard').catch(() => ({ data: { data: { stats: {} } } })),
     apiClient.get('/blogs/stats').catch(() => ({ data: { data: { total: 0, published: 0 } } })),
     apiClient.get('/events/stats').catch(() => ({ data: { data: { total: 0, upcoming: 0 } } })),
+    apiClient.get('/events/admin', { params: { page: 1, limit: 50 } }).catch(() => ({ data: { data: [] } })),
     apiClient.get('/admin/users?limit=4').catch(() => ({ data: { data: { users: [], pagination: { total: 0 } } } })),
     apiClient.get('/courses').catch(() => ({ data: { data: [] } })),
   ]);
@@ -70,6 +86,8 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
   const usersData = membersRes.data.data;
   const liveCourses: LmsCourse[] = coursesRes.data.data || [];
   const courses: Course[] = liveCourses.map(mapLmsCourseToAdminCourse);
+  const allEvents: Event[] = (eventListRes.data?.data || []).map((e: any) => ({ ...e, id: e._id }));
+  const eventStart = (e: Event) => new Date(e.startDate || e.eventDate).getTime();
 
   // Map backend users to Member type for recent registrations
   const recentMembers: Member[] = (usersData.users || []).map((u: any) => ({
@@ -95,6 +113,10 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
     // The LMS has no draft/published concept — every persisted course is live
     publishedCourses: courses.length,
     recentRegistrations: recentMembers,
+    recentEvents: allEvents
+      .filter(e => e.status === 'published' && eventStart(e) >= Date.now())
+      .sort((a, b) => eventStart(a) - eventStart(b))
+      .slice(0, 4),
     // Real enrollment counts, highest first
     popularCourses: [...courses].sort((a, b) => b.enrolledCount - a.enrolledCount).slice(0, 3),
   };
