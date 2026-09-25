@@ -326,6 +326,48 @@
 }
 .checkboxField input { accent-color: #D64A2A; }
 
+.switchField {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #444;
+  margin: 0.35rem 0 0.8rem;
+  cursor: pointer;
+  width: fit-content;
+}
+.switchField input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switchTrack {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: #d7d7dc;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+.switchField input:checked + .switchTrack { background: #D64A2A; }
+.switchField input:checked + .switchTrack .switchThumb { transform: translateX(18px); }
+.switchField input:focus-visible + .switchTrack { outline: 2px solid #D64A2A; outline-offset: 2px; }
+
+
 .attendeesBtn { border: 0; background: transparent; color: #D64A2A; cursor: pointer; font-size: .72rem; font-weight: 600; }
 .attendeeList { padding: 1rem 1.25rem 1.25rem; max-height: 55vh; overflow: auto; }
 .attendeeRow { display: flex; align-items: center; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid #eee; }

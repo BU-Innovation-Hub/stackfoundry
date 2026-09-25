@@ -75,10 +75,10 @@ router.get(
  * @access  Private (admin only)
  */
 router.get(
-  "/stats",
-  requireAuth,
-  requireRole(["innovation_hub_admin"]),
-  EventController.getEventStats
+    "/stats",
+    requireAuth,
+    requireRole(["innovation_hub_admin", "mentor"]),
+    EventController.getEventStats
 );
 
 /**

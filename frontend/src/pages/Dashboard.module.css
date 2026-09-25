@@ -357,6 +357,13 @@
   margin-bottom: 1.25rem;
 }
 
+.filterBarRow {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .searchInput {
   padding: 0.55rem 0.9rem;
   border: 1px solid #e2e8f0;
@@ -369,6 +376,17 @@
   transition: border-color 0.2s;
 }
 .searchInput:focus { border-color: #D64A2A; }
+
+.searchInputRight {
+  margin-left: auto;
+  max-width: 320px;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .filterBarRow { flex-direction: column; align-items: stretch; }
+  .searchInputRight { margin-left: 0; max-width: none; }
+}
 
 .filterTabs {
   display: flex;
@@ -905,6 +923,15 @@
   display: flex;
   align-items: center;
   gap: 0.2rem;
+}
+
+.eventViews {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-top: 0.3rem;
 }
 
 /* ========== Article / Blog Detail ========== */

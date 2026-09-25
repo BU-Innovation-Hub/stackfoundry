@@ -95,4 +95,5 @@ export interface DashboardStats {
   publishedCourses: number;
   recentRegistrations?: Member[];
   popularCourses: Course[];
+  recentEvents?: Event[];
 }

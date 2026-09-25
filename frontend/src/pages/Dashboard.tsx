@@ -146,6 +146,14 @@ const Dashboard: React.FC = () => {
     return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const formatTime = (date?: Date | string | null) => {
+    if (!date) return '';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  };
+
+
   const getTypeColor = (type: string) => {
     return '#D64A2A';
   };
@@ -648,16 +656,16 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   {/* Filters */}
-                  <div className={styles.filterBar}>
-                    <input
-                      className={styles.searchInput}
-                      placeholder="Search events..."
-                      value={eventSearch}
-                      onChange={e => setEventSearch(e.target.value)}
-                    />
+                  <div className={`${styles.filterBar} ${styles.filterBarRow}`}>
                     <div className={styles.filterTabs}>
                       {(['upcoming', 'going', 'past'] as const).map(tab => (
-                        <button key={tab} className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`} onClick={() => setEventTab(tab)}>{tab}</button>
+                        <button
+                          key={tab}
+                          className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`}
+                          onClick={() => setEventTab(tab)}
+                        >
+                          {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
                       ))}
                     </div>
                     <div className={styles.filterTabs}>
@@ -671,7 +679,14 @@ const Dashboard: React.FC = () => {
                         </button>
                       ))}
                     </div>
+                    <input
+                      className={`${styles.searchInput} ${styles.searchInputRight}`}
+                      placeholder="Search events..."
+                      value={eventSearch}
+                      onChange={e => setEventSearch(e.target.value)}
+                    />
                   </div>
+
 
                   {filteredEvents.length === 0 ? (
                     <p className={styles.emptyText}>No events match your search.</p>
@@ -688,8 +703,9 @@ const Dashboard: React.FC = () => {
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
                               <h4>{event.title}</h4>
-                              <p className={styles.eventInfo}>{event.date} &middot; {event.time}</p>
+                              <p className={styles.eventInfo}>{formatDate(eventStart(event))} &middot; {formatTime(eventStart(event))}</p>
                               {event.location && <p className={styles.eventLocation}><MapPin size={11} /> {event.location}</p>}
+                              <span className={styles.eventViews}><Eye size={12} /> {event.views} views</span>
                             </div>
                           </div>
                         );
@@ -724,7 +740,7 @@ const Dashboard: React.FC = () => {
 
                       <div className={styles.articleMeta}>
                          <span><Calendar size={14} /> {formatDate(eventStart(selectedEvent))}</span>
-                        <span><Clock size={14} /> {selectedEvent.time}</span>
+                        <span><Clock size={14} /> {formatTime(eventStart(selectedEvent))}</span>
                         {selectedEvent.location && <span><MapPin size={14} /> {selectedEvent.location}</span>}
                         <span><Eye size={14} /> {selectedEvent.views} views</span>
                       </div>
@@ -745,7 +761,7 @@ const Dashboard: React.FC = () => {
                           <h4>Event Details</h4>
                           <div className={styles.detailGrid}>
                              <div><span className={styles.detailLabel}>Date</span><span>{formatDate(eventStart(selectedEvent))}</span></div>
-                            <div><span className={styles.detailLabel}>Time</span><span>{selectedEvent.time}</span></div>
+                             <div><span className={styles.detailLabel}>Time</span><span>{formatTime(eventStart(selectedEvent))}</span></div>
                             <div><span className={styles.detailLabel}>Type</span><span style={{ textTransform: 'capitalize' }}>{selectedEvent.type}</span></div>
                             {selectedEvent.location && <div><span className={styles.detailLabel}>Location</span><span>{selectedEvent.location}</span></div>}
                             <div><span className={styles.detailLabel}>Organized by</span><span>{selectedEvent.authorName}</span></div>
@@ -755,7 +771,7 @@ const Dashboard: React.FC = () => {
                          {selectedEvent.googleMeetLink && eventAttendance?.status === 'approved' && (
                            <a href={selectedEvent.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join Google Meet <ExternalLink size={14} /></a>
                          )}
-                         {selectedEvent.registrationLink && new Date(selectedEvent.eventDate) >= new Date() && (
+                         {selectedEvent.registrationLink && new Date(eventStart(selectedEvent)) >= new Date() && (
                           <a href={selectedEvent.registrationLink} target="_blank" rel="noopener noreferrer" className={styles.registerEventBtn}>
                             Register Now <ExternalLink size={14} />
                           </a>

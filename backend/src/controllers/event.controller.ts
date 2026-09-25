@@ -334,12 +334,14 @@ export const listEventsAdmin = async (
  * GET /api/v1/events/stats
  */
 export const getEventStats = async (
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
     try {
-        const stats = await EventService.getEventStats();
+        const user = (req as RequestWithUser).user;
+        const authorId = user.role === "mentor" ? user.id : undefined;
+        const stats = await EventService.getEventStats(authorId);
 
         res.status(200).json({
             success: true,

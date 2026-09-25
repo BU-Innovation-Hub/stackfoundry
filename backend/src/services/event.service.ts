@@ -93,9 +93,7 @@ const normalizeLegacyDates = <T extends Partial<IEvent>>(event: T): T => {
             event.endDate = legacyDate;
         }
     }
-    const publicEvent = normalizeLegacyDates(event);
-    delete publicEvent.googleMeetLink;
-    return publicEvent;
+    return event;
 };
 
 // ============================================
@@ -317,7 +315,7 @@ export const getEventsByType = async (
 /**
  * Get event statistics (admin)
  */
-export const getEventStats = async (): Promise<{
+export const getEventStats = async (authorId?: string): Promise<{
     total: number;
     published: number;
     drafts: number;
@@ -326,8 +324,10 @@ export const getEventStats = async (): Promise<{
     upcoming: number;
     byType: Record<string, number>;
 }> => {
+    const scope = authorId ? { author: new Types.ObjectId(authorId) } : {};
     const [counts, viewsResult, typeResult, upcomingCount] = await Promise.all([
         Event.aggregate([
+            { $match: scope },
             {
                 $group: {
                     _id: "$status",
@@ -336,6 +336,7 @@ export const getEventStats = async (): Promise<{
             },
         ]),
         Event.aggregate([
+            { $match: scope },
             {
                 $group: {
                     _id: null,
@@ -344,7 +345,7 @@ export const getEventStats = async (): Promise<{
             },
         ]),
         Event.aggregate([
-            { $match: { status: "published" } },
+            { $match: { ...scope, status: "published" } },
             {
                 $group: {
                     _id: "$type",
@@ -353,6 +354,7 @@ export const getEventStats = async (): Promise<{
             },
         ]),
         Event.countDocuments({
+            ...scope,
             status: "published",
             eventDate: { $gte: new Date() }
         }),

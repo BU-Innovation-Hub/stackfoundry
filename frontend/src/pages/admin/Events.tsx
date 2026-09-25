@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search, Eye } from 'lucide-react';
 import { Event } from '../../types/admin';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
@@ -11,9 +11,6 @@ type EventForm = {
   title: string;
   description: string;
   image: string;
-  date: string;
-  time: string;
-  eventDate: string;
   startDate: string;
   endDate: string;
   location: string;
@@ -25,8 +22,15 @@ type EventForm = {
   status: Event['status'];
 };
 
-const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', startDate: '', endDate: '', location: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
+const emptyForm: EventForm = { title: '', description: '', image: '', startDate: '', endDate: '', location: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
 const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
+
+const toDateTimeLocal = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+};
 
 const typeColors: Record<Event['type'], string> = {
   workshop: '#2563eb',
@@ -90,11 +94,8 @@ const Events: React.FC = () => {
         title: event.title,
         description: event.description,
         image: event.image || '',
-        date: event.date,
-        time: event.time,
-        eventDate: event.eventDate ? event.eventDate.substring(0, 10) : '',
-        startDate: event.startDate ? event.startDate.substring(0, 16) : '',
-        endDate: event.endDate ? event.endDate.substring(0, 16) : '',
+        startDate: (event.startDate || event.eventDate) ? toDateTimeLocal(event.startDate || event.eventDate) : '',
+        endDate: event.endDate ? toDateTimeLocal(event.endDate) : '',
         location: event.location || '',
         locationType: event.locationType || 'physical',
         requireApproval: event.requireApproval || false,
@@ -141,14 +142,22 @@ const Events: React.FC = () => {
   };
 
   const handleSave = async () => {
+    const startDate = form.startDate ? new Date(form.startDate) : null;
+    if (!startDate || Number.isNaN(startDate.getTime())) {
+      alert('Please choose a valid start date and time.');
+      return;
+    }
+    const endDate = form.endDate ? new Date(form.endDate) : startDate;
     const payload = {
       ...form,
-      // If eventDate not set, derive from date field
-      eventDate: form.eventDate || form.date,
-      startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
-      endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
+      date: startDate.toISOString().substring(0, 10),
+      time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
+      eventDate: startDate.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
       capacity: form.capacity ? Number(form.capacity) : null,
     };
+
     try {
       if (editId) {
         await updateEvent(editId, payload);
@@ -245,7 +254,7 @@ const Events: React.FC = () => {
                 {event.location && <span><MapPin size={14} /> {event.location}</span>}
               </div>
               <div className={styles.cardDetails}>
-                <span>Views: {event.views}</span>
+                <span><Eye size={14} /> {event.views} views</span>
                 <span>By: {event.authorName}</span>
               </div>
               <div className={styles.cardDetails}>
@@ -286,18 +295,8 @@ const Events: React.FC = () => {
               </label>
               <div className={styles.row}>
                 <label className={styles.field}>
-                  <span>Date</span>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                </label>
-                <label className={styles.field}>
-                  <span>Time</span>
-                  <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-                </label>
-              </div>
-              <div className={styles.row}>
-                <label className={styles.field}>
                   <span>Start date and time</span>
-                  <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value, date: e.target.value.substring(0, 10) })} />
+                  <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
                 </label>
                 <label className={styles.field}>
                   <span>End date and time</span>
@@ -305,7 +304,7 @@ const Events: React.FC = () => {
                 </label>
               </div>
               <label className={styles.field}>
-                <span>{form.locationType === 'virtual' ? 'Virtual location label' : 'Physical location'}</span>
+                <span>Location</span>
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
               </label>
               <div className={styles.row}>
@@ -321,13 +320,10 @@ const Events: React.FC = () => {
                   <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} placeholder="Unlimited" />
                 </label>
               </div>
-              <label className={styles.checkboxField}>
+              <label className={styles.switchField}>
                 <input type="checkbox" checked={form.requireApproval} onChange={e => setForm({ ...form, requireApproval: e.target.checked })} />
+                <span className={styles.switchTrack}><span className={styles.switchThumb} /></span>
                 <span>Require approval for student requests</span>
-              </label>
-              <label className={styles.field}>
-                <span>Event Date (for sorting)</span>
-                <input type="date" value={form.eventDate} onChange={e => setForm({ ...form, eventDate: e.target.value })} />
               </label>
               <div className={styles.field}>
                 <span>Event Image</span>
@@ -384,7 +380,7 @@ const Events: React.FC = () => {
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.cancelBtn} onClick={handleClose}>Cancel</button>
-              <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.date}>
+              <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.startDate}>
                 {editId ? 'Update' : 'Create'}
               </button>
             </div>
