@@ -916,15 +916,6 @@
   margin: 0;
 }
 
-.eventLocation {
-  font-size: 0.72rem;
-  color: #aaa;
-  margin: 0.15rem 0 0;
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
 .eventViews {
   display: inline-flex;
   align-items: center;

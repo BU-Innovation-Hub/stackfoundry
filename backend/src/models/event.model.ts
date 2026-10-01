@@ -42,7 +42,6 @@ export interface IEvent extends Document {
     endDate?: Date;
     type: EventType;
     image?: string;
-    location?: string;
     locationType: EventLocationType;
     requireApproval: boolean;
     capacity?: number | null;
@@ -143,12 +142,6 @@ const EventSchema: Schema<IEvent> = new Schema(
         },
         image: {
             type: String,
-            default: null,
-        },
-        location: {
-            type: String,
-            trim: true,
-            maxlength: [500, "Location cannot exceed 500 characters"],
             default: null,
         },
         locationType: {
@@ -286,7 +279,8 @@ EventSchema.statics.findPublished = function (
  * Find event by slug (for public viewing)
  */
 EventSchema.statics.findBySlug = function (slug: string) {
-    return this.findOne({ slug, status: "published" })
+    // Archived events stay viewable so links to ended events never 404.
+    return this.findOne({ slug, status: { $in: ["published", "archived"] } })
         .populate("author", "name surname")
         .lean();
 };

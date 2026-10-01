@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { getEvents } from '../services/eventService';
@@ -170,20 +171,12 @@ const EventListing: React.FC = () => {
                                             </div>
                                             <h3 className={styles.cardTitle}>{event.title}</h3>
                                             <p className={styles.cardExcerpt}>{event.description}</p>
-                                            {event.location && (
-                                                <span className={styles.cardLocation}>
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                                        <circle cx="12" cy="10" r="3" />
-                                                    </svg>
-                                                    {event.location}
-                                                </span>
-                                            )}
-                                            <span className={styles.cardRegister}>
-                                                Register Now
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                                </svg>
+                                            <span
+                                                className={styles.cardRegister}
+                                                title="View details"
+                                                aria-label="View details"
+                                            >
+                                                <Eye size={18} />
                                             </span>
                                         </div>
                                     </Link>

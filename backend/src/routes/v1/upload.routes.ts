@@ -28,9 +28,9 @@ const upload = multer({
 });
 
 /**
- * POST /api/v1/upload/image
- * Upload a single image to Cloudinary
- * Protected: admin only
+ * POST /api/v1/upload/profile-picture
+ * Upload the current user's profile picture to Cloudinary
+ * Protected: any authenticated user
  */
 router.post(
     '/profile-picture',
@@ -55,6 +55,11 @@ router.post(
     }
 );
 
+/**
+ * POST /api/v1/upload/image
+ * Upload a single content image (event/course) to Cloudinary
+ * Protected: innovation hub admin or mentor
+ */
 router.post(
     '/image',
     requireAuth,

@@ -59,16 +59,10 @@ export const createEventValidation = [
     .withMessage("Invalid event type"),
 
   body("image")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Image must be a valid URL"),
-
-  body("location")
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("Location cannot exceed 500 characters"),
 
   body("locationType")
     .optional()
@@ -86,7 +80,7 @@ export const createEventValidation = [
     .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Registration link must be a valid URL"),
@@ -152,16 +146,10 @@ export const updateEventValidation = [
     .withMessage("Invalid event type"),
 
   body("image")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Image must be a valid URL"),
-
-  body("location")
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("Location cannot exceed 500 characters"),
 
   body("locationType")
     .optional()
@@ -179,7 +167,7 @@ export const updateEventValidation = [
     .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Registration link must be a valid URL"),

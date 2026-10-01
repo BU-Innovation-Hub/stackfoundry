@@ -655,19 +655,21 @@ const Dashboard: React.FC = () => {
                     <p className={styles.welcomeSub}>{allEvents.length} events &middot; {upcomingEvents.length} upcoming</p>
                   </div>
 
-                  {/* Filters */}
+                  {/* Tabs */}
+                  <div className={styles.courseTabs}>
+                    {(['upcoming', 'going', 'past'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`}
+                        onClick={() => setEventTab(tab)}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Filters + search */}
                   <div className={`${styles.filterBar} ${styles.filterBarRow}`}>
-                    <div className={styles.filterTabs}>
-                      {(['upcoming', 'going', 'past'] as const).map(tab => (
-                        <button
-                          key={tab}
-                          className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`}
-                          onClick={() => setEventTab(tab)}
-                        >
-                          {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                      ))}
-                    </div>
                     <div className={styles.filterTabs}>
                       {eventTypes.map(t => (
                         <button
@@ -704,7 +706,6 @@ const Dashboard: React.FC = () => {
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
                               <h4>{event.title}</h4>
                               <p className={styles.eventInfo}>{formatDate(eventStart(event))} &middot; {formatTime(eventStart(event))}</p>
-                              {event.location && <p className={styles.eventLocation}><MapPin size={11} /> {event.location}</p>}
                               <span className={styles.eventViews}><Eye size={12} /> {event.views} views</span>
                             </div>
                           </div>
@@ -741,7 +742,7 @@ const Dashboard: React.FC = () => {
                       <div className={styles.articleMeta}>
                          <span><Calendar size={14} /> {formatDate(eventStart(selectedEvent))}</span>
                         <span><Clock size={14} /> {formatTime(eventStart(selectedEvent))}</span>
-                        {selectedEvent.location && <span><MapPin size={14} /> {selectedEvent.location}</span>}
+                        <span><MapPin size={14} /> {selectedEvent.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span>
                         <span><Eye size={14} /> {selectedEvent.views} views</span>
                       </div>
 
@@ -763,7 +764,7 @@ const Dashboard: React.FC = () => {
                              <div><span className={styles.detailLabel}>Date</span><span>{formatDate(eventStart(selectedEvent))}</span></div>
                              <div><span className={styles.detailLabel}>Time</span><span>{formatTime(eventStart(selectedEvent))}</span></div>
                             <div><span className={styles.detailLabel}>Type</span><span style={{ textTransform: 'capitalize' }}>{selectedEvent.type}</span></div>
-                            {selectedEvent.location && <div><span className={styles.detailLabel}>Location</span><span>{selectedEvent.location}</span></div>}
+                            <div><span className={styles.detailLabel}>Location type</span><span>{selectedEvent.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span></div>
                             <div><span className={styles.detailLabel}>Organized by</span><span>{selectedEvent.authorName}</span></div>
                           </div>
                         </div>

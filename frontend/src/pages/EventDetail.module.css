@@ -90,7 +90,8 @@
 }
 
 .backLink {
-    display: inline-flex;
+    display: flex;
+    width: fit-content;
     align-items: center;
     gap: var(--spacing-sm);
     color: var(--color-text-secondary);
@@ -316,6 +317,104 @@
 
 .registerBtn:hover svg {
     transform: translateX(4px);
+}
+
+.registerBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Post-approval actions: Google Calendar + meeting link */
+.successActions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.gcalBtn,
+.meetBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.gcalBtn {
+    background: #1a73e8;
+    color: #ffffff;
+    border: 1px solid #1a73e8;
+}
+
+.gcalBtn:hover {
+    background: #1557b0;
+    color: #ffffff;
+}
+
+.meetBtn {
+    background: transparent;
+    color: var(--color-accent-teal);
+    border: 1px solid var(--color-accent-teal);
+}
+
+.meetBtn:hover {
+    background: var(--color-accent-teal);
+    color: #ffffff;
+}
+
+/* Pending approval / rejected states */
+.pendingBox,
+.rejectedBox {
+    text-align: center;
+    color: var(--color-text-dark-secondary);
+}
+
+.pendingBox h3,
+.rejectedBox h3 {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-dark);
+    margin-bottom: var(--spacing-sm);
+}
+
+.pendingBox p,
+.rejectedBox p {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.cancelBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-xl);
+    background: transparent;
+    color: var(--color-accent-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    border: 1px solid var(--color-accent-primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.cancelBtn:hover:not(:disabled) {
+    background: var(--color-accent-primary);
+    color: #ffffff;
+}
+
+.cancelBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .freeLabel {

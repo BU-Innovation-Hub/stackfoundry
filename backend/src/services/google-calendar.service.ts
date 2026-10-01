@@ -23,7 +23,6 @@ const toCalendarEvent = (event: IEvent) => {
   return {
     summary: event.title,
     description: event.description,
-    location: event.locationType === "physical" ? event.location || undefined : undefined,
     start: { dateTime: new Date(start).toISOString() },
     end: { dateTime: endDate.toISOString() },
     conferenceData: event.locationType === "virtual" ? {

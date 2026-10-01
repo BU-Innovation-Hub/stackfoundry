@@ -33,7 +33,6 @@ export interface Event {
   endDate?: string;
   type: 'workshop' | 'hackathon' | 'meetup' | 'conference';
   image?: string;
-  location?: string;
   locationType: 'physical' | 'virtual';
   requireApproval: boolean;
   capacity?: number | null;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search, Eye } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Clock, Upload, Search, Eye } from 'lucide-react';
 import { Event } from '../../types/admin';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
 import { api as apiClient } from '../../services/apiClient';
@@ -13,7 +13,6 @@ type EventForm = {
   image: string;
   startDate: string;
   endDate: string;
-  location: string;
   locationType: 'physical' | 'virtual';
   requireApproval: boolean;
   capacity: string;
@@ -22,7 +21,7 @@ type EventForm = {
   status: Event['status'];
 };
 
-const emptyForm: EventForm = { title: '', description: '', image: '', startDate: '', endDate: '', location: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
+const emptyForm: EventForm = { title: '', description: '', image: '', startDate: '', endDate: '', locationType: 'physical', requireApproval: false, capacity: '', type: 'workshop', registrationLink: '', status: 'draft' };
 const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
 
 const toDateTimeLocal = (value: string) => {
@@ -96,7 +95,6 @@ const Events: React.FC = () => {
         image: event.image || '',
         startDate: (event.startDate || event.eventDate) ? toDateTimeLocal(event.startDate || event.eventDate) : '',
         endDate: event.endDate ? toDateTimeLocal(event.endDate) : '',
-        location: event.location || '',
         locationType: event.locationType || 'physical',
         requireApproval: event.requireApproval || false,
         capacity: event.capacity ? String(event.capacity) : '',
@@ -251,11 +249,10 @@ const Events: React.FC = () => {
               <p className={styles.cardDesc}>{event.description}</p>
               <div className={styles.cardDetails}>
                 <span><Clock size={14} /> {event.date} at {event.time}</span>
-                {event.location && <span><MapPin size={14} /> {event.location}</span>}
               </div>
               <div className={styles.cardDetails}>
                 <span><Eye size={14} /> {event.views} views</span>
-                <span>By: {event.authorName}</span>
+                <span>By {event.authorName}</span>
               </div>
               <div className={styles.cardDetails}>
                 <span>Going: {event.attendeeCount || 0}{event.capacity ? ` / ${event.capacity}` : ''}</span>
@@ -303,10 +300,6 @@ const Events: React.FC = () => {
                   <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
                 </label>
               </div>
-              <label className={styles.field}>
-                <span>Location</span>
-                <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
-              </label>
               <div className={styles.row}>
                 <label className={styles.field}>
                   <span>Location type</span>
@@ -323,7 +316,7 @@ const Events: React.FC = () => {
               <label className={styles.switchField}>
                 <input type="checkbox" checked={form.requireApproval} onChange={e => setForm({ ...form, requireApproval: e.target.checked })} />
                 <span className={styles.switchTrack}><span className={styles.switchThumb} /></span>
-                <span>Require approval for student requests</span>
+                <span>Require approval</span>
               </label>
               <div className={styles.field}>
                 <span>Event Image</span>

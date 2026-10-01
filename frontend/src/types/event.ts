@@ -24,7 +24,6 @@ export interface IEvent {
     endDate?: string;
     type: EventType;
     image?: string | null;
-    location?: string | null;
     locationType: EventLocationType;
     requireApproval: boolean;
     capacity?: number | null;

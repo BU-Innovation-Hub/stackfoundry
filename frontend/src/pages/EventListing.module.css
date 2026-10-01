@@ -327,38 +327,31 @@
     overflow: hidden;
 }
 
-.cardLocation {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-dark-secondary);
-    margin-bottom: var(--spacing-md);
-}
-
-.cardLocation svg {
-    width: 14px;
-    height: 14px;
-}
-
 .cardRegister {
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    color: var(--color-accent-primary);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--color-text-dark-secondary);
+    border-radius: 50%;
+    color: var(--color-text-dark-secondary);
     margin-top: auto;
-    transition: gap var(--transition-fast);
+    align-self: flex-end;
+    opacity: 0.7;
+    transition: all var(--transition-fast);
 }
 
 .card:hover .cardRegister {
-    gap: var(--spacing-md);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    background: rgba(214, 74, 42, 0.08);
+    opacity: 1;
 }
 
 .cardRegister svg {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
 }
 
 /* ---------- Empty State ---------- */

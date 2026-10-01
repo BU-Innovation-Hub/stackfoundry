@@ -27,7 +27,6 @@ export interface CreateEventData {
     endDate?: Date;
     type: EventType;
     image?: string;
-    location?: string;
     locationType?: EventLocationType;
     requireApproval?: boolean;
     capacity?: number | null;
@@ -47,7 +46,6 @@ export interface UpdateEventData {
     endDate?: Date;
     type?: EventType;
     image?: string;
-    location?: string;
     locationType?: EventLocationType;
     requireApproval?: boolean;
     capacity?: number | null;
@@ -183,10 +181,13 @@ export const updateEvent = async (
         eventDoc.publishedAt = new Date();
     }
 
-    // Apply other updatable fields
-    for (const key of Object.keys(data)) {
-        // @ts-ignore
-        eventDoc[key] = data[key];
+    // Apply other updatable fields (skip absent keys so partial updates
+    // never wipe existing values with undefined)
+    const patch = data as Record<string, unknown>;
+    for (const key of Object.keys(patch)) {
+        const value = patch[key];
+        if (value === undefined) continue;
+        (eventDoc as unknown as Record<string, unknown>)[key] = value;
     }
 
     await eventDoc.save();
@@ -233,9 +234,14 @@ export const listEvents = async (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = {};
 
-    // Non-admins only see published events
+    // Non-admins see published events, plus archived events that already
+    // ended — so past events remain visible in public listings after the
+    // automatic archive sweep runs.
     if (!isAdmin) {
-        query.status = "published";
+        query.$or = [
+            { status: "published" },
+            { status: "archived", eventDate: { $lt: new Date() } },
+        ];
     } else if (status) {
         query.status = status;
     }
@@ -280,6 +286,20 @@ export const listEvents = async (
             hasPrev: page > 1,
         },
     };
+};
+
+/**
+ * Archive events whose date passed more than a day ago (drafts and
+ * published alike). Idempotent and indexed on {status, eventDate}.
+ * Returns the number of events that changed.
+ */
+export const archiveStaleEvents = async (): Promise<number> => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = await Event.updateMany(
+        { status: { $ne: "archived" }, eventDate: { $ne: null, $lt: cutoff } },
+        { $set: { status: "archived" } }
+    );
+    return result.modifiedCount ?? 0;
 };
 
 /**

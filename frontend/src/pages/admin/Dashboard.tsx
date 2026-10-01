@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight, Plus, Activity, Clock, MapPin, Eye } from 'lucide-react';
+import { Users, FileText, Calendar, BookOpen, TrendingUp, ArrowRight, Plus, Activity, Clock, Eye } from 'lucide-react';
 import { DashboardStats } from '../../types/admin';
 import { getDashboardStats } from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
@@ -90,7 +90,6 @@ const AdminDashboard: React.FC = () => {
                 <span className={styles.eventName}>{e.title}</span>
                 <span className={styles.eventMeta}>
                   <Clock size={12} /> {formatEventDate(start)} &middot; {formatEventTime(start)}
-                  {e.location && <><MapPin size={12} /> {e.location}</>}
                   <Eye size={12} /> {e.views} views
                 </span>
               </div>

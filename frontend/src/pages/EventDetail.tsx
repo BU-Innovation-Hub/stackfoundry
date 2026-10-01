@@ -1,10 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, CalendarPlus, Video } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import { getEventBySlug } from '../services/eventService';
+import {
+    getEventBySlug,
+    getMyEventAttendance,
+    joinEvent,
+    cancelEventAttendance,
+    EventAttendance,
+} from '../services/eventService';
 import { useAuth } from '../context/AuthContext';
 import { IEvent, EventType } from '../types/event';
+import { buildGcalLink } from '../utils/calendar';
 import Loader from '../components/common/Loader';
 import styles from './EventDetail.module.css';
 
@@ -15,8 +23,8 @@ const EventDetail: React.FC = () => {
     const [event, setEvent] = useState<IEvent | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [registered, setRegistered] = useState(false);
-    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+    const [attendance, setAttendance] = useState<EventAttendance | null>(null);
+    const [joinLoading, setJoinLoading] = useState(false);
     const hasFetched = useRef(false);
 
     useEffect(() => {
@@ -43,6 +51,17 @@ const EventDetail: React.FC = () => {
         if (slug) fetchEvent();
     }, [slug]);
 
+    // Reflect the visitor's existing join state (pending/approved/rejected).
+    useEffect(() => {
+        if (!event || !isAuthenticated) return;
+        if (user?.role !== 'student' && user?.role !== 'member') return;
+        let cancelled = false;
+        getMyEventAttendance(event._id)
+            .then((att) => { if (!cancelled) setAttendance(att); })
+            .catch(() => { /* no prior attendance */ });
+        return () => { cancelled = true; };
+    }, [event, isAuthenticated, user]);
+
     const getTypeColor = (type: EventType) => {
         const colors: Record<EventType, string> = {
             workshop: '#00d4ff',
@@ -57,31 +76,50 @@ const EventDetail: React.FC = () => {
         return new Date(eventDate) < new Date();
     };
 
-    const handleRegisterClick = () => {
+    const isAttendeeRole = user?.role === 'student' || user?.role === 'member';
+
+    const handleJoinClick = async () => {
+        if (!event) return;
+        // Guests always go through login first — joining requires an account.
         if (!isAuthenticated) {
-            setShowLoginPrompt(true);
+            handleLoginRedirect();
             return;
         }
-
-        // If event has an external registration link, open it
-        if (event?.registrationLink) {
+        // External registration events keep their existing behaviour.
+        if (event.registrationLink) {
             window.open(event.registrationLink, '_blank', 'noopener,noreferrer');
             return;
         }
+        if (!isAttendeeRole) {
+            alert('Only students and members can join events.');
+            return;
+        }
+        setJoinLoading(true);
+        try {
+            setAttendance(await joinEvent(event._id));
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Unable to join event');
+        } finally {
+            setJoinLoading(false);
+        }
+    };
 
-        // Internal registration confirmation
-        setRegistered(true);
+    const handleCancelAttendance = async () => {
+        if (!event) return;
+        setJoinLoading(true);
+        try {
+            setAttendance(await cancelEventAttendance(event._id));
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Unable to cancel attendance');
+        } finally {
+            setJoinLoading(false);
+        }
     };
 
     const handleLoginRedirect = () => {
         // Store the current URL so we can redirect back after login
         sessionStorage.setItem('redirectAfterLogin', `/events/${slug}`);
         navigate('/login');
-    };
-
-    const handleRegisterRedirect = () => {
-        sessionStorage.setItem('redirectAfterLogin', `/events/${slug}`);
-        navigate('/register');
     };
 
     // Loading state
@@ -113,6 +151,8 @@ const EventDetail: React.FC = () => {
     }
 
     const past = isPastEvent(event.eventDate);
+    const gcalLink = buildGcalLink(event);
+    const meetLink = attendance?.googleMeetLink || event.googleMeetLink;
 
     return (
         <div className={styles.page}>
@@ -122,9 +162,7 @@ const EventDetail: React.FC = () => {
             <section className={styles.hero}>
                 <div className={styles.heroContent}>
                     <Link to="/events" className={styles.backLink}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
+                        <ChevronLeft size={18} />
                         Back to Events
                     </Link>
 
@@ -154,18 +192,14 @@ const EventDetail: React.FC = () => {
                             </svg>
                             {event.time}
                         </span>
-                        {event.location && (
-                            <>
-                                <span className={styles.metaDivider} />
-                                <span className={styles.metaItem}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                        <circle cx="12" cy="10" r="3" />
-                                    </svg>
-                                    {event.location}
-                                </span>
-                            </>
-                        )}
+                        <span className={styles.metaDivider} />
+                        <span className={styles.metaItem}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            {event.locationType === 'virtual' ? 'Virtual' : 'Physical'}
+                        </span>
                         <span className={styles.metaDivider} />
                         <span className={styles.metaItem}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -212,12 +246,10 @@ const EventDetail: React.FC = () => {
                                     {event.type}
                                 </span>
                             </div>
-                            {event.location && (
-                                <div className={styles.detailItem}>
-                                    <span className={styles.detailLabel}>Location</span>
-                                    <span className={styles.detailValue}>{event.location}</span>
-                                </div>
-                            )}
+                            <div className={styles.detailItem}>
+                                <span className={styles.detailLabel}>Location type</span>
+                                <span className={styles.detailValue}>{event.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span>
+                            </div>
                             <div className={styles.detailItem}>
                                 <span className={styles.detailLabel}>Organized by</span>
                                 <span className={styles.detailValue}>{event.authorName}</span>
@@ -242,7 +274,7 @@ const EventDetail: React.FC = () => {
                                     Browse Upcoming Events
                                 </Link>
                             </div>
-                        ) : registered ? (
+                        ) : attendance?.status === 'approved' ? (
                             /* Registration success */
                             <div className={styles.registrationSuccess}>
                                 <div className={styles.successIcon}>
@@ -264,44 +296,61 @@ const EventDetail: React.FC = () => {
                                         <span>Time:</span>
                                         <span>{event.time}</span>
                                     </div>
-                                    {event.location && (
-                                        <div className={styles.confirmItem}>
-                                            <span>Location:</span>
-                                            <span>{event.location}</span>
-                                        </div>
+                                    <div className={styles.confirmItem}>
+                                        <span>Location type:</span>
+                                        <span>{event.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span>
+                                    </div>
+                                </div>
+                                <div className={styles.successActions}>
+                                    <a
+                                        href={gcalLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={styles.gcalBtn}
+                                    >
+                                        <CalendarPlus size={16} />
+                                        Add to Google Calendar
+                                    </a>
+                                    {meetLink && (
+                                        <a
+                                            href={meetLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={styles.meetBtn}
+                                        >
+                                            <Video size={16} />
+                                            Join meeting
+                                        </a>
                                     )}
                                 </div>
                                 <p className={styles.confirmNote}>
                                     We'll send event updates to your registered email.
                                 </p>
                             </div>
-                        ) : showLoginPrompt ? (
-                            /* Login prompt for unauthenticated users */
-                            <div className={styles.loginPrompt}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                    <circle cx="12" cy="7" r="4" />
-                                </svg>
-                                <h3>Sign In to Register</h3>
-                                <p>You need an account to register for events. It only takes a minute!</p>
+                        ) : attendance?.status === 'pending' ? (
+                            /* Awaiting organizer approval */
+                            <div className={styles.pendingBox}>
+                                <h3>Request Pending</h3>
+                                <p>
+                                    Your request to join <strong>{event.title}</strong> is waiting for
+                                    approval. We'll email you as soon as it's decided.
+                                </p>
                                 <button
-                                    className={styles.loginBtn}
-                                    onClick={handleLoginRedirect}
+                                    className={styles.cancelBtn}
+                                    onClick={handleCancelAttendance}
+                                    disabled={joinLoading}
                                 >
-                                    Sign In
+                                    {joinLoading ? 'Cancelling…' : 'Cancel Request'}
                                 </button>
-                                <button
-                                    className={styles.createAccountBtn}
-                                    onClick={handleRegisterRedirect}
-                                >
-                                    Create Account
-                                </button>
-                                <button
-                                    className={styles.dismissBtn}
-                                    onClick={() => setShowLoginPrompt(false)}
-                                >
-                                    Maybe later
-                                </button>
+                            </div>
+                        ) : attendance?.status === 'rejected' ? (
+                            /* Request rejected */
+                            <div className={styles.rejectedBox}>
+                                <h3>Request Not Approved</h3>
+                                <p>
+                                    Your request to attend this event was rejected. Contact the
+                                    organizer for more information.
+                                </p>
                             </div>
                         ) : (
                             /* Default registration CTA */
@@ -310,12 +359,17 @@ const EventDetail: React.FC = () => {
                                 <p>Secure your spot for this {event.type}. Don't miss out!</p>
                                 <button
                                     className={styles.registerBtn}
-                                    onClick={handleRegisterClick}
+                                    onClick={handleJoinClick}
+                                    disabled={joinLoading}
                                 >
-                                    Register Now
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M5 12h14M12 5l7 7-7 7" />
-                                    </svg>
+                                    {joinLoading ? 'Joining…' : (
+                                        <>
+                                            Join Now
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M5 12h14M12 5l7 7-7 7" />
+                                            </svg>
+                                        </>
+                                    )}
                                 </button>
                                 <span className={styles.freeLabel}>Free Event</span>
                             </div>

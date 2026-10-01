@@ -18,12 +18,14 @@
 
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
+import { Types } from "mongoose";
 import * as EventService from "../services/event.service";
 import { ApiError } from "../middleware/errorHandler";
 import { RequestWithUser } from "../types";
 import { EVENT_TYPES, EventType, EventStatus } from "../models/event.model";
 import { syncEventToGoogle, deleteEventFromGoogle } from "../services/google-calendar.service";
 import { notifyEventAttendees } from "../services/event-attendance.service";
+import { materialFieldsChanged } from "../utils/materialFields";
 
 // ============================================
 // Constants
@@ -34,6 +36,18 @@ const VALID_EVENT_STATUSES: EventStatus[] = ["draft", "published", "archived"];
 const canManageEvent = (req: Request, authorId: string): boolean => {
     const user = (req as RequestWithUser).user;
     return user.role !== "mentor" || user.id === authorId;
+};
+
+/**
+ * Resolve an event's author id whether `author` is a raw ObjectId
+ * or a populated author document (getEventById populates it).
+ */
+const resolveAuthorId = (author: unknown): string => {
+    if (author instanceof Types.ObjectId) return author.toString();
+    if (author && typeof author === "object" && "_id" in author) {
+        return String((author as { _id: unknown })._id);
+    }
+    return String(author);
 };
 
 // ============================================
@@ -108,7 +122,6 @@ export const createEvent = async (
             endDate,
             type,
             image,
-            location,
             locationType,
             requireApproval,
             capacity,
@@ -132,7 +145,6 @@ export const createEvent = async (
                 endDate: endDate ? new Date(endDate) : undefined,
                 type,
                 image,
-                location,
                 locationType,
                 requireApproval,
                 capacity: capacity === undefined || capacity === null || capacity === "" ? null : Number(capacity),
@@ -174,7 +186,7 @@ export const getEventById = async (
 
         const event = await EventService.getEventById(req.params.id);
 
-        if (!canManageEvent(req, event.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "Mentors can only manage events they create");
 
         res.status(200).json({
             success: true,
@@ -207,7 +219,6 @@ export const updateEvent = async (
             endDate,
             type,
             image,
-            location,
             locationType,
             requireApproval,
             capacity,
@@ -222,7 +233,6 @@ export const updateEvent = async (
             time,
             type,
             image,
-            location,
             locationType,
             requireApproval,
             capacity: capacity === undefined || capacity === null || capacity === "" ? undefined : Number(capacity),
@@ -238,9 +248,10 @@ export const updateEvent = async (
         if (endDate) updateData.endDate = new Date(endDate);
 
         const existingEvent = await EventService.getEventById(req.params.id);
-        if (!canManageEvent(req, existingEvent.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(existingEvent.author))) throw new ApiError(403, "Mentors can only manage events they create");
+        const changed = materialFieldsChanged(existingEvent, updateData as unknown as Record<string, unknown>);
         const event = await EventService.updateEvent(req.params.id, updateData);
-        await notifyEventAttendees(event._id.toString(), "updated");
+        if (changed) await notifyEventAttendees(event._id.toString(), "updated");
 
         if (event.status === "published") {
             try {
@@ -274,7 +285,7 @@ export const deleteEvent = async (
         handleValidationErrors(req);
 
         const event = await EventService.getEventById(req.params.id);
-        if (!canManageEvent(req, event.author.toString())) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "Mentors can only manage events they create");
         await notifyEventAttendees(event._id.toString(), "cancelled");
         try { await deleteEventFromGoogle(event); } catch (calendarError) { console.error("Google Calendar deletion failed:", calendarError); }
         await EventService.deleteEvent(req.params.id);
@@ -299,6 +310,10 @@ export const listEventsAdmin = async (
 ): Promise<void> => {
     try {
         handleValidationErrors(req);
+
+        // Lazy sweep so the Archived tab is always accurate on open,
+        // even if the process was down when events went overdue.
+        await EventService.archiveStaleEvents().catch(() => undefined);
 
         const { page, limit, type, status, search } = req.query;
         const user = (req as RequestWithUser).user;

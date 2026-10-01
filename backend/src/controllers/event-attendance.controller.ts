@@ -45,8 +45,9 @@ export const decide = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const event = await assertManager(req);
     if (!event.requireApproval) throw new ApiError(400, "Approval is not required for this event");
+    // decideAttendance owns the atomic transition and fires the approval
+    // notification exactly once (only on the actual pending -> approved flip).
     const attendance = await AttendanceService.decideAttendance(req.params.id, req.params.attendanceId, req.body.decision);
-    if (attendance.status === "approved") await AttendanceService.notifyApprovedAttendee(req.params.id, attendance.user.toString());
     res.json({ success: true, data: attendance });
   } catch (error) { next(error); }
 };
