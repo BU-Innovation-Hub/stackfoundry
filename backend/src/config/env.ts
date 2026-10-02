@@ -47,6 +47,10 @@ export interface Env {
   EMAIL_SMTP_USER?: string;
   EMAIL_SMTP_PASS?: string;
   EMAIL_FROM: string;
+  EMAIL_BRAND: string;
+  EMAIL_REPLY_TO?: string;
+  EMAIL_RATE_PER_SECOND: number;
+  EVENT_WORKER_CONCURRENCY: number;
 
   // Password Reset OTP
   PASSWORD_RESET_OTP_TTL_MINUTES: number;
@@ -81,6 +85,15 @@ export const loadEnv = (): Env => {
     if (!process.env.MONGO_URI) {
       throw new Error("MONGO_URI must be set in production!");
     }
+    if (!process.env.EMAIL_SMTP_HOST || !process.env.EMAIL_SMTP_USER || !process.env.EMAIL_SMTP_PASS || !process.env.EMAIL_FROM) {
+      throw new Error("Production requires explicit SMTP credentials and a verified EMAIL_FROM");
+    }
+    const fromDomain = process.env.EMAIL_FROM.match(/@([^>\s]+)/)?.[1]?.toLowerCase();
+    if (!fromDomain || ["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "example.invalid", "example.com"].includes(fromDomain)) {
+      throw new Error("Production EMAIL_FROM must use your verified sending domain");
+    }
+    const client = new URL(process.env.CLIENT_URL || "http://localhost");
+    if (client.protocol !== "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(client.hostname)) throw new Error("Production CLIENT_URL must be a public HTTPS URL");
     if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
      throw new Error("Admin credentials must be set in production!");
     }
@@ -128,7 +141,11 @@ export const loadEnv = (): Env => {
     EMAIL_SMTP_PORT: Number(process.env.EMAIL_SMTP_PORT) || 587,
     EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER,
     EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS,
-    EMAIL_FROM: process.env.EMAIL_FROM || "StackFoundry <no-reply@stackfoundry.com>",
+    EMAIL_FROM: process.env.EMAIL_FROM || "Innovation Hub <no-reply@example.invalid>",
+    EMAIL_BRAND: process.env.EMAIL_BRAND || "Innovation Hub",
+    EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
+    EMAIL_RATE_PER_SECOND: Math.max(1, Math.min(100, Number(process.env.EMAIL_RATE_PER_SECOND) || 5)),
+    EVENT_WORKER_CONCURRENCY: Math.max(1, Math.min(20, Math.floor(Number(process.env.EVENT_WORKER_CONCURRENCY) || 5))),
 
     // Password Reset OTP
     PASSWORD_RESET_OTP_TTL_MINUTES: Number(process.env.PASSWORD_RESET_OTP_TTL_MINUTES) || 10,

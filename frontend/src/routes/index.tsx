@@ -26,6 +26,7 @@ import AdminDashboard from '../pages/admin/Dashboard';
 import Members from '../pages/admin/Members';
 import Blogs from '../pages/admin/Blogs';
 import Events from '../pages/admin/Events';
+import EventWorkspace from '../pages/admin/EventWorkspace';
 import Courses from '../pages/admin/Courses';
 import AuditLogs from '../pages/admin/AuditLogs';
 
@@ -89,6 +90,7 @@ const AppRoutes: React.FC = () => (
         <Route path="members" element={<ProtectedRoute roles={['system_admin', 'innovation_hub_admin']} unauthorizedTo="/admin"><Members /></ProtectedRoute>} />
         <Route path="blogs" element={<ProtectedRoute roles={['innovation_hub_admin']} unauthorizedTo="/admin"><Blogs /></ProtectedRoute>} />
         <Route path="events" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Events /></ProtectedRoute>} />
+        <Route path="events/:eventId" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><EventWorkspace /></ProtectedRoute>} />
         <Route path="courses" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Courses /></ProtectedRoute>} />
         <Route path="audit-logs" element={<ProtectedRoute roles={['system_admin']} unauthorizedTo="/admin"><AuditLogs /></ProtectedRoute>} />
       </Route>

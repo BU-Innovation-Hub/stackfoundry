@@ -26,11 +26,13 @@ describe("archiveStaleEvents", () => {
 
     const [filter, update] = (mockedEvent.updateMany as jest.Mock).mock.calls[0];
     expect(filter.status).toEqual({ $ne: "archived" });
-    expect(filter.eventDate.$ne).toBeNull();
+    expect(filter.$or[1].eventDate.$ne).toBeNull();
+    expect(filter.$or[0].endDate.$ne).toBeNull();
+    expect(filter.deletedAt).toBeNull();
     expect(update).toEqual({ $set: { status: "archived" } });
 
     // cutoff = now - 24h (checked with tolerance for test execution time)
-    const cutoff: Date = filter.eventDate.$lt;
+    const cutoff: Date = filter.$or[0].endDate.$lt;
     const expected = before - 24 * 60 * 60 * 1000;
     const expectedMax = after - 24 * 60 * 60 * 1000;
     expect(cutoff.getTime()).toBeGreaterThanOrEqual(expected - 50);
@@ -41,8 +43,8 @@ describe("archiveStaleEvents", () => {
     await archiveStaleEvents();
     const [filter] = (mockedEvent.updateMany as jest.Mock).mock.calls[0];
     // $ne: null excludes both null values and missing fields in MongoDB
-    expect(filter.eventDate).toHaveProperty("$ne", null);
-    expect(filter.eventDate).toHaveProperty("$lt");
+    expect(filter.$or[1].eventDate).toHaveProperty("$ne", null);
+    expect(filter.$or[1].eventDate).toHaveProperty("$lt");
   });
 
   it("returns 0 when nothing was modified", async () => {

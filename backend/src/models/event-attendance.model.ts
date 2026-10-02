@@ -3,6 +3,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export type EventAttendanceStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface IEventAttendance extends Document {
+  revision: number;
   _id: Types.ObjectId;
   event: Types.ObjectId;
   user: Types.ObjectId;
@@ -15,6 +16,7 @@ export interface IEventAttendance extends Document {
 
 const EventAttendanceSchema = new Schema<IEventAttendance>(
   {
+    revision: { type: Number, default: 0 },
     event: { type: Schema.Types.ObjectId, ref: "Event", required: true, index: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     status: {
@@ -33,6 +35,8 @@ const EventAttendanceSchema = new Schema<IEventAttendance>(
 EventAttendanceSchema.index({ event: 1, user: 1 }, { unique: true });
 EventAttendanceSchema.index({ event: 1, status: 1 });
 EventAttendanceSchema.index({ user: 1, status: 1 });
+EventAttendanceSchema.index({ event: 1, requestedAt: 1, _id: 1 });
+EventAttendanceSchema.index({ event: 1, _id: 1, status: 1 });
 
 const EventAttendance = mongoose.models.EventAttendance ||
   mongoose.model<IEventAttendance>("EventAttendance", EventAttendanceSchema);

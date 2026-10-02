@@ -10,6 +10,7 @@
  */
 
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import { PUBLIC_EVENT_PROJECTION } from "../utils/event-contract";
 
 // ============================================
 // Constants
@@ -56,6 +57,10 @@ export interface IEvent extends Document {
     publishedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
+    revision: number;
+    calendarRevision: number;
+    deletedAt?: Date | null;
+    calendarSyncStatus: "disabled" | "pending" | "synced" | "failed";
 }
 
 // ============================================
@@ -90,6 +95,10 @@ const generateSlug = (title: string): string => {
 
 const EventSchema: Schema<IEvent> = new Schema(
     {
+        revision: { type: Number, default: 0 },
+        calendarRevision: { type: Number, default: 0 },
+        deletedAt: { type: Date, default: null },
+        calendarSyncStatus: { type: String, enum: ["disabled", "pending", "synced", "failed"], default: "disabled" },
         title: {
             type: String,
             required: [true, "Title is required"],
@@ -216,6 +225,8 @@ const EventSchema: Schema<IEvent> = new Schema(
 
 // Compound index for listing published events (most common query)
 EventSchema.index({ status: 1, eventDate: -1 });
+EventSchema.index({ deletedAt: 1, status: 1, eventDate: 1, _id: 1 });
+EventSchema.index({ author: 1, deletedAt: 1, updatedAt: -1 });
 
 // Text index for search functionality
 EventSchema.index({ title: "text", description: "text" });
@@ -265,10 +276,11 @@ EventSchema.statics.findPublished = function (
 ) {
     const { limit = 10, skip = 0, type } = options;
 
-    const query: Record<string, unknown> = { status: "published" };
+    const query: Record<string, unknown> = { status: "published", deletedAt: null };
     if (type) query.type = type;
 
     return this.find(query)
+        .select(PUBLIC_EVENT_PROJECTION)
         .sort({ eventDate: 1 }) // Upcoming events first
         .skip(skip)
         .limit(limit)
@@ -280,7 +292,8 @@ EventSchema.statics.findPublished = function (
  */
 EventSchema.statics.findBySlug = function (slug: string) {
     // Archived events stay viewable so links to ended events never 404.
-    return this.findOne({ slug, status: { $in: ["published", "archived"] } })
+    return this.findOne({ slug, deletedAt: null, status: { $in: ["published", "archived"] } })
+        .select(PUBLIC_EVENT_PROJECTION)
         .populate("author", "name surname")
         .lean();
 };

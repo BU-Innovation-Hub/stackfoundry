@@ -144,6 +144,7 @@ router.get("/:id/attendance", requireAuth, requireRole(["student", "member"]), A
 router.post("/:id/join", requireAuth, requireRole(["student", "member"]), AttendanceController.join);
 router.post("/:id/cancel", requireAuth, requireRole(["student", "member"]), AttendanceController.cancel);
 router.get("/:id/attendees", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.list);
+router.get("/:id/insights", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.insights);
 router.patch("/:id/attendees/:attendanceId", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.decide);
 
 export default router;

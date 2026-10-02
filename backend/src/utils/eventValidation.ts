@@ -72,7 +72,8 @@ export const createEventValidation = [
   body("requireApproval")
     .optional()
     .isBoolean()
-    .withMessage("Require approval must be a boolean"),
+    .withMessage("Require approval must be a boolean")
+    .toBoolean(),
 
   body("capacity")
     .optional({ nullable: true })
@@ -92,6 +93,7 @@ export const createEventValidation = [
 ];
 
 export const updateEventValidation = [
+  body("revision").optional().isInt({ min: 0 }).toInt(),
   param("id")
     .isMongoId()
     .withMessage("Invalid event ID"),
@@ -159,7 +161,8 @@ export const updateEventValidation = [
   body("requireApproval")
     .optional()
     .isBoolean()
-    .withMessage("Require approval must be a boolean"),
+    .withMessage("Require approval must be a boolean")
+    .toBoolean(),
 
   body("capacity")
     .optional({ nullable: true })

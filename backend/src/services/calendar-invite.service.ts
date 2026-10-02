@@ -42,7 +42,19 @@ const escapeIcsText = (value: string): string =>
         .replace(/\\/g, "\\\\")
         .replace(/;/g, "\\;")
         .replace(/,/g, "\\,")
-        .replace(/\r?\n/g, "\\n");
+        .replace(/\r\n|\r|\n/g, "\\n");
+
+// RFC 5545 folds at 75 octets without splitting a UTF-8 character.
+const foldIcsLine = (value: string): string => {
+    const lines: string[] = [];
+    let line = "";
+    for (const character of value) {
+        if (Buffer.byteLength(line + character, "utf8") > 75) { lines.push(line); line = " "; }
+        line += character;
+    }
+    lines.push(line);
+    return lines.join("\r\n");
+};
 
 export const buildAppUrl = (slug?: string): string => {
     const base = getEnv().CLIENT_URL.replace(/\/$/, "");
@@ -86,7 +98,7 @@ export const buildIcs = (event: CalendarEventInput): string => {
         `URL:${appUrl}`,
         "END:VEVENT",
         "END:VCALENDAR",
-    ].join("\r\n");
+    ].map(foldIcsLine).join("\r\n") + "\r\n";
 };
 
 export const buildCalendarInvite = (event: CalendarEventInput): CalendarInvite => ({

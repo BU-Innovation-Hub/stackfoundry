@@ -12,6 +12,23 @@
 import Event, { IEvent, EventStatus, EventType, EventLocationType } from "../models/event.model";
 import { ApiError } from "../middleware/errorHandler";
 import { Types } from "mongoose";
+import { eventTransaction } from "./event-transaction.service";
+import { enqueueEventJob } from "./event-outbox.service";
+import { PUBLIC_EVENT_PROJECTION } from "../utils/event-contract";
+import { getEnv } from "../config/env";
+
+const calendarEnabled = () => Boolean(getEnv().GOOGLE_CLIENT_ID && getEnv().GOOGLE_CLIENT_SECRET && getEnv().GOOGLE_REFRESH_TOKEN);
+const normalizeSchedule = (data: UpdateEventData, before?: IEvent): UpdateEventData => {
+    const patch = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as UpdateEventData;
+    const start = new Date(patch.startDate || patch.eventDate || before?.startDate || before?.eventDate || "");
+    const end = new Date(patch.endDate || before?.endDate || start);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) throw new ApiError(400, "Invalid event date range");
+    if (patch.capacity != null && (!Number.isInteger(patch.capacity) || patch.capacity < 1 || patch.capacity < (before?.attendeeCount || 0))) throw new ApiError(409, "Capacity cannot be below existing reservations");
+    patch.startDate = start; patch.eventDate = start; patch.endDate = end;
+    if (!patch.date && (data.startDate || data.eventDate)) patch.date = start.toLocaleDateString("en-GB", { timeZone: "UTC" });
+    if (!patch.time && (data.startDate || data.eventDate || data.endDate)) patch.time = start.toISOString().slice(11, 16) + " - " + end.toISOString().slice(11, 16) + " UTC";
+    return patch;
+};
 
 // ============================================
 // Types
@@ -84,7 +101,7 @@ export interface AuthorInfo {
 
 const normalizeLegacyDates = <T extends Partial<IEvent>>(event: T): T => {
     if (!event.startDate) {
-        const legacyDate = event.date ? new Date(event.date) : undefined;
+        const legacyDate = event.eventDate ? new Date(event.eventDate) : event.date ? new Date(event.date) : undefined;
         if (legacyDate && !Number.isNaN(legacyDate.getTime())) {
             event.eventDate = legacyDate;
             event.startDate = legacyDate;
@@ -110,15 +127,14 @@ export const createEvent = async (
         throw new ApiError(400, "Invalid author ID");
     }
 
-    const event = await Event.create({
-        ...data,
-        author: new Types.ObjectId(author.id),
-        authorName: `${author.name} ${author.surname}`,
-        // Set publishedAt if creating as published (also handled by pre-save middleware)
-        publishedAt: data.status === "published" ? new Date() : undefined,
+    return eventTransaction(async session => {
+        const event = new Event({ ...data, ...normalizeSchedule(data), author: new Types.ObjectId(author.id),
+            authorName: `${author.name} ${author.surname}`, revision: 1, calendarRevision: 1,
+            calendarSyncStatus: data.status === "published" && calendarEnabled() ? "pending" : "disabled" });
+        await event.save({ session });
+        if (event.calendarSyncStatus === "pending") await enqueueEventJob(session, event, "calendar", {});
+        return event;
     });
-
-    return normalizeLegacyDates(event);
 };
 
 /**
@@ -129,7 +145,7 @@ export const getEventById = async (id: string): Promise<IEvent> => {
         throw new ApiError(400, "Invalid event ID");
     }
 
-    const event = await Event.findById(id).populate("author", "name surname email");
+    const event = await Event.findOne({ _id: id, deletedAt: null }).populate("author", "name surname email");
 
     if (!event) {
         throw new ApiError(404, "Event not found");
@@ -153,6 +169,10 @@ export const getEventBySlug = async (slug: string): Promise<IEvent> => {
 
     const publicEvent = normalizeLegacyDates(event);
     delete publicEvent.googleMeetLink;
+    delete publicEvent.googleCalendarEventId;
+    delete (publicEvent as Partial<IEvent>).calendarSyncStatus;
+    delete (publicEvent as Partial<IEvent>).revision;
+    delete publicEvent.deletedAt;
     return publicEvent;
 };
 
@@ -161,39 +181,27 @@ export const getEventBySlug = async (slug: string): Promise<IEvent> => {
  */
 export const updateEvent = async (
     id: string,
-    data: UpdateEventData
+    data: UpdateEventData,
+    expectedRevision?: number
 ): Promise<IEvent> => {
     if (!Types.ObjectId.isValid(id)) {
         throw new ApiError(400, "Invalid event ID");
     }
 
-    // Load the document to ensure pre-save hooks run
-    const eventDoc = await Event.findById(id);
-    if (!eventDoc) {
-        throw new ApiError(404, "Event not found");
-    }
-
-    // Detect status transition to published
-    if (
-        data.status === "published" &&
-        eventDoc.status !== "published"
-    ) {
-        eventDoc.publishedAt = new Date();
-    }
-
-    // Apply other updatable fields (skip absent keys so partial updates
-    // never wipe existing values with undefined)
-    const patch = data as Record<string, unknown>;
-    for (const key of Object.keys(patch)) {
-        const value = patch[key];
-        if (value === undefined) continue;
-        (eventDoc as unknown as Record<string, unknown>)[key] = value;
-    }
-
-    await eventDoc.save();
-    // Populate author for response consistency
-    await eventDoc.populate("author", "name surname email");
-    return eventDoc;
+    return eventTransaction(async session => {
+        const event = await Event.findOne({ _id: id, deletedAt: null }).session(session);
+        if (!event) throw new ApiError(404, "Event not found");
+        if (expectedRevision !== undefined && (event.revision || 0) !== expectedRevision) throw new ApiError(409, "Event changed; refresh before saving");
+        const patch = normalizeSchedule(data, event);
+        Object.assign(event, patch);
+        event.revision = (event.revision || 0) + 1;
+        event.calendarRevision = event.revision;
+        if (calendarEnabled()) event.calendarSyncStatus = "pending";
+        await event.save({ session });
+        if (calendarEnabled()) await enqueueEventJob(session, event, "calendar", {});
+        await event.populate("author", "name surname email");
+        return event;
+    });
 };
 
 /**
@@ -204,11 +212,17 @@ export const deleteEvent = async (id: string): Promise<void> => {
         throw new ApiError(400, "Invalid event ID");
     }
 
-    const event = await Event.findByIdAndDelete(id);
-
-    if (!event) {
-        throw new ApiError(404, "Event not found");
-    }
+    await eventTransaction(async session => {
+        const event = await Event.findById(id).session(session);
+        if (!event) throw new ApiError(404, "Event not found");
+        if (event.deletedAt) return;
+        event.deletedAt = new Date();
+        event.revision = (event.revision || 0) + 1;
+        event.calendarRevision = event.revision;
+        event.attendeeCount = 0;
+        await event.save({ session });
+        await enqueueEventJob(session, event, "calendar", { deleted: true });
+    });
 };
 
 /**
@@ -232,7 +246,7 @@ export const listEvents = async (
 
     // Build query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: any = {};
+    const query: any = { deletedAt: null };
 
     // Non-admins see published events, plus archived events that already
     // ended — so past events remain visible in public listings after the
@@ -265,6 +279,7 @@ export const listEvents = async (
     // Execute query with pagination
     const [events, total] = await Promise.all([
         Event.find(query)
+            .select(isAdmin ? "" : PUBLIC_EVENT_PROJECTION)
             .populate("author", "name surname")
             .sort(isAdmin ? { updatedAt: -1 } : { eventDate: 1 }) // Upcoming events first for public
             .skip(skip)
@@ -296,7 +311,10 @@ export const listEvents = async (
 export const archiveStaleEvents = async (): Promise<number> => {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const result = await Event.updateMany(
-        { status: { $ne: "archived" }, eventDate: { $ne: null, $lt: cutoff } },
+        { deletedAt: null, status: { $ne: "archived" }, $or: [
+            { endDate: { $ne: null, $lt: cutoff } },
+            { endDate: null, eventDate: { $ne: null, $lt: cutoff } },
+        ] },
         { $set: { status: "archived" } }
     );
     return result.modifiedCount ?? 0;
@@ -307,11 +325,13 @@ export const archiveStaleEvents = async (): Promise<number> => {
  */
 export const getFeaturedEvents = async (limit: number = 4): Promise<IEvent[]> => {
     const events = await Event.find({
+        deletedAt: null,
         status: "published",
         eventDate: { $gte: new Date() } // Only future events
     })
         .sort({ eventDate: 1 }) // Soonest events first
         .limit(limit)
+        .select(PUBLIC_EVENT_PROJECTION)
         .lean();
 
     return events.map(normalizeLegacyDates) as IEvent[];
@@ -324,9 +344,10 @@ export const getEventsByType = async (
     type: EventType,
     limit: number = 10
 ): Promise<IEvent[]> => {
-    const events = await Event.find({ status: "published", type })
+    const events = await Event.find({ deletedAt: null, status: "published", type })
         .sort({ eventDate: 1 })
         .limit(limit)
+        .select(PUBLIC_EVENT_PROJECTION)
         .lean();
 
     return events.map(normalizeLegacyDates) as IEvent[];
@@ -344,7 +365,7 @@ export const getEventStats = async (authorId?: string): Promise<{
     upcoming: number;
     byType: Record<string, number>;
 }> => {
-    const scope = authorId ? { author: new Types.ObjectId(authorId) } : {};
+    const scope = { deletedAt: null, ...(authorId ? { author: new Types.ObjectId(authorId) } : {}) };
     const [counts, viewsResult, typeResult, upcomingCount] = await Promise.all([
         Event.aggregate([
             { $match: scope },

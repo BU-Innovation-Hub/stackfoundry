@@ -13,6 +13,9 @@ import { IBlog } from '../types/blog';
 import { getEvents, getEventBySlug, getMyEventAttendance, joinEvent, cancelEventAttendance, EventAttendance, getMyEvents } from '../services/eventService';
 import { IEvent } from '../types/event';
 import styles from './Dashboard.module.css';
+import Loader from '../components/common/Loader';
+import Pagination, { PaginationMeta } from '../components/common/Pagination';
+import { usePendingEventCalendar } from '../hooks/usePendingEventCalendar';
 
 type View = 'home' | 'courses' | 'blogs' | 'blog-detail' | 'events' | 'event-detail';
 
@@ -50,6 +53,12 @@ const Dashboard: React.FC = () => {
   const [goingEvents, setGoingEvents] = useState<IEvent[]>([]);
   const [eventAttendance, setEventAttendance] = useState<EventAttendance | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [eventPage, setEventPage] = useState(1);
+  const [eventMeta, setEventMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, pages: 0 });
+  const [eventError, setEventError] = useState('');
+  const [eventListLoading, setEventListLoading] = useState(false);
+  const [attendanceError, setAttendanceError] = useState('');
+  usePendingEventCalendar(selectedEvent?._id, eventAttendance, setEventAttendance);
 
   // Course stats: materialCount + progress %
   const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
@@ -174,6 +183,8 @@ const Dashboard: React.FC = () => {
 
   /* -------- Event detail -------- */
   const openEvent = async (slug: string) => {
+    setEventAttendance(null);
+    setAttendanceError('');
     setDetailLoading(true);
     setActiveView('event-detail');
     try {
@@ -182,9 +193,8 @@ const Dashboard: React.FC = () => {
       try {
         const attendance = await getMyEventAttendance(data._id);
         setEventAttendance(attendance);
-        if (attendance?.googleMeetLink) setSelectedEvent(prev => prev ? { ...prev, googleMeetLink: attendance.googleMeetLink } : prev);
       } catch {
-        setEventAttendance(null);
+        setAttendanceError('Unable to load your attendance. Please reopen this event to retry.');
       }
     } catch {
       setSelectedEvent(null);
@@ -196,9 +206,19 @@ const Dashboard: React.FC = () => {
   const eventStart = (event: IEvent) => event.startDate || event.eventDate;
 
   useEffect(() => {
-    if (activeView !== 'events' || eventTab !== 'going') return;
-    getMyEvents('going').then(setGoingEvents).catch(() => setGoingEvents([]));
-  }, [activeView, eventTab]);
+    if (activeView !== 'events') return;
+    let cancelled = false;
+    setEventError('');
+    setEventListLoading(true);
+    const timer = setTimeout(() => { getMyEvents(eventTab, eventPage, 20, { search: eventSearch, type: eventType === 'all' ? undefined : eventType }).then(result => {
+      if (cancelled) return;
+      setGoingEvents(result.data);
+      if (result.pagination) setEventMeta({ ...result.pagination, hasPrevious: result.pagination.hasPrev });
+    }).catch(() => { if (!cancelled) setEventError('Unable to load events. Please try again.'); })
+      .finally(() => { if (!cancelled) setEventListLoading(false); }); }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [activeView, eventTab, eventPage, eventSearch, eventType]);
+  useEffect(() => { setEventPage(1); }, [eventTab, eventSearch, eventType]);
 
   /* -------- Filtered lists -------- */
   const filteredBlogs = useMemo(() => {
@@ -216,17 +236,7 @@ const Dashboard: React.FC = () => {
     return allEvents.filter(e => new Date(eventStart(e)) >= now);
   }, [allEvents]);
 
-  const filteredEvents = useMemo(() => {
-    let result = eventTab === 'going' ? goingEvents : allEvents;
-    if (eventTab === 'upcoming') result = result.filter(e => new Date(eventStart(e)) >= new Date());
-    if (eventTab === 'past') result = result.filter(e => new Date(eventStart(e)) < new Date());
-    if (eventType !== 'all') result = result.filter(e => e.type === eventType);
-    if (eventSearch.trim()) {
-      const q = eventSearch.toLowerCase();
-      result = result.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
-    }
-    return result;
-  }, [allEvents, goingEvents, eventTab, eventType, eventSearch]);
+  const filteredEvents = goingEvents;
 
   const handleAttendance = async () => {
     if (!selectedEvent) return;
@@ -236,8 +246,11 @@ const Dashboard: React.FC = () => {
         ? await cancelEventAttendance(selectedEvent._id)
         : await joinEvent(selectedEvent._id);
       setEventAttendance(next);
-      if (next.googleMeetLink) setSelectedEvent(prev => prev ? { ...prev, googleMeetLink: next.googleMeetLink } : prev);
-      setAllEvents(prev => prev.map(event => event._id === selectedEvent._id ? { ...event, attendeeCount: Math.max(0, (event.attendeeCount || 0) + (next.status === 'cancelled' ? -1 : 1)) } : event));
+      const fresh = await getEventBySlug(selectedEvent.slug);
+      setSelectedEvent(fresh);
+      setAllEvents(prev => prev.map(event => event._id === fresh._id ? fresh : event));
+      const result = await getMyEvents(eventTab, eventPage);
+      setGoingEvents(result.data);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Unable to update attendance');
     } finally { setAttendanceLoading(false); }
@@ -690,7 +703,9 @@ const Dashboard: React.FC = () => {
                   </div>
 
 
-                  {filteredEvents.length === 0 ? (
+                  {eventError && <p role="alert">{eventError}</p>}
+                  <Pagination meta={eventMeta} onPageChange={setEventPage} />
+                  {eventListLoading ? <Loader text="Loading events..." /> : eventError ? null : filteredEvents.length === 0 ? (
                     <p className={styles.emptyText}>No events match your search.</p>
                   ) : (
                     <div className={styles.eventGrid}>
@@ -732,7 +747,7 @@ const Dashboard: React.FC = () => {
                         <Tag size={13} /> {selectedEvent.type}
                       </div>
                         {new Date(eventStart(selectedEvent)) >= new Date() && (
-                          <button className={styles.registerEventBtn} onClick={handleAttendance} disabled={attendanceLoading || eventAttendance?.status === 'rejected'}>
+                          <button className={styles.registerEventBtn} onClick={handleAttendance} disabled={attendanceLoading || Boolean(attendanceError) || eventAttendance?.status === 'rejected'}>
                             {attendanceLoading ? 'Updating...' : eventAttendance?.status === 'approved' ? 'Cancel Attendance' : eventAttendance?.status === 'pending' ? 'Cancel Request' : selectedEvent.capacity !== null && selectedEvent.capacity !== undefined && selectedEvent.attendeeCount >= selectedEvent.capacity ? 'Event Full' : 'Join Event'}
                           </button>
                         )}
@@ -769,8 +784,9 @@ const Dashboard: React.FC = () => {
                           </div>
                         </div>
 
-                         {selectedEvent.googleMeetLink && eventAttendance?.status === 'approved' && (
-                           <a href={selectedEvent.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join Google Meet <ExternalLink size={14} /></a>
+                         {attendanceError && <p role="alert">{attendanceError}</p>}
+                         {eventAttendance?.googleMeetLink && eventAttendance.status === 'approved' && (
+                           <a href={eventAttendance.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join Google Meet <ExternalLink size={14} /></a>
                          )}
                          {selectedEvent.registrationLink && new Date(eventStart(selectedEvent)) >= new Date() && (
                           <a href={selectedEvent.registrationLink} target="_blank" rel="noopener noreferrer" className={styles.registerEventBtn}>

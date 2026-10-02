@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CalendarPlus, Video } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -15,6 +15,7 @@ import { IEvent, EventType } from '../types/event';
 import { buildGcalLink } from '../utils/calendar';
 import Loader from '../components/common/Loader';
 import styles from './EventDetail.module.css';
+import { usePendingEventCalendar } from '../hooks/usePendingEventCalendar';
 
 const EventDetail: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -25,42 +26,49 @@ const EventDetail: React.FC = () => {
     const [notFound, setNotFound] = useState(false);
     const [attendance, setAttendance] = useState<EventAttendance | null>(null);
     const [joinLoading, setJoinLoading] = useState(false);
-    const hasFetched = useRef(false);
+    const [attendanceError, setAttendanceError] = useState('');
+    usePendingEventCalendar(event?._id, attendance, setAttendance);
 
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [slug]);
 
     useEffect(() => {
-        if (hasFetched.current) return;
-        hasFetched.current = true;
+        let stopped = false;
+        setLoading(true);
+        setNotFound(false);
+        setAttendance(null);
+        setAttendanceError('');
 
         const fetchEvent = async () => {
             try {
                 const data = await getEventBySlug(slug!);
-                setEvent(data);
+                if (!stopped) setEvent(data);
             } catch (error: any) {
                 if (error.response?.status === 404) {
-                    setNotFound(true);
+                    if (!stopped) setNotFound(true);
                 }
                 console.error('Error fetching event:', error);
             } finally {
-                setLoading(false);
+                if (!stopped) setLoading(false);
             }
         };
         if (slug) fetchEvent();
+        return () => { stopped = true; };
     }, [slug]);
 
     // Reflect the visitor's existing join state (pending/approved/rejected).
+    const eventId = event?._id;
     useEffect(() => {
-        if (!event || !isAuthenticated) return;
+        if (!eventId || !isAuthenticated) { setAttendance(null); return; }
         if (user?.role !== 'student' && user?.role !== 'member') return;
         let cancelled = false;
-        getMyEventAttendance(event._id)
+        setAttendanceError('');
+        getMyEventAttendance(eventId)
             .then((att) => { if (!cancelled) setAttendance(att); })
-            .catch(() => { /* no prior attendance */ });
+            .catch(() => { if (!cancelled) setAttendanceError('Unable to load your attendance. Please refresh to retry.'); });
         return () => { cancelled = true; };
-    }, [event, isAuthenticated, user]);
+    }, [eventId, isAuthenticated, user?.role, user?.id]);
 
     const getTypeColor = (type: EventType) => {
         const colors: Record<EventType, string> = {
@@ -97,6 +105,7 @@ const EventDetail: React.FC = () => {
         setJoinLoading(true);
         try {
             setAttendance(await joinEvent(event._id));
+            setEvent(await getEventBySlug(event.slug));
         } catch (err: any) {
             alert(err.response?.data?.error || 'Unable to join event');
         } finally {
@@ -109,6 +118,7 @@ const EventDetail: React.FC = () => {
         setJoinLoading(true);
         try {
             setAttendance(await cancelEventAttendance(event._id));
+            setEvent(await getEventBySlug(event.slug));
         } catch (err: any) {
             alert(err.response?.data?.error || 'Unable to cancel attendance');
         } finally {
@@ -152,7 +162,7 @@ const EventDetail: React.FC = () => {
 
     const past = isPastEvent(event.eventDate);
     const gcalLink = buildGcalLink(event);
-    const meetLink = attendance?.googleMeetLink || event.googleMeetLink;
+    const meetLink = attendance?.status === 'approved' ? attendance.googleMeetLink : null;
 
     return (
         <div className={styles.page}>
@@ -261,6 +271,7 @@ const EventDetail: React.FC = () => {
                 {/* Sidebar - Registration */}
                 <aside className={styles.sidebar}>
                     <div className={styles.registerCard}>
+                        {attendanceError && <p role="alert">{attendanceError}</p>}
                         {past ? (
                             /* Past event */
                             <div className={styles.pastEvent}>
@@ -326,6 +337,9 @@ const EventDetail: React.FC = () => {
                                 <p className={styles.confirmNote}>
                                     We'll send event updates to your registered email.
                                 </p>
+                                <button className={styles.cancelBtn} onClick={handleCancelAttendance} disabled={joinLoading}>
+                                    {joinLoading ? 'Cancelling…' : 'Cancel Attendance'}
+                                </button>
                             </div>
                         ) : attendance?.status === 'pending' ? (
                             /* Awaiting organizer approval */
@@ -338,7 +352,7 @@ const EventDetail: React.FC = () => {
                                 <button
                                     className={styles.cancelBtn}
                                     onClick={handleCancelAttendance}
-                                    disabled={joinLoading}
+                                    disabled={joinLoading || Boolean(attendanceError)}
                                 >
                                     {joinLoading ? 'Cancelling…' : 'Cancel Request'}
                                 </button>
@@ -360,7 +374,7 @@ const EventDetail: React.FC = () => {
                                 <button
                                     className={styles.registerBtn}
                                     onClick={handleJoinClick}
-                                    disabled={joinLoading}
+                                    disabled={joinLoading || Boolean(attendanceError)}
                                 >
                                     {joinLoading ? 'Joining…' : (
                                         <>

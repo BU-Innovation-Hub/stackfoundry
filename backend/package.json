@@ -6,9 +6,12 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/server.js",
+    "worker": "node dist/event-worker.js",
+    "worker:dev": "ts-node src/event-worker.ts",
+    "events:ops": "ts-node src/scripts/event-ops.ts",
     "dev": "ts-node src/server.ts",
     "build": "tsc",
-    "test": "jest",
+    "test": "node --max-old-space-size=4096 test-runner.cjs",
     "seed": "ts-node src/scripts/seed.ts",
     "migrate:users": "ts-node src/scripts/migrate-users.ts"
   },

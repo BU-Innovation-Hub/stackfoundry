@@ -4,7 +4,9 @@ dotenv.config();
 
 import app from "./app";
 import { loadEnv } from "./config/env";
-import { connectDatabase } from "./config/database";
+import { connectDatabase, assertReplicaSet } from "./config/database";
+import mongoose from "mongoose";
+import { closeEmailTransport } from "./services/email.service";
 import { archiveStaleEvents } from "./services/event.service";
 
 const env = loadEnv();
@@ -22,16 +24,13 @@ const runArchiveSweep = () => {
     .catch((err) => console.error("[archive] sweep failed:", err));
 };
 
-// Try to connect DB, but start server regardless
+// A transaction-capable database is a prerequisite for accepting mutations.
 connectDatabase(env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
+    await assertReplicaSet();
     console.log(" Connected to MongoDB");
   })
-  .catch((err) => {
-    console.error(" Failed to connect to MongoDB:", err);
-    console.warn(" Starting server without database connection...");
-  })
-  .finally(() => {
+  .then(() => {
     runArchiveSweep();
     const archiveTimer = setInterval(runArchiveSweep, ARCHIVE_SWEEP_INTERVAL_MS);
     archiveTimer.unref();
@@ -56,7 +55,10 @@ connectDatabase(env.MONGO_URI)
 
     const gracefulShutdown = (signal: string) => {
       console.log(`\n${signal} received. Closing server gracefully...`);
-      server?.close(() => {
+      clearInterval(archiveTimer);
+      server?.close(async () => {
+        closeEmailTransport();
+        await mongoose.disconnect();
         console.log("Server closed");
         process.exit(0);
       });
@@ -74,6 +76,10 @@ connectDatabase(env.MONGO_URI)
       console.error(" Unhandled Rejection:", reason);
       gracefulShutdown("UNHANDLED_REJECTION");
     });
+  }).catch(async err => {
+    console.error("Server startup failed:", err);
+    await mongoose.disconnect();
+    process.exitCode = 1;
   });
 
 export { };

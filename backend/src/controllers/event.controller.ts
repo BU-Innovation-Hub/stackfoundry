@@ -23,9 +23,6 @@ import * as EventService from "../services/event.service";
 import { ApiError } from "../middleware/errorHandler";
 import { RequestWithUser } from "../types";
 import { EVENT_TYPES, EventType, EventStatus } from "../models/event.model";
-import { syncEventToGoogle, deleteEventFromGoogle } from "../services/google-calendar.service";
-import { notifyEventAttendees } from "../services/event-attendance.service";
-import { materialFieldsChanged } from "../utils/materialFields";
 
 // ============================================
 // Constants
@@ -154,14 +151,6 @@ export const createEvent = async (
             { id: user.id, name: user.name, surname: user.surname }
         );
 
-        if (event.status === "published") {
-            try {
-                const googleData = await syncEventToGoogle(event);
-                if (Object.keys(googleData).length) await EventService.updateEvent(event._id.toString(), googleData);
-            } catch (calendarError) {
-                console.error("Google Calendar event creation failed:", calendarError);
-            }
-        }
         res.status(201).json({
             success: true,
             message: "Event created successfully",
@@ -235,7 +224,7 @@ export const updateEvent = async (
             image,
             locationType,
             requireApproval,
-            capacity: capacity === undefined || capacity === null || capacity === "" ? undefined : Number(capacity),
+            capacity: capacity === undefined ? undefined : capacity === null ? null : Number(capacity),
             registrationLink,
             status,
         };
@@ -249,18 +238,8 @@ export const updateEvent = async (
 
         const existingEvent = await EventService.getEventById(req.params.id);
         if (!canManageEvent(req, resolveAuthorId(existingEvent.author))) throw new ApiError(403, "Mentors can only manage events they create");
-        const changed = materialFieldsChanged(existingEvent, updateData as unknown as Record<string, unknown>);
-        const event = await EventService.updateEvent(req.params.id, updateData);
-        if (changed) await notifyEventAttendees(event._id.toString(), "updated");
+        const event = await EventService.updateEvent(req.params.id, updateData, req.body.revision ?? existingEvent.revision ?? 0);
 
-        if (event.status === "published") {
-            try {
-                const googleData = await syncEventToGoogle(event);
-                if (Object.keys(googleData).length) await EventService.updateEvent(event._id.toString(), googleData);
-            } catch (calendarError) {
-                console.error("Google Calendar event synchronization failed:", calendarError);
-            }
-        }
 
         res.status(200).json({
             success: true,
@@ -286,8 +265,6 @@ export const deleteEvent = async (
 
         const event = await EventService.getEventById(req.params.id);
         if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "Mentors can only manage events they create");
-        await notifyEventAttendees(event._id.toString(), "cancelled");
-        try { await deleteEventFromGoogle(event); } catch (calendarError) { console.error("Google Calendar deletion failed:", calendarError); }
         await EventService.deleteEvent(req.params.id);
 
         res.status(200).json({
@@ -422,11 +399,10 @@ export const getFeaturedEvents = async (
         const MAX_LIMIT = 10;
 
         let limit = DEFAULT_LIMIT;
-        if (req.query.limit) {
-            const parsed = parseInt(req.query.limit as string, 10);
-            if (!Number.isNaN(parsed) && parsed > 0 && parsed <= MAX_LIMIT) {
-                limit = parsed;
-            }
+        if (req.query.limit !== undefined) {
+            const parsed = Number(req.query.limit);
+            if (typeof req.query.limit !== "string" || !Number.isInteger(parsed) || parsed < 1 || parsed > MAX_LIMIT) throw new ApiError(400, "Featured limit must be between 1 and 10");
+            limit = parsed;
         }
 
         const events = await EventService.getFeaturedEvents(limit);
