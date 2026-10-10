@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home';
+import Team from '../pages/Team';
 import BlogListing from '../pages/BlogListing';
 import BlogPostPage from '../pages/BlogPost';
 import EventListing from '../pages/EventListing';
@@ -35,6 +36,7 @@ const AppRoutes: React.FC = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/team" element={<Team />} />
       <Route path="/blog" element={<BlogListing />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
       <Route path="/events" element={<EventListing />} />
