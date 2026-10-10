@@ -7,16 +7,16 @@ import { body, param, ValidationChain } from "express-validator";
 import mongoose from "mongoose";
 
 export const BOTHO_EMAIL_DOMAINS = ["bothouniversity.com", "bothouniversity.ac.bw"] as const;
+const BOTHO_EMAIL_PATTERN = /^[A-Z0-9]+(?:[._%+-][A-Z0-9]+)*@(?:bothouniversity\.com|bothouniversity\.ac\.bw)$/i;
 
 export const isBothoEmail = (email: string): boolean => {
-  const normalized = email.trim().toLowerCase();
-  return BOTHO_EMAIL_DOMAINS.some((domain) => normalized.endsWith(`@${domain}`));
+  return BOTHO_EMAIL_PATTERN.test(email.trim());
 };
 
 const bothoEmailRule = (field = "email"): ValidationChain =>
   body(field)
     .custom((value: string) => isBothoEmail(value))
-    .withMessage("Email must use a Botho University domain");
+    .withMessage("Email must use @bothouniversity.com or @bothouniversity.ac.bw");
 
 // ============================================
 // Auth Validation Rules
@@ -207,7 +207,7 @@ export const adminUpdateUserValidation: ValidationChain[] = [
     .isLength({ max: 100 })
     .withMessage("Email cannot exceed 100 characters")
     .custom((value: string) => isBothoEmail(value))
-    .withMessage("Email must use a Botho University domain"),
+    .withMessage("Email must use @bothouniversity.com or @bothouniversity.ac.bw"),
 
   body("name")
     .optional({ values: "falsy" })
@@ -283,6 +283,7 @@ export const forgotPasswordValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail(),
+  bothoEmailRule(),
 ];
 
 /**
@@ -296,6 +297,7 @@ export const verifyOtpValidation: ValidationChain[] = [
     .isEmail()
     .withMessage("Please provide a valid email")
     .normalizeEmail(),
+  bothoEmailRule(),
   body("otp")
     .trim()
     .notEmpty()

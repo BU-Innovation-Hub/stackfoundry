@@ -1,7 +1,5 @@
 import { randomUUID } from "crypto";
 import EventJob from "../models/event-job.model";
-import Event from "../models/event.model";
-import { syncEventToGoogle, deleteEventFromGoogle } from "./google-calendar.service";
 const OPEN = ["pending", "processing"];
 const LEASE_MS = 120000;
 export const MAX_JOB_ATTEMPTS = 8;
@@ -33,26 +31,8 @@ export const claimEventJob = async () => {
 };
 
 export const handleEventJob = async (job: Job): Promise<"accepted" | "completed" | "skipped" | "pending"> => {
-  // Event email and fan-out delivery were intentionally removed. Legacy jobs
-  // are marked skipped so an upgrade cannot accidentally send old messages.
-  if (job.kind !== "calendar") return "skipped";
-  let event = await Event.findById(job.event);
-  if (job.kind === "calendar") {
-    if (!event) return "skipped";
-    // Always reconcile the latest desired state, rather than replay stale edits.
-    // Attendance changes serialize capacity but must not invalidate calendar work.
-    const calendarRevision = event.calendarRevision || 0;
-    if (event.deletedAt || event.status !== "published") {
-      await deleteEventFromGoogle(event);
-      const updated = await Event.updateOne({ _id: event._id, calendarRevision }, { $set: { googleMeetLink: null, calendarSyncStatus: "disabled" } });
-      if (!updated.matchedCount) return "pending";
-    } else {
-      const result = await syncEventToGoogle(event);
-      const updated = await Event.updateOne({ _id: event._id, calendarRevision, deletedAt: null }, { $set: { ...result, calendarSyncStatus: "synced" } });
-      if (!updated.matchedCount) return "pending";
-    }
-    return "completed";
-  }
+  // Calendar synchronization has been retired. Drain old outbox rows without
+  // contacting Google or mutating event records.
   return "skipped";
 };
 
@@ -77,7 +57,6 @@ export const runEventJob = async (job: Job) => {
       status: failed ? "failed" : "pending", lastError: String(err.code || err.responseCode || err.message || "Job failed").slice(0, 300),
       availableAt: new Date(Date.now() + Math.min(3600000, 1000 * 2 ** job.attempts) + Math.random() * 1000),
     }, $unset: { leaseToken: 1, leaseUntil: 1 } });
-    if (failed && job.kind === "calendar") await Event.updateOne({ _id: job.event, calendarRevision: job.sequence }, { $set: { calendarSyncStatus: "failed" } });
     console.error("[event-worker] job failed", { key: job.key, kind: job.kind, attempt: job.attempts, permanent: failed });
   } finally { clearInterval(heartbeat); }
 };

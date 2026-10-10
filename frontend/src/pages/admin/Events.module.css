@@ -487,6 +487,6 @@
 .editorError { margin: 1rem 1.5rem; padding: 1rem; background: #fff4ed; color: #8e321c; border-radius: 8px; }
 .editorError button { margin-top: 0.5rem; text-decoration: underline; }
 fieldset.modalBody { border: 0; min-width: 0; margin: 0; }
-.modal :is(button, input, textarea, select, [tabindex]):focus-visible { outline: 3px solid #D64A2A; outline-offset: 3px; }
+.modal :is(button, input, textarea, select, [tabindex]):focus-visible { outline-offset: 3px; }
 .switchField input:focus-visible + .switchTrack { outline: 3px solid #D64A2A; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .card, .primaryBtn, .uploadBtn { transition: none; } .modal { animation: none; } }

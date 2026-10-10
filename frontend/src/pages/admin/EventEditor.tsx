@@ -8,7 +8,7 @@ import styles from './Events.module.css';
 
 type EventForm = {
   title: string; description: string; image: string; startDate: string; endDate: string;
-  locationType: 'physical' | 'virtual'; requireApproval: boolean; capacity: string;
+  locationType: 'physical' | 'virtual'; requireApproval: boolean; capacity: string; googleMeetLink: string;
   type: Event['type']; registrationLink: string; status: Event['status'];
 };
 const toLocal = (value?: string) => {
@@ -22,6 +22,7 @@ const toForm = (event?: AdminEvent): EventForm => ({
   startDate: toLocal(event?.startDate || event?.eventDate), endDate: toLocal(event?.endDate),
   locationType: event?.locationType || 'physical', requireApproval: event?.requireApproval || false,
   capacity: event?.capacity ? String(event.capacity) : '', type: event?.type || 'workshop',
+  googleMeetLink: event?.googleMeetLink || '',
   registrationLink: event?.registrationLink || '', status: event?.status || 'draft',
 });
 
@@ -89,12 +90,18 @@ const EventEditor: React.FC<Props> = ({ event, focusImage, onClose, onSaved }) =
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy.current || conflict) return;
-    const start = new Date(form.startDate); const end = form.endDate ? new Date(form.endDate) : start;
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) { setError('Choose valid dates with the end at or after the start.'); return; }
+    const start = new Date(form.startDate); const end = form.endDate ? new Date(form.endDate) : null;
+    const originalStart = new Date(event?.startDate || event?.eventDate || '').getTime();
+    const originalEnd = new Date(event?.endDate || '').getTime();
+    const endChanged = end ? end.getTime() !== originalEnd : Number.isFinite(originalEnd);
+    const scheduleChanged = !editId || start.getTime() !== originalStart || endChanged;
+    if (Number.isNaN(start.getTime()) || (scheduleChanged && (!end || Number.isNaN(end.getTime()) || end <= start))) { setError('Choose an end date and time later than the start.'); return; }
     if (form.capacity && (!Number.isSafeInteger(Number(form.capacity)) || Number(form.capacity) < 1)) { setError('Capacity must be a positive whole number.'); return; }
-    const payload = { ...form, title: form.title.trim(), revision, date: start.toISOString().substring(0, 10),
-      time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-      eventDate: start.toISOString(), startDate: start.toISOString(), endDate: end.toISOString(), capacity: form.capacity ? Number(form.capacity) : null };
+    const payload = { ...form, title: form.title.trim(), revision, capacity: form.capacity ? Number(form.capacity) : null,
+      googleMeetLink: form.googleMeetLink.trim() || null,
+      ...(scheduleChanged && end ? { date: start.toISOString().substring(0, 10),
+        time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+        eventDate: start.toISOString(), startDate: start.toISOString(), endDate: end.toISOString() } : {}) };
     busy.current = true; setSaving(true); setError('');
     try {
       if (editId) await updateEvent(editId, payload); else await createEvent(payload);
@@ -132,6 +139,11 @@ const EventEditor: React.FC<Props> = ({ event, focusImage, onClose, onSaved }) =
                   <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
                 </label>
               </div>
+              {editId && (!form.endDate || new Date(form.endDate).getTime() <= new Date(form.startDate).getTime()) && <p className={styles.editorError} role="status">This older event needs an end time later than its start. Other event details can still be saved while you correct it.</p>}
+              {form.locationType === 'virtual' && <label className={styles.field}>
+                <span>Meeting link (HTTPS)</span>
+                <input type="url" value={form.googleMeetLink} onChange={e => setForm({ ...form, googleMeetLink: e.target.value })} placeholder="https://…" />
+              </label>}
               <div className={styles.row}>
                 <label className={styles.field}>
                   <span>Location type</span>

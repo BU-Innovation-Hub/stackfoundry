@@ -47,9 +47,11 @@ export const createEventValidation = [
     .withMessage("Start date must be a valid date"),
 
   body("endDate")
-    .optional()
+    .exists({ checkFalsy: true })
     .isISO8601()
-    .withMessage("End date must be a valid date"),
+    .withMessage("An end date later than the start is required"),
+
+  body("googleMeetLink").optional({ nullable: true }).isURL({ protocols: ["https"], require_protocol: true }).withMessage("Meeting link must be a secure HTTPS URL"),
 
   body("type")
     .trim()
@@ -137,9 +139,11 @@ export const updateEventValidation = [
     .withMessage("Start date must be a valid date"),
 
   body("endDate")
-    .optional()
+    .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage("End date must be a valid date"),
+
+  body("googleMeetLink").optional({ nullable: true }).isURL({ protocols: ["https"], require_protocol: true }).withMessage("Meeting link must be a secure HTTPS URL"),
 
   body("type")
     .optional()
@@ -195,6 +199,7 @@ export const eventSlugValidation = [
 ];
 
 export const listEventsValidation = [
+  query("temporal").optional().isIn(["current", "past"]).withMessage("Temporal filter must be current or past"),
   query("page")
     .optional()
     .isInt({ min: 1 })

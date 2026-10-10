@@ -49,3 +49,14 @@ it('shows attendance errors instead of presenting them as no prior request', asy
   (getMyEventAttendance as jest.Mock).mockRejectedValue(new Error('offline'));
   mount(); expect(await screen.findByRole('alert')).toBeTruthy();
 });
+it('offers physical-event check-in during the event without marking it ended', async () => {
+  attendance = { status: 'approved' };
+  (getEventBySlug as jest.Mock).mockResolvedValue({ ...event, locationType: 'physical', eventDate: new Date(Date.now() - 60000).toISOString(), endDate: new Date(Date.now() + 3600000).toISOString() });
+  mount(); expect(await screen.findByRole('button', { name: 'Open camera' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Enter code manually' })).toBeEnabled();
+  expect(screen.queryByText('This Event Has Ended')).not.toBeInTheDocument();
+});
+it('keeps the joining deadline when the event is still in progress', async () => {
+  (getEventBySlug as jest.Mock).mockResolvedValue({ ...event, locationType: 'physical', eventDate: new Date(Date.now() - 60000).toISOString(), endDate: new Date(Date.now() + 3600000).toISOString() });
+  mount(); expect(await screen.findByRole('button', { name: /Join Now/i })).toBeDisabled();
+});

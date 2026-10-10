@@ -5,7 +5,7 @@ import { useAdminEventResource } from '../../../hooks/useAdminEventResource';
 import Pagination from '../../../components/common/Pagination';
 import styles from '../EventWorkspace.module.css';
 
-const EventGuests: React.FC<{ event: AdminEvent; version: number; onChanged: () => void }> = ({ event, version, onChanged }) => {
+const EventGuests: React.FC<{ event: AdminEvent; version: number; active?: boolean; onChanged: () => void }> = ({ event, version, active = true, onChanged }) => {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const pending = useRef(new Set<string>());
@@ -14,6 +14,8 @@ const EventGuests: React.FC<{ event: AdminEvent; version: number; onChanged: () 
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const fetchGuests = useCallback((signal: AbortSignal) => getEventGuests(event._id, page, signal), [event._id, page]);
   const { data, loading, error, reload } = useAdminEventResource(fetchGuests, version, 'Unable to load guests. Please retry.');
+  const wasActive = useRef(active);
+  useEffect(() => { if (active && !wasActive.current) reload(); wasActive.current = active; }, [active, reload]);
   const decide = async (id: string, decision: 'approved' | 'rejected') => {
     if (pending.current.has(id)) return;
     pending.current.add(id); setBusy(new Set(pending.current)); setDecisionError('');
@@ -25,18 +27,20 @@ const EventGuests: React.FC<{ event: AdminEvent; version: number; onChanged: () 
     }
   };
   return <div className={styles.panel}>
-    <div className={styles.panelHeading}><div><h2>Guests {data && <span className={styles.count}>{data.pagination.total}</span>}</h2><p>Everyone who has requested a place at your event.</p></div><Users size={23} /></div>
+    <div className={styles.panelHeading}><div><h2>Guests {data && <span className={styles.count}>{data.pagination.total}</span>}</h2><p>Everyone who has requested a place at your event.</p></div><button className={styles.button} onClick={reload} disabled={loading}>Refresh attendance</button></div>
     {decisionError && <div role="alert" className={styles.error}>{decisionError}</div>}
     {error && <div role="alert" className={styles.error}>{error} <button onClick={reload}>Retry guests</button></div>}
     {loading ? <div className={styles.state} role="status">Loading guests…</div> : !error && data && <>
       {data.data.length === 0 ? <div className={styles.state}><Users size={30} /><h3>No guests yet</h3><p>Registration requests will appear here.</p></div> : <div className={styles.tableWrap}><table className={styles.guestTable}>
-        <thead><tr><th>Guest</th><th>Requested</th><th>Status</th><th><span className={styles.srOnly}>Actions</span></th></tr></thead>
+        <thead><tr><th>Guest</th><th>Requested</th><th>Registration</th><th>Attendance</th><th><span className={styles.srOnly}>Actions</span></th></tr></thead>
         <tbody>{data.data.map(guest => {
-          const name = [guest.user?.name, guest.user?.surname].filter(Boolean).join(' ') || 'Unavailable user';
+          const name = [guest.guest?.name, guest.user?.name, guest.user?.surname].filter(Boolean).join(' ') || 'Unavailable user';
+          const email = guest.guest?.email || guest.user?.email || 'Email unavailable';
           const date = new Date(guest.requestedAt || '');
-          return <tr key={guest._id}><td><div className={styles.person}><span className={styles.avatar} aria-hidden="true">{name.charAt(0)}</span><div><strong>{name}</strong><small>{guest.user?.email || 'Email unavailable'}</small></div></div></td>
+          return <tr key={guest._id}><td><div className={styles.person}><span className={styles.avatar} aria-hidden="true">{name.charAt(0)}</span><div><strong>{name}</strong><small>{guest.guest?.guestId && `${guest.guest.guestId} · `}{email}{guest.guest && ' · Unverified'}</small></div></div></td>
             <td>{Number.isNaN(date.getTime()) ? 'Not recorded' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
             <td><span className={styles.badge} data-status={guest.status}>{guest.status}</span></td>
+            <td>{guest.checkedInAt ? <><strong>Checked in</strong><br /><small>{new Date(guest.checkedInAt).toLocaleString()} · {guest.checkInMethod === 'manual' ? 'Manual code' : 'QR'}</small></> : 'Not checked in'}</td>
             <td>{event.requireApproval && guest.status === 'pending' && <div className={styles.rowActions} aria-label={`Actions for ${name}`}><button disabled={busy.has(guest._id)} className={styles.approve} onClick={() => decide(guest._id, 'approved')}>{busy.has(guest._id) ? 'Saving…' : 'Approve'}</button><button disabled={busy.has(guest._id)} className={styles.button} onClick={() => decide(guest._id, 'rejected')}>Reject</button></div>}</td>
           </tr>;
         })}</tbody>

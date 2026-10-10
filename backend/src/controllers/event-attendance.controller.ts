@@ -3,7 +3,7 @@ import { RequestWithUser } from "../types";
 import * as AttendanceService from "../services/event-attendance.service";
 import Event from "../models/event.model";
 import { ApiError } from "../middleware/errorHandler";
-import { assertEventId, parseEventPage } from "../utils/event-contract";
+import { assertEventId, assertEventManager, parseEventPage } from "../utils/event-contract";
 import { EVENT_TYPES } from "../models/event.model";
 
 const currentUserId = (req: Request) => (req as RequestWithUser).user.id;
@@ -11,8 +11,9 @@ const currentUserId = (req: Request) => (req as RequestWithUser).user.id;
 export const join = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const attendance = await AttendanceService.joinEvent(req.params.id, currentUserId(req));
-    const event = attendance.status === "approved" ? await Event.findOne({ _id: req.params.id, deletedAt: null, status: "published" }).select("googleMeetLink calendarSyncStatus").lean() : null;
-    res.status(201).json({ success: true, data: { ...attendance.toObject(), googleMeetLink: event?.googleMeetLink || null, calendarSyncStatus: event?.calendarSyncStatus } });
+    const event = attendance.status === "approved" ? await Event.findOne({ _id: req.params.id, deletedAt: null, status: "published" }).select("googleMeetLink").lean() : null;
+    const googleMeetLink = event?.googleMeetLink?.startsWith("https://") ? event.googleMeetLink : null;
+    res.status(201).json({ success: true, data: { ...attendance.toObject(), googleMeetLink } });
   } catch (error) { next(error); }
 };
 export const cancel = async (req: Request, res: Response, next: NextFunction) => {
@@ -21,8 +22,9 @@ export const cancel = async (req: Request, res: Response, next: NextFunction) =>
 export const mine = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const attendance = await AttendanceService.getMyAttendance(req.params.id, currentUserId(req));
-    const event = attendance?.status === "approved" ? await Event.findOne({ _id: req.params.id, deletedAt: null, status: "published" }).select("googleMeetLink calendarSyncStatus").lean() : null;
-    res.json({ success: true, data: attendance ? { ...attendance, googleMeetLink: event?.googleMeetLink || null, calendarSyncStatus: event?.calendarSyncStatus } : null });
+    const event = attendance?.status === "approved" ? await Event.findOne({ _id: req.params.id, deletedAt: null, status: "published" }).select("googleMeetLink").lean() : null;
+    const googleMeetLink = event?.googleMeetLink?.startsWith("https://") ? event.googleMeetLink : null;
+    res.json({ success: true, data: attendance ? { ...attendance, googleMeetLink } : null });
   } catch (error) { next(error); }
 };
 export const listMine = async (req: Request, res: Response, next: NextFunction) => {
@@ -43,7 +45,7 @@ const assertManager = async (req: Request) => {
   const event = await Event.findOne({ _id: req.params.id, deletedAt: null }).lean();
   if (!event) throw new ApiError(404, "Event not found");
   const user = (req as RequestWithUser).user;
-  if (user.role === "mentor" && event.author.toString() !== user.id) throw new ApiError(403, "Mentors can only manage their own events");
+  assertEventManager(event.author, user);
   return event;
 };
 export const list = async (req: Request, res: Response, next: NextFunction) => {

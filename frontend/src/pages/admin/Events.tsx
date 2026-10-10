@@ -46,14 +46,6 @@ const Events: React.FC = () => {
     const timer = setTimeout(() => load(), search ? 350 : 0);
     return () => { clearTimeout(timer); invalidateRequests(); };
   }, [load, search, invalidateRequests]);
-  const pending = events.some(event => event.calendarSyncStatus === 'pending');
-  useEffect(() => {
-    if (!pending) return;
-    let stopped = false; let attempts = 0; let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => { await load(true); if (!stopped && ++attempts < 12) timer = setTimeout(poll, 5000); };
-    timer = setTimeout(poll, 5000);
-    return () => { stopped = true; clearTimeout(timer); };
-  }, [pending, load]);
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this event?')) return;
     try { await deleteEvent(id); await load(); }
@@ -102,7 +94,7 @@ const Events: React.FC = () => {
                   {event.type}
                 </span>
                 <span className={`${styles.statusBadge} ${styles[`status_${event.status}`]}`}>
-                  {getStatusLabel(event.status)}{event.calendarSyncStatus === 'pending' ? ' · Calendar syncing' : event.calendarSyncStatus === 'failed' ? ' · Calendar needs attention' : ''}
+                  {getStatusLabel(event.status)}
                 </span>
               </div>
               <h3 className={styles.cardTitle}><Link className={styles.cardLink} to={eventUrl(event._id)}>{event.title}</Link></h3>

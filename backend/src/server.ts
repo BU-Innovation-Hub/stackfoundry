@@ -8,6 +8,7 @@ import { connectDatabase, assertReplicaSet } from "./config/database";
 import mongoose from "mongoose";
 import { closeEmailTransport } from "./services/email.service";
 import { archiveStaleEvents } from "./services/event.service";
+import { EventCheckInAttempt, EventCheckInSession } from "./models/event-checkin.model";
 
 const env = loadEnv();
 
@@ -28,6 +29,9 @@ const runArchiveSweep = () => {
 connectDatabase(env.MONGO_URI)
   .then(async () => {
     await assertReplicaSet();
+    // Fail startup if the uniqueness guarantees for sessions/attempt budgets
+    // cannot be established, including deployments with autoIndex disabled.
+    await Promise.all([EventCheckInSession.createIndexes(), EventCheckInAttempt.createIndexes()]);
     console.log(" Connected to MongoDB");
   })
   .then(() => {

@@ -23,6 +23,7 @@ import * as EventService from "../services/event.service";
 import { ApiError } from "../middleware/errorHandler";
 import { RequestWithUser } from "../types";
 import { EVENT_TYPES, EventType, EventStatus } from "../models/event.model";
+import { canManageEvent as actorCanManageEvent } from "../utils/event-contract";
 
 // ============================================
 // Constants
@@ -32,7 +33,7 @@ const VALID_EVENT_STATUSES: EventStatus[] = ["draft", "published", "archived"];
 
 const canManageEvent = (req: Request, authorId: string): boolean => {
     const user = (req as RequestWithUser).user;
-    return user.role !== "mentor" || user.id === authorId;
+    return actorCanManageEvent(authorId, user);
 };
 
 /**
@@ -123,6 +124,7 @@ export const createEvent = async (
             requireApproval,
             capacity,
             registrationLink,
+            googleMeetLink,
             status
         } = req.body;
 
@@ -146,6 +148,7 @@ export const createEvent = async (
                 requireApproval,
                 capacity: capacity === undefined || capacity === null || capacity === "" ? null : Number(capacity),
                 registrationLink,
+                googleMeetLink,
                 status
             },
             { id: user.id, name: user.name, surname: user.surname }
@@ -175,7 +178,7 @@ export const getEventById = async (
 
         const event = await EventService.getEventById(req.params.id);
 
-        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
 
         res.status(200).json({
             success: true,
@@ -212,6 +215,7 @@ export const updateEvent = async (
             requireApproval,
             capacity,
             registrationLink,
+            googleMeetLink,
             status
         } = req.body;
 
@@ -226,6 +230,7 @@ export const updateEvent = async (
             requireApproval,
             capacity: capacity === undefined ? undefined : capacity === null ? null : Number(capacity),
             registrationLink,
+            googleMeetLink,
             status,
         };
 
@@ -237,7 +242,7 @@ export const updateEvent = async (
         if (endDate) updateData.endDate = new Date(endDate);
 
         const existingEvent = await EventService.getEventById(req.params.id);
-        if (!canManageEvent(req, resolveAuthorId(existingEvent.author))) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(existingEvent.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
         const event = await EventService.updateEvent(req.params.id, updateData, req.body.revision ?? existingEvent.revision ?? 0);
 
 
@@ -264,7 +269,7 @@ export const deleteEvent = async (
         handleValidationErrors(req);
 
         const event = await EventService.getEventById(req.params.id);
-        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "Mentors can only manage events they create");
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
         await EventService.deleteEvent(req.params.id);
 
         res.status(200).json({
@@ -306,7 +311,7 @@ export const listEventsAdmin = async (
                 type: validatedType,
                 status: validatedStatus,
                 search: search as string,
-                authorId: user.role === "mentor" ? user.id : undefined,
+                authorId: user.roleNames?.includes("innovation_hub_admin") ? undefined : user.role === "mentor" || user.roleNames?.includes("mentor") ? user.id : undefined,
             },
             true // isAdmin
         );
@@ -332,7 +337,7 @@ export const getEventStats = async (
 ): Promise<void> => {
     try {
         const user = (req as RequestWithUser).user;
-        const authorId = user.role === "mentor" ? user.id : undefined;
+        const authorId = user.roleNames?.includes("innovation_hub_admin") ? undefined : user.role === "mentor" || user.roleNames?.includes("mentor") ? user.id : undefined;
         const stats = await EventService.getEventStats(authorId);
 
         res.status(200).json({
@@ -360,7 +365,7 @@ export const listEventsPublic = async (
     try {
         handleValidationErrors(req);
 
-        const { page, limit, type, search } = req.query;
+        const { page, limit, type, search, temporal } = req.query;
 
         // Validate type against valid enum values
         const validatedType = parseEventType(type);
@@ -371,6 +376,7 @@ export const listEventsPublic = async (
                 limit: limit ? parseInt(limit as string) : undefined,
                 type: validatedType,
                 search: search as string,
+                temporal: temporal as "current" | "past" | undefined,
             },
             false // not admin
         );

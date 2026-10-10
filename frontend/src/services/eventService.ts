@@ -35,6 +35,7 @@ export const getEvents = async (params?: {
     limit?: number;
     type?: string;
     search?: string;
+    temporal?: 'current' | 'past';
 }): Promise<EventListResponse> => {
     const response = await api.get<EventListResponse>('/events', { params });
     return response.data;
@@ -49,7 +50,24 @@ export const getEventBySlug = async (slug: string): Promise<IEvent> => {
 };
 
 export type AttendanceStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-export interface EventAttendance { _id: string; event: string; user: string; status: AttendanceStatus; googleMeetLink?: string | null; calendarSyncStatus?: 'disabled' | 'pending' | 'synced' | 'failed'; }
+export interface EventAttendance { _id: string; event: string; user?: string; guest?: string; status: AttendanceStatus; checkedInAt?: string; checkInMethod?: 'qr' | 'manual'; googleMeetLink?: string | null; }
+export interface GuestSession { guestId: string; name: string; email: string; expiresAt: string; registrationLink?: string | null; }
+export const getGuestSession = async (eventId: string): Promise<{ guest: Omit<GuestSession, 'registrationLink'>; attendance: EventAttendance | null } | null> => {
+    const response = await api.get<{ data: { guest: Omit<GuestSession, 'registrationLink'>; attendance: EventAttendance | null } | null }>(`/events/${eventId}/guest/session`);
+    return response.data.data;
+};
+export const createGuestSession = async (eventId: string, data: { name: string; email: string }): Promise<GuestSession> => {
+    const response = await api.post<{ data: GuestSession }>(`/events/${eventId}/guest/session`, data);
+    return response.data.data;
+};
+export const joinAsGuest = async (eventId: string): Promise<EventAttendance | { externalUrl: string }> => {
+    const response = await api.post<{ data: EventAttendance | { externalUrl: string } }>(`/events/${eventId}/guest/join`);
+    return response.data.data;
+};
+export const cancelGuestAttendance = async (eventId: string): Promise<EventAttendance> => {
+    const response = await api.post<{ data: EventAttendance }>(`/events/${eventId}/guest/cancel`);
+    return response.data.data;
+};
 
 export const getMyEventAttendance = async (eventId: string): Promise<EventAttendance | null> => {
     const response = await api.get<{ data: EventAttendance | null }>(`/events/${eventId}/attendance`);

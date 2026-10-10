@@ -51,19 +51,19 @@ const AdminDashboard: React.FC = () => {
   const isMentor = user?.role === 'mentor';
 
   const statCards = [
-    { icon: Users, label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, color: '#3b82f6', bg: '#eff6ff', link: '/admin/members' },
-    { icon: FileText, label: 'Blog Posts', value: stats.totalBlogs, sub: `${stats.publishedBlogs} published`, color: '#8b5cf6', bg: '#f5f3ff', link: '/admin/blogs' },
-    { icon: Calendar, label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, color: '#f59e0b', bg: '#fffbeb', link: '/admin/events' },
+    { icon: Users, label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/members' },
+    { icon: FileText, label: 'Blog Posts', value: stats.totalBlogs, sub: `${stats.publishedBlogs} published`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/blogs' },
+    { icon: Calendar, label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/events' },
     { icon: BookOpen, label: 'Courses', value: stats.totalCourses, sub: `${stats.publishedCourses} published`, color: '#D64A2A', bg: '#fef2ee', link: '/admin/courses' },
   ].filter(card => card.value !== undefined &&
     (!isSystemAdmin || card.link === '/admin/members') &&
     (!isMentor || card.link === '/admin/courses' || card.link === '/admin/events'));
 
   const quickActions = [
-    { label: 'New Blog', icon: FileText, link: '/admin/blogs', color: '#8b5cf6' },
-    { label: 'New Event', icon: Calendar, link: '/admin/events', color: '#f59e0b' },
+    { label: 'New Blog', icon: FileText, link: '/admin/blogs', color: '#D64A2A' },
+    { label: 'New Event', icon: Calendar, link: '/admin/events', color: '#D64A2A' },
     { label: 'New Course', icon: BookOpen, link: '/admin/courses', color: '#D64A2A' },
-    { label: 'Members', icon: Users, link: '/admin/members', color: '#3b82f6' },
+    { label: 'Members', icon: Users, link: '/admin/members', color: '#D64A2A' },
   ].filter(action =>
     isSystemAdmin ? action.link === '/admin/members' :
     isMentor ? action.link === '/admin/courses' || action.link === '/admin/events' : true

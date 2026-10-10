@@ -15,7 +15,10 @@ export interface EventGuest {
   _id: string;
   status: AttendanceStatus;
   requestedAt?: string;
-  user: { _id: string; name?: string; surname?: string; email?: string; studentId?: string } | null;
+  checkedInAt?: string;
+  checkInMethod?: 'qr' | 'manual';
+  user?: { _id: string; name?: string; surname?: string; email?: string; studentId?: string } | null;
+  guest?: { _id: string; guestId: string; name?: string; email?: string } | null;
 }
 
 export interface EventInsights {
@@ -50,6 +53,7 @@ export const eventErrorStatus = (error: unknown): number | undefined =>
 export const eventErrorMessage = (error: unknown, fallback: string): string => {
   const status = eventErrorStatus(error);
   if (status === 401) return 'Your session has expired. Please sign in again.';
+  if (axios.isAxiosError<{ details?: { code?: string } }>(error) && error.response?.data?.details?.code === 'CHECK_IN_ORIGIN_REJECTED') return 'The browser rejected this check-in request. Reload the app and try again.';
   if (status === 403) return 'You do not have permission to manage this event.';
   if (status === 404) return 'This event or registration is no longer available.';
   if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === 'string') return error.response.data.error;

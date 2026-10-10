@@ -3,7 +3,7 @@ import Event from "../models/event.model";
 import EventAttendance from "../models/event-attendance.model";
 import { ApiError } from "../middleware/errorHandler";
 import { eventTransaction } from "./event-transaction.service";
-import { assertEventId, pagination } from "../utils/event-contract";
+import { assertEventId, pagination, validScheduleMongo, notPastScheduleMongo } from "../utils/event-contract";
 
 const activeStatuses = ["pending", "approved"];
 
@@ -90,7 +90,8 @@ export const listMyEvents = async (userId: string, status: "upcoming" | "going" 
   }
   if (filters.type) match.type = filters.type;
   if (status !== "going") {
-    match.eventDate = status === "upcoming" ? { $gte: new Date() } : { $lt: new Date() };
+    if (status === "past") Object.assign(match, validScheduleMongo(), { endDate: { $type: "date", $lte: new Date() } });
+    else Object.assign(match, notPastScheduleMongo());
     if (status === "upcoming") match.status = "published";
   }
   // Start with this user's indexed attendance, not a lookup over every event.
@@ -111,7 +112,7 @@ export const listMyEvents = async (userId: string, status: "upcoming" | "going" 
 export const listAttendees = async (eventId: string, page = 1, limit = 20) => {
   assertEventId(eventId);
   const [data, total] = await Promise.all([
-    EventAttendance.find({ event: eventId }).populate("user", "name surname email studentId")
+    EventAttendance.find({ event: eventId }).populate("user", "name surname email studentId").populate("guest", "name email guestId")
       .sort({ requestedAt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit).lean(),
     EventAttendance.countDocuments({ event: eventId }),
   ]);

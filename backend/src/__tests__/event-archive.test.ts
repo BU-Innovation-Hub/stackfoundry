@@ -16,7 +16,7 @@ describe("archiveStaleEvents", () => {
     (mockedEvent.updateMany as jest.Mock).mockResolvedValue({ modifiedCount: 3 });
   });
 
-  it("archives non-archived events whose eventDate is older than 24h", async () => {
+  it("archives only events with a valid end at least 24 hours ago", async () => {
     const before = Date.now();
     const count = await archiveStaleEvents();
     const after = Date.now();
@@ -26,25 +26,25 @@ describe("archiveStaleEvents", () => {
 
     const [filter, update] = (mockedEvent.updateMany as jest.Mock).mock.calls[0];
     expect(filter.status).toEqual({ $ne: "archived" });
-    expect(filter.$or[1].eventDate.$ne).toBeNull();
-    expect(filter.$or[0].endDate.$ne).toBeNull();
+    expect(filter.endDate.$lte).toBeInstanceOf(Date);
+    expect(filter.endDate.$type).toBe("date");
+    expect(filter.$expr.$gt).toEqual(["$endDate", { $ifNull: ["$startDate", "$eventDate"] }]);
     expect(filter.deletedAt).toBeNull();
     expect(update).toEqual({ $set: { status: "archived" } });
 
     // cutoff = now - 24h (checked with tolerance for test execution time)
-    const cutoff: Date = filter.$or[0].endDate.$lt;
+    const cutoff: Date = filter.endDate.$lte;
     const expected = before - 24 * 60 * 60 * 1000;
     const expectedMax = after - 24 * 60 * 60 * 1000;
     expect(cutoff.getTime()).toBeGreaterThanOrEqual(expected - 50);
     expect(cutoff.getTime()).toBeLessThanOrEqual(expectedMax + 50);
   });
 
-  it("never touches events without an eventDate (null guard in filter)", async () => {
+  it("never archives missing, equal, or earlier end times", async () => {
     await archiveStaleEvents();
     const [filter] = (mockedEvent.updateMany as jest.Mock).mock.calls[0];
-    // $ne: null excludes both null values and missing fields in MongoDB
-    expect(filter.$or[1].eventDate).toHaveProperty("$ne", null);
-    expect(filter.$or[1].eventDate).toHaveProperty("$lt");
+    expect(filter.endDate).toHaveProperty("$type", "date");
+    expect(filter.$expr.$gt).toEqual(["$endDate", { $ifNull: ["$startDate", "$eventDate"] }]);
   });
 
   it("returns 0 when nothing was modified", async () => {

@@ -13,20 +13,20 @@ import Event, { IEvent, EventStatus, EventType, EventLocationType } from "../mod
 import { ApiError } from "../middleware/errorHandler";
 import { Types } from "mongoose";
 import { eventTransaction } from "./event-transaction.service";
-import { enqueueEventJob } from "./event-outbox.service";
-import { PUBLIC_EVENT_PROJECTION } from "../utils/event-contract";
-import { getEnv } from "../config/env";
-
-const calendarEnabled = () => Boolean(getEnv().GOOGLE_CLIENT_ID && getEnv().GOOGLE_CLIENT_SECRET && getEnv().GOOGLE_REFRESH_TOKEN);
+import { PUBLIC_EVENT_PROJECTION, validScheduleMongo, notPastScheduleMongo } from "../utils/event-contract";
 const normalizeSchedule = (data: UpdateEventData, before?: IEvent): UpdateEventData => {
     const patch = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as UpdateEventData;
     const start = new Date(patch.startDate || patch.eventDate || before?.startDate || before?.eventDate || "");
-    const end = new Date(patch.endDate || before?.endDate || start);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) throw new ApiError(400, "Invalid event date range");
+    const endValue = patch.endDate || before?.endDate;
+    const end = endValue ? new Date(endValue) : null;
+    const priorStart = before ? new Date(before.startDate || before.eventDate).getTime() : NaN;
+    const scheduleChanged = !before || (patch.startDate !== undefined && new Date(patch.startDate).getTime() !== priorStart) || (patch.eventDate !== undefined && new Date(patch.eventDate).getTime() !== priorStart) || (patch.endDate !== undefined && new Date(patch.endDate).getTime() !== new Date(before.endDate || "").getTime());
+    if (Number.isNaN(start.getTime()) || (scheduleChanged && (!end || Number.isNaN(end.getTime()) || end <= start))) throw new ApiError(400, "Set an end date and time later than the event start");
     if (patch.capacity != null && (!Number.isInteger(patch.capacity) || patch.capacity < 1 || patch.capacity < (before?.attendeeCount || 0))) throw new ApiError(409, "Capacity cannot be below existing reservations");
-    patch.startDate = start; patch.eventDate = start; patch.endDate = end;
+    patch.startDate = start; patch.eventDate = start;
+    if (end) patch.endDate = end;
     if (!patch.date && (data.startDate || data.eventDate)) patch.date = start.toLocaleDateString("en-GB", { timeZone: "UTC" });
-    if (!patch.time && (data.startDate || data.eventDate || data.endDate)) patch.time = start.toISOString().slice(11, 16) + " - " + end.toISOString().slice(11, 16) + " UTC";
+    if (!patch.time && end && (data.startDate || data.eventDate || data.endDate)) patch.time = start.toISOString().slice(11, 16) + " - " + end.toISOString().slice(11, 16) + " UTC";
     return patch;
 };
 
@@ -79,6 +79,7 @@ export interface EventListOptions {
     status?: EventStatus;
     search?: string;
     authorId?: string;
+    temporal?: "current" | "past";
 }
 
 export interface EventListResult {
@@ -105,7 +106,6 @@ const normalizeLegacyDates = <T extends Partial<IEvent>>(event: T): T => {
         if (legacyDate && !Number.isNaN(legacyDate.getTime())) {
             event.eventDate = legacyDate;
             event.startDate = legacyDate;
-            event.endDate = legacyDate;
         }
     }
     return event;
@@ -128,11 +128,11 @@ export const createEvent = async (
     }
 
     return eventTransaction(async session => {
-        const event = new Event({ ...data, ...normalizeSchedule(data), author: new Types.ObjectId(author.id),
-            authorName: `${author.name} ${author.surname}`, revision: 1, calendarRevision: 1,
-            calendarSyncStatus: data.status === "published" && calendarEnabled() ? "pending" : "disabled" });
+        const schedule = normalizeSchedule(data);
+        if (!schedule.endDate) throw new ApiError(400, "Set an end date and time later than the event start");
+        const event = new Event({ ...data, ...schedule, author: new Types.ObjectId(author.id),
+            authorName: `${author.name} ${author.surname}`, revision: 1 });
         await event.save({ session });
-        if (event.calendarSyncStatus === "pending") await enqueueEventJob(session, event, "calendar", {});
         return event;
     });
 };
@@ -195,10 +195,7 @@ export const updateEvent = async (
         const patch = normalizeSchedule(data, event);
         Object.assign(event, patch);
         event.revision = (event.revision || 0) + 1;
-        event.calendarRevision = event.revision;
-        if (calendarEnabled()) event.calendarSyncStatus = "pending";
         await event.save({ session });
-        if (calendarEnabled()) await enqueueEventJob(session, event, "calendar", {});
         await event.populate("author", "name surname email");
         return event;
     });
@@ -218,10 +215,8 @@ export const deleteEvent = async (id: string): Promise<void> => {
         if (event.deletedAt) return;
         event.deletedAt = new Date();
         event.revision = (event.revision || 0) + 1;
-        event.calendarRevision = event.revision;
         event.attendeeCount = 0;
         await event.save({ session });
-        await enqueueEventJob(session, event, "calendar", { deleted: true });
     });
 };
 
@@ -240,6 +235,7 @@ export const listEvents = async (
         status,
         search,
         authorId,
+        temporal,
     } = options;
 
     const skip = (page - 1) * limit;
@@ -247,6 +243,9 @@ export const listEvents = async (
     // Build query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = { deletedAt: null };
+    const now = new Date();
+    if (temporal === "past") query.$and = [validScheduleMongo(), { endDate: { $lte: now } }];
+    else if (temporal === "current") query.$and = [notPastScheduleMongo(now)];
 
     // Non-admins see published events, plus archived events that already
     // ended — so past events remain visible in public listings after the
@@ -254,7 +253,7 @@ export const listEvents = async (
     if (!isAdmin) {
         query.$or = [
             { status: "published" },
-            { status: "archived", eventDate: { $lt: new Date() } },
+            { status: "archived", ...validScheduleMongo(), endDate: { $type: "date", $lte: now } },
         ];
     } else if (status) {
         query.status = status;
@@ -311,10 +310,7 @@ export const listEvents = async (
 export const archiveStaleEvents = async (): Promise<number> => {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const result = await Event.updateMany(
-        { deletedAt: null, status: { $ne: "archived" }, $or: [
-            { endDate: { $ne: null, $lt: cutoff } },
-            { endDate: null, eventDate: { $ne: null, $lt: cutoff } },
-        ] },
+        { deletedAt: null, status: { $ne: "archived" }, ...validScheduleMongo(), endDate: { $type: "date", $lte: cutoff } },
         { $set: { status: "archived" } }
     );
     return result.modifiedCount ?? 0;
@@ -327,7 +323,7 @@ export const getFeaturedEvents = async (limit: number = 4): Promise<IEvent[]> =>
     const events = await Event.find({
         deletedAt: null,
         status: "published",
-        eventDate: { $gte: new Date() } // Only future events
+        ...notPastScheduleMongo() // Ongoing, future, and legacy schedules that need correction
     })
         .sort({ eventDate: 1 }) // Soonest events first
         .limit(limit)
@@ -397,7 +393,7 @@ export const getEventStats = async (authorId?: string): Promise<{
         Event.countDocuments({
             ...scope,
             status: "published",
-            eventDate: { $gte: new Date() }
+            ...notPastScheduleMongo()
         }),
     ]);
 

@@ -226,6 +226,7 @@ const EventSchema: Schema<IEvent> = new Schema(
 // Compound index for listing published events (most common query)
 EventSchema.index({ status: 1, eventDate: -1 });
 EventSchema.index({ deletedAt: 1, status: 1, eventDate: 1, _id: 1 });
+EventSchema.index({ deletedAt: 1, status: 1, endDate: 1, startDate: 1, _id: 1 });
 EventSchema.index({ author: 1, deletedAt: 1, updatedAt: -1 });
 
 // Text index for search functionality
@@ -237,7 +238,6 @@ EventSchema.index({ title: "text", description: "text" });
 
 EventSchema.pre("save", async function () {
     if (!this.startDate) this.startDate = this.eventDate;
-    if (!this.endDate) this.endDate = this.startDate;
     if (this.startDate) this.eventDate = this.startDate;
     // Generate slug only for new documents without an existing slug
     if (!this.slug) {

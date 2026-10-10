@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
    Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
    BookOpen, Calendar, FileText, ArrowRight, Clock, Tag,
-  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers,
+  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers, Menu, X, LogOut,
 } from 'lucide-react';
 import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMaterials, lmsGetProgress } from '../services/lmsService';
 import { LmsCourse, LmsEnrollment, LmsProgress } from '../types/lms';
@@ -15,7 +15,9 @@ import { IEvent } from '../types/event';
 import styles from './Dashboard.module.css';
 import Loader from '../components/common/Loader';
 import Pagination, { PaginationMeta } from '../components/common/Pagination';
-import { usePendingEventCalendar } from '../hooks/usePendingEventCalendar';
+import { isPastEvent, isOngoingEvent } from '../utils/eventLifecycle';
+import { useEventClock } from '../hooks/useEventClock';
+import AttendanceCheckIn from '../components/events/AttendanceCheckIn';
 
 type View = 'home' | 'courses' | 'blogs' | 'blog-detail' | 'events' | 'event-detail';
 
@@ -27,6 +29,22 @@ const Dashboard: React.FC = () => {
   // Navigation — honour incoming state (e.g. back from CourseLearn)
   const initialView = (location.state as { view?: View } | null)?.view || 'home';
   const [activeView, setActiveView] = useState<View>(initialView);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMenuOpen(false); menuButton.current?.focus(); }
+    };
+    const outside = (event: PointerEvent) => {
+      if (!sidebar.current?.contains(event.target as Node) && !menuButton.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', dismiss);
+    document.addEventListener('pointerdown', outside);
+    return () => { document.removeEventListener('keydown', dismiss); document.removeEventListener('pointerdown', outside); };
+  }, [menuOpen]);
 
   // Data
   const [courses, setCourses] = useState<LmsCourse[]>([]);
@@ -58,7 +76,7 @@ const Dashboard: React.FC = () => {
   const [eventError, setEventError] = useState('');
   const [eventListLoading, setEventListLoading] = useState(false);
   const [attendanceError, setAttendanceError] = useState('');
-  usePendingEventCalendar(selectedEvent?._id, eventAttendance, setEventAttendance);
+  const eventNow = useEventClock(selectedEvent ? [...allEvents, selectedEvent] : allEvents);
 
   // Course stats: materialCount + progress %
   const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
@@ -76,7 +94,7 @@ const Dashboard: React.FC = () => {
         lmsGetCourses(),
         lmsGetMyEnrollments(),
         apiClient.get('/blogs').then(r => r.data.data as IBlog[]).catch(() => [] as IBlog[]),
-        getEvents({ limit: 50 }).then(r => r.data).catch(() => [] as IEvent[]),
+        getEvents({ limit: 50, temporal: 'current' }).then(r => r.data).catch(() => [] as IEvent[]),
       ]);
       setCourses(coursesData);
       setEnrollments(enrollmentsData);
@@ -232,9 +250,8 @@ const Dashboard: React.FC = () => {
   }, [allBlogs, blogCategory, blogSearch]);
 
   const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    return allEvents.filter(e => new Date(eventStart(e)) >= now);
-  }, [allEvents]);
+    return allEvents.filter(e => !isPastEvent(e, eventNow));
+  }, [allEvents, eventNow]);
 
   const filteredEvents = goingEvents;
 
@@ -274,6 +291,9 @@ const Dashboard: React.FC = () => {
     <div className={styles.page}>
       {/* Top header */}
       <header className={styles.header}>
+        <button ref={menuButton} className={styles.menuToggle} type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-controls="student-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)}>
+          {menuOpen ? <X size={23} /> : <Menu size={23} />}
+        </button>
         <h1 className={styles.logo}>StackFoundry</h1>
         <div className={styles.userSection}>
           <span className={styles.greeting}>Hi, {user?.name} {user?.surname}</span>
@@ -283,7 +303,7 @@ const Dashboard: React.FC = () => {
 
       <div className={styles.shell}>
         {/* ===== SIDEBAR ===== */}
-        <aside className={styles.sidebar}>
+        <aside ref={sidebar} id="student-navigation" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
           <div className={styles.sidebarProfile}>
             <div className={styles.avatar}>{user?.name?.charAt(0)}{user?.surname?.charAt(0)}</div>
             <div>
@@ -292,12 +312,12 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <nav className={styles.nav}>
+          <nav className={styles.nav} aria-label="Student dashboard">
             {navItems.map(item => (
               <button
                 key={item.key}
                 className={`${styles.navItem} ${activeView === item.key || (activeView === 'blog-detail' && item.key === 'blogs') || (activeView === 'event-detail' && item.key === 'events') ? styles.navActive : ''}`}
-                onClick={() => setActiveView(item.key)}
+                onClick={() => { setActiveView(item.key); setMenuOpen(false); if (menuOpen) menuButton.current?.focus(); }}
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -311,6 +331,7 @@ const Dashboard: React.FC = () => {
             )}
             <Link to="/profile" className={styles.sidebarLink}><User size={16} /> My Profile</Link>
             <Link to="/change-password" className={styles.sidebarLink}><KeyRound size={16} /> Change Password</Link>
+            <button onClick={handleLogout} className={`${styles.sidebarLink} ${styles.mobileLogout}`}><LogOut size={16} /> Sign Out</button>
           </div>
         </aside>
 
@@ -710,7 +731,8 @@ const Dashboard: React.FC = () => {
                   ) : (
                     <div className={styles.eventGrid}>
                       {filteredEvents.map(event => {
-                         const past = new Date(eventStart(event)) < new Date();
+                         const past = isPastEvent(event, eventNow);
+                         const ongoing = isOngoingEvent(event, eventNow);
                         return (
                           <div key={event._id} className={`${styles.eventCard} ${past ? styles.pastCard : ''}`} onClick={() => openEvent(event.slug)}>
                             <div className={styles.eventDate}>
@@ -720,7 +742,7 @@ const Dashboard: React.FC = () => {
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
                               <h4>{event.title}</h4>
-                              <p className={styles.eventInfo}>{formatDate(eventStart(event))} &middot; {formatTime(eventStart(event))}</p>
+                              <p className={styles.eventInfo}>{formatDate(eventStart(event))} &middot; {formatTime(eventStart(event))}{ongoing ? ' · In progress' : ''}</p>
                               <span className={styles.eventViews}><Eye size={12} /> {event.views} views</span>
                             </div>
                           </div>
@@ -761,18 +783,20 @@ const Dashboard: React.FC = () => {
                         <span><Eye size={14} /> {selectedEvent.views} views</span>
                       </div>
 
-                      {selectedEvent.image && (
-                        <div className={styles.articleImage}>
-                          <img src={selectedEvent.image} alt={selectedEvent.title} />
-                        </div>
-                      )}
-
-                      <div className={styles.eventDetailBody}>
+                      <div className={`${styles.eventOverview} ${!selectedEvent.image ? styles.eventOverviewTextOnly : ''} ${eventAttendance?.checkedInAt ? styles.eventOverviewConfirmed : ''}`}>
+                        {selectedEvent.image && <div className={styles.eventCover}><img src={selectedEvent.image} alt={selectedEvent.title} /></div>}
                         <div className={styles.detailSection}>
                           <h3>About This Event</h3>
                           <p>{selectedEvent.description}</p>
                         </div>
+                      {user?.role === 'student' && selectedEvent.locationType === 'physical' && !selectedEvent.registrationLink && eventAttendance?.status === 'approved' && (!isPastEvent(selectedEvent, eventNow) || eventAttendance.checkedInAt) && (
+                        <div className={styles.eventAttendance}>
+                          <AttendanceCheckIn key={selectedEvent._id} eventId={selectedEvent._id} slug={selectedEvent.slug} checkedInAt={eventAttendance.checkedInAt} onConfirmed={result => setEventAttendance(previous => previous ? { ...previous, ...result } : previous)} />
+                        </div>
+                      )}
+                      </div>
 
+                      <div className={styles.eventDetailBody}>
                         <div className={styles.detailCard}>
                           <h4>Event Details</h4>
                           <div className={styles.detailGrid}>
@@ -786,7 +810,7 @@ const Dashboard: React.FC = () => {
 
                          {attendanceError && <p role="alert">{attendanceError}</p>}
                          {eventAttendance?.googleMeetLink && eventAttendance.status === 'approved' && (
-                           <a href={eventAttendance.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join Google Meet <ExternalLink size={14} /></a>
+                           <a href={eventAttendance.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join meeting <ExternalLink size={14} /></a>
                          )}
                          {selectedEvent.registrationLink && new Date(eventStart(selectedEvent)) >= new Date() && (
                           <a href={selectedEvent.registrationLink} target="_blank" rel="noopener noreferrer" className={styles.registerEventBtn}>

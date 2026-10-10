@@ -7,6 +7,8 @@ import { getEvents } from '../services/eventService';
 import { IEvent, EVENT_TYPES, EventType } from '../types/event';
 import Loader from '../components/common/Loader';
 import styles from './EventListing.module.css';
+import { isPastEvent, isOngoingEvent } from '../utils/eventLifecycle';
+import { useEventClock } from '../hooks/useEventClock';
 
 const EventListing: React.FC = () => {
     const [events, setEvents] = useState<IEvent[]>([]);
@@ -21,8 +23,11 @@ const EventListing: React.FC = () => {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const result = await getEvents({ limit: 50 });
-                setEvents(result.data);
+                const [current, past] = await Promise.all([
+                    getEvents({ limit: 50, temporal: 'current' }),
+                    getEvents({ limit: 50, temporal: 'past' }),
+                ]);
+                setEvents([...current.data, ...past.data]);
             } catch (error) {
                 console.error('Error fetching events:', error);
             } finally {
@@ -42,9 +47,7 @@ const EventListing: React.FC = () => {
         return colors[type];
     };
 
-    const isPastEvent = (eventDate: string) => {
-        return new Date(eventDate) < new Date();
-    };
+    const now = useEventClock(events);
 
     const filtered = useMemo(() => {
         let result = events;
@@ -62,8 +65,8 @@ const EventListing: React.FC = () => {
         return result;
     }, [events, activeType, search]);
 
-    const upcomingEvents = filtered.filter(e => !isPastEvent(e.eventDate));
-    const pastEvents = filtered.filter(e => isPastEvent(e.eventDate));
+    const upcomingEvents = filtered.filter(e => !isPastEvent(e, now));
+    const pastEvents = filtered.filter(e => isPastEvent(e, now));
 
     const typeFilters = ['all', ...EVENT_TYPES];
 
@@ -167,7 +170,7 @@ const EventListing: React.FC = () => {
                                             <div className={styles.cardMeta}>
                                                 <span>{event.date}</span>
                                                 <span>•</span>
-                                                <span>{event.time}</span>
+                                                <span>{event.time}{isOngoingEvent(event, now) ? ' · In progress' : ''}</span>
                                             </div>
                                             <h3 className={styles.cardTitle}>{event.title}</h3>
                                             <p className={styles.cardExcerpt}>{event.description}</p>

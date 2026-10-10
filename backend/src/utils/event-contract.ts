@@ -1,9 +1,30 @@
 import { ApiError } from "../middleware/errorHandler";
 import { Types } from "mongoose";
+
 export const PUBLIC_EVENT_PROJECTION = "-googleMeetLink -googleCalendarEventId -calendarSyncStatus -calendarRevision -deletedAt -revision -__v";
 export const assertEventId = (id: string) => {
   if (!Types.ObjectId.isValid(id)) throw new ApiError(400, "Invalid ID");
 };
+
+export type EventManagerActor = { id: string; role: string; roleNames?: string[] };
+export const canManageEvent = (authorId: unknown, actor: EventManagerActor) => {
+  const roles = new Set([actor.role, ...(actor.roleNames || [])]);
+  return roles.has("innovation_hub_admin") || (roles.has("mentor") && String(authorId) === actor.id);
+};
+export const assertEventManager = (authorId: unknown, actor: EventManagerActor) => {
+  if (!canManageEvent(authorId, actor)) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
+};
+
+export const validScheduleMongo = () => ({
+  endDate: { $type: "date" },
+  $expr: { $gt: ["$endDate", { $ifNull: ["$startDate", "$eventDate"] }] },
+});
+export const notPastScheduleMongo = (now = new Date()) => ({ $or: [
+  { endDate: { $exists: false } }, { endDate: null },
+  { $expr: { $lte: ["$endDate", { $ifNull: ["$startDate", "$eventDate"] }] } },
+  { endDate: { $gt: now } },
+] });
+
 export const parseEventPage = (query: { page?: unknown; limit?: unknown }) => {
   if ([query.page, query.limit].some(value => value !== undefined && typeof value !== "string" && typeof value !== "number")) throw new ApiError(400, "Invalid pagination");
   const page = query.page === undefined ? 1 : Number(query.page);

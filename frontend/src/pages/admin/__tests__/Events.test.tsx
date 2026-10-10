@@ -63,11 +63,11 @@ it('keeps Edit and Delete independent and routes Manage attendees to Guests', as
   await screen.findByText('Student Test');
   expect(screen.getByRole('tab', { name: 'Guests' })).toHaveAttribute('aria-selected', 'true');
 });
-it('supports keyboard tabs, browser history, and exactly three tabs', async () => {
+it('supports keyboard tabs, browser history, and the attendance tab', async () => {
   mount('/admin/events/event?tab=invalid');
   const overview = await screen.findByRole('tab', { name: 'Overview' });
   expect(overview).toHaveAttribute('aria-selected', 'true');
-  expect(screen.getAllByRole('tab')).toHaveLength(3);
+  expect(screen.getAllByRole('tab')).toHaveLength(4);
   fireEvent.keyDown(overview, { key: 'ArrowRight' });
   await screen.findByText('Student Test');
   expect(screen.getByRole('tab', { name: 'Guests' })).toHaveFocus();
@@ -142,18 +142,6 @@ it('uploads a replacement photo through the shared editor', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Update' }));
   await waitFor(() => expect(updateEvent).toHaveBeenCalledWith('event', expect.objectContaining({ image: 'https://images.test/new.png' })));
 });
-it('limits calendar polling to twelve attempts and cleans up on unmount', async () => {
-  jest.useFakeTimers();
-  (api.get as jest.Mock).mockResolvedValue({ data: { data: { ...event, calendarSyncStatus: 'pending' } } });
-  const view = mount();
-  await act(async () => { await Promise.resolve(); });
-  for (let i = 0; i < 14; i++) await act(async () => { jest.advanceTimersByTime(5000); });
-  expect(api.get).toHaveBeenCalledTimes(13);
-  view.unmount();
-  await act(async () => { jest.advanceTimersByTime(10000); });
-  expect(api.get).toHaveBeenCalledTimes(13);
-});
-
 it('ignores an older detail response after navigating to a different event', async () => {
   let resolveOld: (result: unknown) => void = () => {};
   (api.get as jest.Mock).mockImplementation((url: string) => url === '/events/event'
@@ -166,13 +154,13 @@ it('ignores an older detail response after navigating to a different event', asy
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Other workshop');
 });
 
-it('uses legacy schedule data, an image placeholder and calendar failure messaging', async () => {
-  (api.get as jest.Mock).mockResolvedValue({ data: { data: { ...event, eventDate: '', calendarSyncStatus: 'failed', image: 'https://images.test/broken.png' } } });
+it('uses legacy schedule data and asks organizers to correct an invalid end time', async () => {
+  (api.get as jest.Mock).mockResolvedValue({ data: { data: { ...event, eventDate: '', endDate: '', image: 'https://images.test/broken.png' } } });
   mount();
   fireEvent.error(await screen.findByAltText('Workshop cover'));
   expect(screen.getByText('Ideas meet opportunity.')).toBeVisible();
   expect(screen.getByText('Jan 1')).toBeVisible();
-  expect(screen.getByText(/Calendar needs attention/)).toBeVisible();
+  expect(screen.getByText(/needs an end date and time later than its start/)).toBeVisible();
   expect(screen.getByText(new RegExp(Intl.DateTimeFormat().resolvedOptions().timeZone))).toBeVisible();
 });
 

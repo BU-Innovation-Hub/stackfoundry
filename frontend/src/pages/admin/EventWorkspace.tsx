@@ -6,10 +6,11 @@ import { useAdminEventResource } from '../../hooks/useAdminEventResource';
 import EventEditor from './EventEditor';
 import EventOverview from './event-workspace/EventOverview';
 import EventGuests from './event-workspace/EventGuests';
+import EventCheckIn from './event-workspace/EventCheckIn';
 import EventInsightsPanel from './event-workspace/EventInsights';
 import styles from './EventWorkspace.module.css';
 
-const tabs = ['overview', 'guests', 'insights'] as const;
+const tabs = ['overview', 'guests', 'attendance', 'insights'] as const;
 type Tab = typeof tabs[number];
 
 const Workspace: React.FC<{ eventId: string }> = ({ eventId }) => {
@@ -23,13 +24,6 @@ const Workspace: React.FC<{ eventId: string }> = ({ eventId }) => {
   const fetchEvent = useCallback((signal: AbortSignal) => getAdminEvent(eventId, signal), [eventId]);
   const { data: event, loading, error, reload } = useAdminEventResource(fetchEvent, version, 'Unable to load the event. Please retry.');
   useEffect(() => { setVisited(previous => new Set([...Array.from(previous), tab])); }, [tab]);
-  const pending = event?.calendarSyncStatus === 'pending';
-  useEffect(() => {
-    if (!pending) return;
-    let attempts = 0;
-    const timer = setInterval(() => { reload(); if (++attempts >= 12) clearInterval(timer); }, 5000);
-    return () => clearInterval(timer);
-  }, [pending, reload]);
   const selectTab = (next: Tab) => setParams(previous => {
     const query = new URLSearchParams(previous); query.set('tab', next); return query;
   });
@@ -65,10 +59,13 @@ const Workspace: React.FC<{ eventId: string }> = ({ eventId }) => {
         <EventOverview event={event} onGuests={() => selectTab('guests')} onEdit={() => setEditor('details')} onPhoto={() => setEditor('photo')} />
       </section>
       <section id="panel-guests" role="tabpanel" aria-labelledby="tab-guests" hidden={tab !== 'guests'} tabIndex={0}>
-        {(tab === 'guests' || visited.has('guests')) && <EventGuests event={event} version={version} onChanged={changed} />}
+        {(tab === 'guests' || visited.has('guests')) && <EventGuests event={event} version={version} active={tab === 'guests'} onChanged={changed} />}
       </section>
       <section id="panel-insights" role="tabpanel" aria-labelledby="tab-insights" hidden={tab !== 'insights'} tabIndex={0}>
         {(tab === 'insights' || visited.has('insights')) && <EventInsightsPanel eventId={eventId} version={version} />}
+      </section>
+      <section id="panel-attendance" role="tabpanel" aria-labelledby="tab-attendance" hidden={tab !== 'attendance'} tabIndex={0}>
+        {tab === 'attendance' && <EventCheckIn event={event} onChanged={changed} onGuests={() => selectTab('guests')} />}
       </section>
       {editor && <EventEditor event={event} focusImage={editor === 'photo'} onClose={() => setEditor(null)} onSaved={() => { setEditor(null); changed(); }} />}
     </>}

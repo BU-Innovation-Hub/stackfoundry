@@ -8,6 +8,7 @@ import { BlogPost, IBlog } from '../types/blog';
 import { api as apiClient } from './apiClient';
 import { RoleName } from '../types/auth';
 import { LmsCourse } from '../types/lms';
+import { isPastEvent } from '../utils/eventLifecycle';
 
 // ---- Dashboard ----
 
@@ -55,7 +56,7 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
         totalEvents: eventStats.total || 0,
         upcomingEvents: eventStats.upcoming || 0,
         recentEvents: events
-          .filter(e => e.status === 'published' && eventStart(e) >= now)
+          .filter(e => e.status === 'published' && !isPastEvent(e, now))
           .sort((a, b) => eventStart(a) - eventStart(b))
           .slice(0, 4),
         popularCourses: [],
@@ -114,7 +115,7 @@ export const getDashboardStats = async (role?: RoleName): Promise<DashboardStats
     publishedCourses: courses.length,
     recentRegistrations: recentMembers,
     recentEvents: allEvents
-      .filter(e => e.status === 'published' && eventStart(e) >= Date.now())
+      .filter(e => e.status === 'published' && !isPastEvent(e))
       .sort((a, b) => eventStart(a) - eventStart(b))
       .slice(0, 4),
     // Real enrollment counts, highest first

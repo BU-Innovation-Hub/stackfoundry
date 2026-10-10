@@ -22,7 +22,6 @@ export interface Member {
 
 export interface Event {
   revision?: number;
-  calendarSyncStatus?: 'disabled' | 'pending' | 'synced' | 'failed';
   _id: string;
   id?: string;
   title: string;

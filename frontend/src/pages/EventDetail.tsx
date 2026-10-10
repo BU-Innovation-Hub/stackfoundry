@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CalendarPlus, Video } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -8,6 +8,11 @@ import {
     getMyEventAttendance,
     joinEvent,
     cancelEventAttendance,
+    getGuestSession,
+    createGuestSession,
+    joinAsGuest,
+    cancelGuestAttendance,
+    GuestSession,
     EventAttendance,
 } from '../services/eventService';
 import { useAuth } from '../context/AuthContext';
@@ -15,19 +20,23 @@ import { IEvent, EventType } from '../types/event';
 import { buildGcalLink } from '../utils/calendar';
 import Loader from '../components/common/Loader';
 import styles from './EventDetail.module.css';
-import { usePendingEventCalendar } from '../hooks/usePendingEventCalendar';
+import { isPastEvent, isOngoingEvent, isJoinableEvent } from '../utils/eventLifecycle';
+import { useEventClock } from '../hooks/useEventClock';
+import AttendanceCheckIn from '../components/events/AttendanceCheckIn';
+import GuestJoinDialog from '../components/events/GuestJoinDialog';
 
 const EventDetail: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
     const [event, setEvent] = useState<IEvent | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [attendance, setAttendance] = useState<EventAttendance | null>(null);
     const [joinLoading, setJoinLoading] = useState(false);
     const [attendanceError, setAttendanceError] = useState('');
-    usePendingEventCalendar(event?._id, attendance, setAttendance);
+    const [guest, setGuest] = useState<GuestSession | null>(null);
+    const [showJoinDialog, setShowJoinDialog] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -60,7 +69,15 @@ const EventDetail: React.FC = () => {
     // Reflect the visitor's existing join state (pending/approved/rejected).
     const eventId = event?._id;
     useEffect(() => {
-        if (!eventId || !isAuthenticated) { setAttendance(null); return; }
+        if (!eventId || authLoading) return;
+        if (!isAuthenticated) {
+            let cancelled = false;
+            getGuestSession(eventId).then(result => {
+                if (!cancelled) { setGuest(result?.guest ? { ...result.guest } : null); setAttendance(result?.attendance || null); }
+            }).catch(() => { if (!cancelled) { setGuest(null); setAttendance(null); } });
+            return () => { cancelled = true; };
+        }
+        setGuest(null);
         if (user?.role !== 'student' && user?.role !== 'member') return;
         let cancelled = false;
         setAttendanceError('');
@@ -68,7 +85,7 @@ const EventDetail: React.FC = () => {
             .then((att) => { if (!cancelled) setAttendance(att); })
             .catch(() => { if (!cancelled) setAttendanceError('Unable to load your attendance. Please refresh to retry.'); });
         return () => { cancelled = true; };
-    }, [eventId, isAuthenticated, user?.role, user?.id]);
+    }, [eventId, isAuthenticated, authLoading, user?.role, user?.id]);
 
     const getTypeColor = (type: EventType) => {
         const colors: Record<EventType, string> = {
@@ -80,17 +97,15 @@ const EventDetail: React.FC = () => {
         return colors[type];
     };
 
-    const isPastEvent = (eventDate: string) => {
-        return new Date(eventDate) < new Date();
-    };
+    const now = useEventClock(event ? [event] : []);
 
     const isAttendeeRole = user?.role === 'student' || user?.role === 'member';
 
     const handleJoinClick = async () => {
         if (!event) return;
-        // Guests always go through login first — joining requires an account.
-        if (!isAuthenticated) {
-            handleLoginRedirect();
+        if (authLoading) return;
+        if (!isAuthenticated && !guest) {
+            setShowJoinDialog(true);
             return;
         }
         // External registration events keep their existing behaviour.
@@ -98,16 +113,18 @@ const EventDetail: React.FC = () => {
             window.open(event.registrationLink, '_blank', 'noopener,noreferrer');
             return;
         }
-        if (!isAttendeeRole) {
-            alert('Only students and members can join events.');
+        if (isAuthenticated && !isAttendeeRole) {
+            window.alert('Only students and members can join events.');
             return;
         }
         setJoinLoading(true);
         try {
-            setAttendance(await joinEvent(event._id));
+            const result = isAuthenticated ? await joinEvent(event._id) : await joinAsGuest(event._id);
+            if ('externalUrl' in result) { window.open(result.externalUrl, '_blank', 'noopener,noreferrer'); return; }
+            setAttendance(result);
             setEvent(await getEventBySlug(event.slug));
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Unable to join event');
+            window.alert(err.response?.data?.error || 'Unable to join event');
         } finally {
             setJoinLoading(false);
         }
@@ -117,10 +134,11 @@ const EventDetail: React.FC = () => {
         if (!event) return;
         setJoinLoading(true);
         try {
-            setAttendance(await cancelEventAttendance(event._id));
+            setAttendance(isAuthenticated ? await cancelEventAttendance(event._id) : await cancelGuestAttendance(event._id));
+            if (!isAuthenticated) setGuest(null);
             setEvent(await getEventBySlug(event.slug));
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Unable to cancel attendance');
+            window.alert(err.response?.data?.error || 'Unable to cancel attendance');
         } finally {
             setJoinLoading(false);
         }
@@ -128,9 +146,26 @@ const EventDetail: React.FC = () => {
 
     const handleLoginRedirect = () => {
         // Store the current URL so we can redirect back after login
-        sessionStorage.setItem('redirectAfterLogin', `/events/${slug}`);
-        navigate('/login');
+        try { sessionStorage.setItem('redirectAfterLogin', `/events/${slug}`); } catch { /* storage can be disabled */ }
+        navigate('/login', { state: { from: { pathname: `/events/${slug}` } } });
     };
+
+    const handleGuestJoin = useCallback(async (name: string, email: string) => {
+        if (!event) return;
+        setJoinLoading(true);
+        try {
+            const session = await createGuestSession(event._id, { name, email });
+            setGuest(session);
+            if (session.registrationLink) { setShowJoinDialog(false); return; }
+            const result = await joinAsGuest(event._id);
+            if ('externalUrl' in result) { setShowJoinDialog(false); window.open(result.externalUrl, '_blank', 'noopener,noreferrer'); return; }
+            setAttendance(result);
+            setShowJoinDialog(false);
+            setEvent(await getEventBySlug(event.slug));
+        } finally { setJoinLoading(false); }
+    }, [event]);
+
+    const closeJoinDialog = useCallback(() => setShowJoinDialog(false), []);
 
     // Loading state
     if (loading) {
@@ -160,9 +195,11 @@ const EventDetail: React.FC = () => {
         );
     }
 
-    const past = isPastEvent(event.eventDate);
+    const joinable = isJoinableEvent(event, now);
+    const past = isPastEvent(event, now);
+    const ongoing = isOngoingEvent(event, now);
     const gcalLink = buildGcalLink(event);
-    const meetLink = attendance?.status === 'approved' ? attendance.googleMeetLink : null;
+    const meetLink = isAuthenticated && attendance?.status === 'approved' ? attendance.googleMeetLink : null;
 
     return (
         <div className={styles.page}>
@@ -208,8 +245,9 @@ const EventDetail: React.FC = () => {
                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                                 <circle cx="12" cy="10" r="3" />
                             </svg>
-                            {event.locationType === 'virtual' ? 'Virtual' : 'Physical'}
+                        {event.locationType === 'virtual' ? 'Virtual' : 'Physical'}
                         </span>
+                        {ongoing && <><span className={styles.metaDivider} /><span className={styles.metaItem}>In progress</span></>}
                         <span className={styles.metaDivider} />
                         <span className={styles.metaItem}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -222,22 +260,22 @@ const EventDetail: React.FC = () => {
                 </div>
             </section>
 
-            {/* Event Image */}
-            {event.image && (
-                <div className={styles.featuredImage}>
-                    <img src={event.image} alt={event.title} />
-                </div>
-            )}
-
-            {/* Content Area */}
-            <div className={styles.contentWrapper}>
-                <div className={styles.contentMain}>
-                    {/* Description */}
+            <div className={styles.eventIntro}>
+                <div className={`${styles.eventOverview} ${!event.image ? styles.textOnly : ''} ${attendance?.checkedInAt ? styles.eventOverviewConfirmed : ''}`}>
+                    {event.image && <div className={styles.featuredImage}><img src={event.image} alt={event.title} /></div>}
                     <div className={styles.descriptionSection}>
                         <h2 className={styles.sectionTitle}>About This Event</h2>
                         <p className={styles.description}>{event.description}</p>
                     </div>
-
+                {user?.role === 'student' && attendance?.status === 'approved' && event.locationType === 'physical' && !event.registrationLink && (!past || attendance.checkedInAt) && (
+                    <div className={styles.eventAttendance}>
+                        <AttendanceCheckIn key={event._id} eventId={event._id} slug={event.slug} checkedInAt={attendance.checkedInAt} onConfirmed={result => setAttendance(previous => previous ? { ...previous, ...result } : previous)} />
+                    </div>
+                )}
+                </div>
+            </div>
+            <div className={styles.contentWrapper}>
+                <div className={styles.contentMain}>
                     {/* Event Details Card */}
                     <div className={styles.detailsCard}>
                         <h3 className={styles.detailsTitle}>Event Details</h3>
@@ -296,8 +334,9 @@ const EventDetail: React.FC = () => {
                                 </div>
                                 <h3>You're Registered!</h3>
                                 <p>
-                                    Hi {user?.name}, you've successfully registered for <strong>{event.title}</strong>.
+                                    Hi {user?.name || guest?.name}, you've successfully registered for <strong>{event.title}</strong>.
                                 </p>
+                                {guest && <p className={styles.confirmNote}>Your temporary guest account is <strong>{guest.guestId}</strong>. It stays active in this browser until the event ends.</p>}
                                 <div className={styles.confirmDetails}>
                                     <div className={styles.confirmItem}>
                                         <span>Date:</span>
@@ -335,7 +374,7 @@ const EventDetail: React.FC = () => {
                                     )}
                                 </div>
                                 <p className={styles.confirmNote}>
-                                    We'll send event updates to your registered email.
+                                    {guest ? `A confirmation was not sent because ${guest.email} has not been verified.` : 'Your event registration and attendance confirmation appear in your account.'}
                                 </p>
                                 <button className={styles.cancelBtn} onClick={handleCancelAttendance} disabled={joinLoading}>
                                     {joinLoading ? 'Cancelling…' : 'Cancel Attendance'}
@@ -345,9 +384,10 @@ const EventDetail: React.FC = () => {
                             /* Awaiting organizer approval */
                             <div className={styles.pendingBox}>
                                 <h3>Request Pending</h3>
+                                {guest && <p className={styles.confirmNote}>Guest account: <strong>{guest.guestId}</strong> · {guest.email} (unverified)</p>}
                                 <p>
                                     Your request to join <strong>{event.title}</strong> is waiting for
-                                    approval. We'll email you as soon as it's decided.
+                                    approval. {guest ? 'Check this page again for the organizer’s decision.' : "We'll email you as soon as it's decided."}
                                 </p>
                                 <button
                                     className={styles.cancelBtn}
@@ -374,9 +414,9 @@ const EventDetail: React.FC = () => {
                                 <button
                                     className={styles.registerBtn}
                                     onClick={handleJoinClick}
-                                    disabled={joinLoading || Boolean(attendanceError)}
+                                    disabled={authLoading || joinLoading || Boolean(attendanceError) || !joinable || event.status === 'archived'}
                                 >
-                                    {joinLoading ? 'Joining…' : (
+                                    {authLoading ? 'Checking account…' : joinLoading ? 'Joining…' : (
                                         <>
                                             Join Now
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -385,7 +425,7 @@ const EventDetail: React.FC = () => {
                                         </>
                                     )}
                                 </button>
-                                <span className={styles.freeLabel}>Free Event</span>
+                                <span className={styles.freeLabel}>{guest ? `Temporary guest account: ${guest.guestId}` : 'Free Event'}</span>
                             </div>
                         )}
                     </div>
@@ -437,6 +477,7 @@ const EventDetail: React.FC = () => {
             </div>
 
             <Footer />
+            {showJoinDialog && <GuestJoinDialog onClose={closeJoinDialog} onMember={handleLoginRedirect} onGuest={handleGuestJoin} />}
         </div>
     );
 };

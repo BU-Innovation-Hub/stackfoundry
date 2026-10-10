@@ -18,6 +18,8 @@ interface Props { event: AdminEvent; onGuests: () => void; onEdit: () => void; o
 const EventOverview: React.FC<Props> = ({ event, onGuests, onEdit, onPhoto }) => {
   const [share, setShare] = useState<'copied' | 'fallback' | null>(null);
   const [brokenImage, setBrokenImage] = useState<string | null>(null);
+  const start = new Date(event.startDate || event.eventDate);
+  const end = new Date(event.endDate || '');
   const schedule = scheduleLabel(event);
   const shareable = event.status !== 'draft' && Boolean(event.slug);
   const url = `${window.location.origin}/events/${encodeURIComponent(event.slug)}`;
@@ -25,7 +27,8 @@ const EventOverview: React.FC<Props> = ({ event, onGuests, onEdit, onPhoto }) =>
     try { await navigator.clipboard.writeText(url); setShare('copied'); }
     catch { setShare('fallback'); }
   };
-  const meetingLink = event.googleMeetLink && /^https?:\/\//i.test(event.googleMeetLink) ? event.googleMeetLink : null;
+  const meetingLink = event.googleMeetLink && /^https:\/\//i.test(event.googleMeetLink) ? event.googleMeetLink : null;
+  const validSchedule = Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end.getTime() > start.getTime();
   return <>
     <div className={styles.actions}>
       <button onClick={onGuests}><span className={styles.actionIcon}><Users size={21} /></span><span>Manage Guests<small>Review your guest list</small></span><ArrowUpRight size={17} /></button>
@@ -46,11 +49,10 @@ const EventOverview: React.FC<Props> = ({ event, onGuests, onEdit, onPhoto }) =>
       <div className={styles.details}>
         <h2>When &amp; Where</h2>
         <div className={styles.detailRow}><div className={styles.dateTile}><small>{schedule.month}</small><strong>{schedule.day}</strong></div><div><h3>{schedule.date}</h3><p>{schedule.time}</p></div></div>
+        {!validSchedule && <p className={styles.notice} role="status">This event needs an end date and time later than its start. Check-in is unavailable until the schedule is corrected.</p>}
         <div className={styles.detailRow}><span className={styles.detailIcon}>{event.locationType === 'virtual' ? <Video size={23} /> : <MapPin size={23} />}</span><div><h3>{event.locationType === 'virtual' ? 'Virtual event' : 'Physical event'}</h3>
           {event.locationType === 'physical' ? <p>Venue details not provided.</p> : <>{meetingLink ? <a href={meetingLink} target="_blank" rel="noopener noreferrer">Open meeting <ArrowUpRight size={14} /></a> : <p>Meeting link not available yet.</p>}</>}
         </div></div>
-        {event.calendarSyncStatus === 'pending' && <p className={styles.notice} role="status">Calendar syncing. Updates will appear here when ready.</p>}
-        {event.calendarSyncStatus === 'failed' && <p className={styles.notice} role="status">Calendar needs attention. Your event is saved; calendar synchronization failed.</p>}
         <div className={styles.capacity}><Users size={20} /><div><strong>{event.attendeeCount || 0} going{event.capacity ? ` / ${event.capacity} places` : ''}</strong><small>{event.capacity ? 'Approved guests count toward capacity.' : 'Unlimited capacity'}</small></div></div>
         <button className={styles.primaryButton} onClick={onGuests}>Manage Guests <ArrowUpRight size={16} /></button>
         <div className={styles.about}><h2>About this event</h2><p>{event.description || 'No description provided yet.'}</p></div>
