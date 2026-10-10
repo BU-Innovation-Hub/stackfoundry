@@ -1,0 +1,25 @@
+.display { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2rem; align-items: center; margin: 1.5rem 0; }
+.qr { background: #fff; border-radius: 12px; padding: 12px; width: fit-content; max-width: 100%; }
+.qr svg { display: block; width: 100%; height: auto; }
+.code { font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 800; letter-spacing: .3em; font-variant-numeric: tabular-nums; margin: .5rem 0; }
+.note { opacity: .75; font-size: .875rem; margin-top: 1.5rem; }
+.titleRow { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; }
+.titleRow h2 { margin: 0 !important; }
+.status { display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px; padding: .35rem .65rem; background: #f0f1f4; color: #60616b; font-size: .75rem; font-weight: 600; }
+.status[data-state='open'] { background: #e8f6ed; color: #226747; }
+.status[data-state='warning'], .status[data-state='error'] { background: #fff2d9; color: #885512; }
+.status[data-state='permission'] { background: #fde9e8; color: #a12b23; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.25rem 2rem; padding: 1.15rem; margin: 0 0 1.5rem; border: 1px solid #e7e9ed; border-radius: 12px; background: #f8f9fb; }
+.controls > button { flex-shrink: 0; }
+.window { display: flex; align-items: flex-start; gap: .75rem; color: #4f505b; line-height: 1.65; min-width: 0; }
+.window strong { display: block; color: #343844; font-size: .85rem; margin-bottom: .6rem; }
+.windowDates { display: flex; flex-wrap: wrap; gap: .85rem 2rem; }
+.windowDates > span { display: flex; flex-direction: column; gap: .15rem; }
+.windowLabel { font-size: .7rem; color: #6a7180; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.windowDates time { font-size: .85rem; font-weight: 500; color: #343844; }
+.windowTime { display: block; color: #626977; font-size: .8rem; font-weight: 400; }
+.window svg { flex: 0 0 auto; margin-top: .2rem; color: #bd4a2d; }
+.scheduleWarning { margin: 1rem 0; padding: .9rem 1rem; border-radius: 9px; background: #fff5e8; color: #815c2b; font-size: .85rem; line-height: 1.6; }
+.live { display: flex; align-items: center; gap: .6rem; color: #226747; background: #e8f6ed; border-radius: 8px; padding: .75rem .9rem; font-size: .84rem; }
+@media (max-width: 700px) { .display { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; } .qr { justify-self: center; } }
+@media (max-width: 480px) { .controls > button { width: 100%; } .windowDates { gap: .85rem 1rem; } }

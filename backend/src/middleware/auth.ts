@@ -146,7 +146,7 @@ export const requireSystemAdmin = requireRole(["system_admin"]);
 export const requireHubAdmin = requireRole(["system_admin", "innovation_hub_admin"]);
 export const requireUserManagement = requireRole(["system_admin", "innovation_hub_admin"]);
 export const requireCourseManagement = requireRole(["innovation_hub_admin", "mentor"]);
-export const requireContentManagement = requireRole(["innovation_hub_admin"]);
+export const requireContentManagement = requireRole(["innovation_hub_admin", "mentor"]);
 export const requireDashboardAccess = requireRole(["system_admin", "innovation_hub_admin", "mentor"]);
 
 /**

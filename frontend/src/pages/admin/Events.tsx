@@ -1,171 +1,57 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Edit3, Trash2, X, MapPin, Clock, Upload, Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Plus, Edit3, Trash2, Clock, Search, Eye } from 'lucide-react';
 import { Event } from '../../types/admin';
-import { getEvents, createEvent, updateEvent, deleteEvent } from '../../services/adminService';
-import { api as apiClient } from '../../services/apiClient';
-import Loader from '../../components/common/Loader';
+import { getEvents, deleteEvent } from '../../services/adminService';
+import { eventErrorMessage } from '../../services/adminEventService';
 import Pagination, { PaginationMeta } from '../../components/common/Pagination';
+import EventEditor from './EventEditor';
 import styles from './Events.module.css';
 
-type EventForm = {
-  title: string;
-  description: string;
-  image: string;
-  date: string;
-  time: string;
-  eventDate: string;
-  location: string;
-  type: Event['type'];
-  registrationLink: string;
-  status: Event['status'];
-};
-
-const emptyForm: EventForm = { title: '', description: '', image: '', date: '', time: '', eventDate: '', location: '', type: 'workshop', registrationLink: '', status: 'draft' };
-const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0, hasNext: false, hasPrevious: false };
-
-const typeColors: Record<Event['type'], string> = {
-  workshop: '#2563eb',
-  hackathon: '#D64A2A',
-  meetup: '#16a34a',
-  conference: '#d97706',
-};
-
+const emptyMeta: PaginationMeta = { page: 1, limit: 25, total: 0, pages: 0 };
+const typeColors: Record<Event['type'], string> = { workshop: '#2563eb', hackathon: '#D64A2A', meetup: '#16a34a', conference: '#d97706' };
 const Events: React.FC = () => {
+  const [params, setParams] = useSearchParams();
+  const filter = ['draft', 'published', 'archived'].includes(params.get('status') || '') ? params.get('status')! : 'all';
+  const search = params.get('search') || '';
+  const rawPage = Number(params.get('page') || 1);
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const limit = [10, 25, 50].includes(Number(params.get('limit'))) ? Number(params.get('limit')) : 25;
   const [events, setEvents] = useState<Event[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(emptyMeta);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<EventForm>(emptyForm);
-  const [filter, setFilter] = useState<string>('all');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const load = useCallback(async (targetPage = page) => {
-    setLoading(true);
+  const [error, setError] = useState('');
+  const [editor, setEditor] = useState<{ event?: Event } | null>(null);
+  const request = useRef(0);
+  const invalidateRequests = useCallback(() => { ++request.current; }, []);
+  const setListParams = (values: Record<string, string>, replace = false) => {
+    setParams(previous => { const next = new URLSearchParams(previous); Object.entries(values).forEach(([key, value]) => { if (value) next.set(key, value); else next.delete(key); }); return next; }, { replace });
+  };
+  const eventUrl = (id: string, tab = 'overview') => {
+    const query = new URLSearchParams(params); query.set('tab', tab);
+    return `/admin/events/${id}?${query}`;
+  };
+  const load = useCallback(async (quiet = false) => {
+    const sequence = ++request.current;
+    if (!quiet) { setLoading(true); setError(''); }
     try {
-      const result = await getEvents({
-        page: targetPage,
-        limit,
-        search,
-        status: filter,
-      });
-      setEvents(result.data);
-      setMeta(result.pagination);
-    } catch {
-      setEvents([]);
-      setMeta(emptyMeta);
-    } finally {
-      setLoading(false);
-    }
+      const result = await getEvents({ page, limit, search, status: filter });
+      if (sequence === request.current) { setEvents(result.data); setMeta(result.pagination); }
+    } catch (cause) {
+      if (sequence === request.current && !quiet) { setEvents([]); setError(eventErrorMessage(cause, 'Unable to load events. Please retry.')); }
+    } finally { if (sequence === request.current) setLoading(false); }
   }, [page, limit, search, filter]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const resetPage = () => setPage(1);
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(resetPage, 350);
-  };
-
-  const handleTab = (t: string) => { setFilter(t); resetPage(); };
-
-  const handleOpen = (event?: Event) => {
-    if (event) {
-      setEditId(event._id);
-      setForm({
-        title: event.title,
-        description: event.description,
-        image: event.image || '',
-        date: event.date,
-        time: event.time,
-        eventDate: event.eventDate ? event.eventDate.substring(0, 10) : '',
-        location: event.location || '',
-        type: event.type,
-        registrationLink: event.registrationLink || '',
-        status: event.status,
-      });
-    } else {
-      setEditId(null);
-      setForm(emptyForm);
-    }
-    setModalOpen(true);
-  };
-
-  const handleClose = () => { setModalOpen(false); setEditId(null); setForm(emptyForm); };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Error: File is too large. Maximum size is 10MB.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const response = await apiClient.post('/upload/image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setForm(prev => ({ ...prev, image: response.data.data.url }));
-    } catch (error: any) {
-      console.error('Image upload failed:', error);
-      const message = error.response?.data?.error || 'Image upload failed. Please try again.';
-      alert(`Error: ${message}`);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleSave = async () => {
-    const payload = {
-      ...form,
-      // If eventDate not set, derive from date field
-      eventDate: form.eventDate || form.date,
-    };
-    try {
-      if (editId) {
-        await updateEvent(editId, payload);
-      } else {
-        await createEvent(payload);
-      }
-      handleClose();
-      load();
-    } catch (error: any) {
-      const message = error.response?.data?.error || 'Failed to save event';
-      alert(`Error: ${message}`);
-    }
-  };
-
+  useEffect(() => {
+    setLoading(true); setEvents([]);
+    const timer = setTimeout(() => load(), search ? 350 : 0);
+    return () => { clearTimeout(timer); invalidateRequests(); };
+  }, [load, search, invalidateRequests]);
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this event?')) return;
-    await deleteEvent(id);
-    load();
+    try { await deleteEvent(id); await load(); }
+    catch (cause) { setError(eventErrorMessage(cause, 'Unable to delete event. Please retry.')); }
   };
-
-  const filtered = events;
-
-  const getStatusLabel = (status: Event['status']) => {
-    switch (status) {
-      case 'draft': return 'Draft';
-      case 'published': return 'Published';
-      case 'archived': return 'Archived';
-    }
-  };
-
-  if (loading && events.length === 0) return <Loader text="Loading events..." />;
-
+  const getStatusLabel = (status: Event['status']) => status.charAt(0).toUpperCase() + status.slice(1);
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -173,7 +59,7 @@ const Events: React.FC = () => {
           <h1>Events</h1>
           <p>Manage workshops, hackathons, meetups, and more</p>
         </div>
-        <button className={styles.primaryBtn} onClick={() => handleOpen()}>
+        <button className={styles.primaryBtn} onClick={() => setEditor({})}>
           <Plus size={18} /> New Event
         </button>
       </div>
@@ -181,7 +67,7 @@ const Events: React.FC = () => {
       {/* Filters */}
       <div className={styles.tabs}>
         {['all', 'draft', 'published', 'archived'].map(t => (
-          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => handleTab(t)}>
+          <button key={t} className={`${styles.tab} ${filter === t ? styles.tabActive : ''}`} onClick={() => setListParams({ status: t, page: '1' })}>
             {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
             {t === filter && meta.total > 0 && <span className={styles.tabCount}>{meta.total}</span>}
           </button>
@@ -191,15 +77,17 @@ const Events: React.FC = () => {
           <input
             type="text"
             placeholder="Search events…"
-            value={search}
-            onChange={e => handleSearchChange(e.target.value)}
+            aria-label="Search events" value={search}
+            onChange={e => setListParams({ search: e.target.value, page: '1' }, true)}
           />
         </div>
       </div>
 
+      {error && <p role="alert" className={styles.editorError}>{error} <button onClick={() => load()}>Retry</button></p>}
+      {loading && <p role="status">Loading events...</p>}
       {/* Grid */}
       <div className={styles.grid}>
-        {filtered.map(event => (
+        {events.map(event => (
             <div key={event._id} className={styles.card}>
               <div className={styles.cardTop}>
                 <span className={styles.typeBadge} style={{ background: typeColors[event.type] + '18', color: typeColors[event.type] }}>
@@ -209,130 +97,37 @@ const Events: React.FC = () => {
                   {getStatusLabel(event.status)}
                 </span>
               </div>
-              <h3 className={styles.cardTitle}>{event.title}</h3>
+              <h3 className={styles.cardTitle}><Link className={styles.cardLink} to={eventUrl(event._id)}>{event.title}</Link></h3>
               <p className={styles.cardDesc}>{event.description}</p>
               <div className={styles.cardDetails}>
                 <span><Clock size={14} /> {event.date} at {event.time}</span>
-                {event.location && <span><MapPin size={14} /> {event.location}</span>}
               </div>
               <div className={styles.cardDetails}>
-                <span>Views: {event.views}</span>
-                <span>By: {event.authorName}</span>
+                <span><Eye size={14} /> {event.views} views</span>
+                <span>By {event.authorName}</span>
+              </div>
+              <div className={styles.cardDetails}>
+                <span>Going: {event.attendeeCount || 0}{event.capacity ? ` / ${event.capacity}` : ''}</span>
+                <Link className={styles.attendeesBtn} to={eventUrl(event._id, 'guests')}>Manage attendees</Link>
               </div>
               <div className={styles.cardFooter}>
-                <button className={styles.editBtn} onClick={() => handleOpen(event)}><Edit3 size={15} /> Edit</button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(event._id)}><Trash2 size={15} /></button>
+                <button className={styles.editBtn} onClick={() => setEditor({ event })}><Edit3 size={15} /> Edit</button>
+                <button aria-label={`Delete ${event.title}`} className={styles.deleteBtn} onClick={() => handleDelete(event._id)}><Trash2 size={15} /></button>
               </div>
             </div>
           ))}
-        {filtered.length === 0 && <p className={styles.empty}>No events found.</p>}
+        {!loading && !error && events.length === 0 && <p className={styles.empty}>No events found.</p>}
       </div>
 
       <Pagination
         meta={meta}
-        onPageChange={setPage}
-        onPageSizeChange={(l) => { setLimit(l); setPage(1); }}
+        onPageChange={p => setListParams({ page: String(p) })}
+        onPageSizeChange={l => setListParams({ limit: String(l), page: '1' })}
+        pageSizeOptions={[10, 25, 50]}
       />
 
-      {/* Modal */}
-      {modalOpen && (
-        <div className={styles.overlay} onClick={handleClose}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2>{editId ? 'Edit Event' : 'New Event'}</h2>
-              <button className={styles.closeBtn} onClick={handleClose}><X size={20} /></button>
-            </div>
-            <div className={styles.modalBody}>
-              <label className={styles.field}>
-                <span>Title</span>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Event title" />
-              </label>
-              <label className={styles.field}>
-                <span>Description</span>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Event description…" rows={3} />
-              </label>
-              <div className={styles.row}>
-                <label className={styles.field}>
-                  <span>Date</span>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                </label>
-                <label className={styles.field}>
-                  <span>Time</span>
-                  <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
-                </label>
-              </div>
-              <label className={styles.field}>
-                <span>Location</span>
-                <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Venue or link" />
-              </label>
-              <label className={styles.field}>
-                <span>Event Date (for sorting)</span>
-                <input type="date" value={form.eventDate} onChange={e => setForm({ ...form, eventDate: e.target.value })} />
-              </label>
-              <div className={styles.field}>
-                <span>Event Image</span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  style={{ display: 'none' }}
-                  id="event-image-upload"
-                />
-                {form.image ? (
-                  <div className={styles.imagePreview}>
-                    <img src={form.image} alt="Event preview" />
-                    <button type="button" className={styles.imageRemoveBtn} onClick={() => setForm({ ...form, image: '' })} title="Remove image">
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.uploadBtn}
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    <Upload size={20} />
-                    {uploading ? 'Uploading…' : 'Choose Image'}
-                  </button>
-                )}
-              </div>
-              <label className={styles.field}>
-                <span>Registration Link (optional, external URL)</span>
-                <input value={form.registrationLink} onChange={e => setForm({ ...form, registrationLink: e.target.value })} placeholder="https://..." />
-              </label>
-              <div className={styles.row}>
-                <label className={styles.field}>
-                  <span>Type</span>
-                  <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as Event['type'] })}>
-                    <option value="workshop">Workshop</option>
-                    <option value="hackathon">Hackathon</option>
-                    <option value="meetup">Meetup</option>
-                    <option value="conference">Conference</option>
-                  </select>
-                </label>
-                <label className={styles.field}>
-                  <span>Status</span>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}>
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={handleClose}>Cancel</button>
-              <button className={styles.primaryBtn} onClick={handleSave} disabled={!form.title.trim() || !form.date}>
-                {editId ? 'Update' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editor && <EventEditor event={editor.event} onClose={() => setEditor(null)} onSaved={() => { setEditor(null); load(); }} />}
     </div>
   );
 };
-
 export default Events;

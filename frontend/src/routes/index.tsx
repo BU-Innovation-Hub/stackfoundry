@@ -1,10 +1,12 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from '../pages/Home';
+import Team from '../pages/Team';
 import BlogListing from '../pages/BlogListing';
 import BlogPostPage from '../pages/BlogPost';
 import EventListing from '../pages/EventListing';
 import EventDetail from '../pages/EventDetail';
+import EventCheckIn from '../pages/EventCheckIn';
 import Join from '../pages/Join';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
@@ -26,6 +28,7 @@ import AdminDashboard from '../pages/admin/Dashboard';
 import Members from '../pages/admin/Members';
 import Blogs from '../pages/admin/Blogs';
 import Events from '../pages/admin/Events';
+import EventWorkspace from '../pages/admin/EventWorkspace';
 import Courses from '../pages/admin/Courses';
 import AuditLogs from '../pages/admin/AuditLogs';
 
@@ -33,10 +36,12 @@ const AppRoutes: React.FC = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/team" element={<Team />} />
       <Route path="/blog" element={<BlogListing />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
       <Route path="/events" element={<EventListing />} />
       <Route path="/events/:slug" element={<EventDetail />} />
+      <Route path="/events/:slug/check-in" element={<EventCheckIn />} />
       <Route path="/join" element={<Join />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -88,7 +93,8 @@ const AppRoutes: React.FC = () => (
         <Route index element={<AdminDashboard />} />
         <Route path="members" element={<ProtectedRoute roles={['system_admin', 'innovation_hub_admin']} unauthorizedTo="/admin"><Members /></ProtectedRoute>} />
         <Route path="blogs" element={<ProtectedRoute roles={['innovation_hub_admin']} unauthorizedTo="/admin"><Blogs /></ProtectedRoute>} />
-        <Route path="events" element={<ProtectedRoute roles={['innovation_hub_admin']} unauthorizedTo="/admin"><Events /></ProtectedRoute>} />
+        <Route path="events" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Events /></ProtectedRoute>} />
+        <Route path="events/:eventId" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><EventWorkspace /></ProtectedRoute>} />
         <Route path="courses" element={<ProtectedRoute roles={['innovation_hub_admin', 'mentor']} unauthorizedTo="/admin"><Courses /></ProtectedRoute>} />
         <Route path="audit-logs" element={<ProtectedRoute roles={['system_admin']} unauthorizedTo="/admin"><AuditLogs /></ProtectedRoute>} />
       </Route>

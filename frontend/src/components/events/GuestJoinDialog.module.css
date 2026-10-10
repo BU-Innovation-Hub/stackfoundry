@@ -1,0 +1,16 @@
+.backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 1rem; overflow-y: auto; background: rgb(18 20 34 / 62%); }
+.dialog { position: relative; width: min(100%, 440px); max-height: min(90dvh, 680px); overflow-y: auto; padding: clamp(1.25rem, 5vw, 2rem); border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgb(0 0 0 / 24%); color: #22232b; }
+.dialog h2 { margin: 0 2rem .5rem 0; font-size: 1.4rem; }
+.dialog p { margin: 0 0 1.25rem; color: #646674; font-size: .92rem; line-height: 1.55; }
+.close { position: absolute; top: .65rem; right: .75rem; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: #555; font-size: 1.7rem; cursor: pointer; }
+.choice { display: flex; width: 100%; flex-direction: column; gap: .4rem; margin-top: .7rem; padding: 1rem; border: 1px solid #e5e5e9; border-radius: 10px; background: #fff; color: #282a34; text-align: left; cursor: pointer; }
+.choice:hover { border-color: #d64a2a; background: #fffaf8; }
+.choice span { color: #696b76; font-size: .83rem; line-height: 1.5; }
+.dialog label { display: block; margin: .85rem 0 .35rem; font-size: .85rem; font-weight: 600; }
+.dialog input { width: 100%; min-height: 44px; padding: .65rem .75rem; border: 1px solid #d7d8df; border-radius: 8px; font: inherit; }
+.dialog :is(button, input):focus-visible { outline: 3px solid #d64a2a; outline-offset: 2px; }
+.buttons { display: flex; justify-content: flex-end; gap: .65rem; margin-top: 1.25rem; }
+.buttons button { min-height: 44px; padding: .6rem .9rem; border: 1px solid #d64a2a; border-radius: 8px; background: #d64a2a; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.buttons .secondary { border-color: #dedee2; background: #fff; color: #444; }
+.buttons button:disabled { opacity: .6; cursor: wait; }
+.error { margin: .8rem 0; padding: .7rem; border-radius: 8px; background: #fff0eb; color: #983b29; font-size: .84rem; }

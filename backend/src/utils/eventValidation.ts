@@ -41,6 +41,18 @@ export const createEventValidation = [
     .isISO8601()
     .withMessage("Event date must be a valid date"),
 
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+
+  body("endDate")
+    .exists({ checkFalsy: true })
+    .isISO8601()
+    .withMessage("An end date later than the start is required"),
+
+  body("googleMeetLink").optional({ nullable: true }).isURL({ protocols: ["https"], require_protocol: true }).withMessage("Meeting link must be a secure HTTPS URL"),
+
   body("type")
     .trim()
     .notEmpty()
@@ -49,19 +61,29 @@ export const createEventValidation = [
     .withMessage("Invalid event type"),
 
   body("image")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Image must be a valid URL"),
 
-  body("location")
+  body("locationType")
     .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("Location cannot exceed 500 characters"),
+    .isIn(["physical", "virtual"])
+    .withMessage("Location type must be physical or virtual"),
+
+  body("requireApproval")
+    .optional()
+    .isBoolean()
+    .withMessage("Require approval must be a boolean")
+    .toBoolean(),
+
+  body("capacity")
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Registration link must be a valid URL"),
@@ -73,6 +95,7 @@ export const createEventValidation = [
 ];
 
 export const updateEventValidation = [
+  body("revision").optional().isInt({ min: 0 }).toInt(),
   param("id")
     .isMongoId()
     .withMessage("Invalid event ID"),
@@ -110,6 +133,18 @@ export const updateEventValidation = [
     .isISO8601()
     .withMessage("Event date must be a valid date"),
 
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+
+  body("endDate")
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage("End date must be a valid date"),
+
+  body("googleMeetLink").optional({ nullable: true }).isURL({ protocols: ["https"], require_protocol: true }).withMessage("Meeting link must be a secure HTTPS URL"),
+
   body("type")
     .optional()
     .trim()
@@ -117,19 +152,29 @@ export const updateEventValidation = [
     .withMessage("Invalid event type"),
 
   body("image")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Image must be a valid URL"),
 
-  body("location")
+  body("locationType")
     .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("Location cannot exceed 500 characters"),
+    .isIn(["physical", "virtual"])
+    .withMessage("Location type must be physical or virtual"),
+
+  body("requireApproval")
+    .optional()
+    .isBoolean()
+    .withMessage("Require approval must be a boolean")
+    .toBoolean(),
+
+  body("capacity")
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage("Capacity must be a positive integer"),
 
   body("registrationLink")
-    .optional()
+    .optional({ values: "falsy" })
     .trim()
     .isURL()
     .withMessage("Registration link must be a valid URL"),
@@ -154,6 +199,7 @@ export const eventSlugValidation = [
 ];
 
 export const listEventsValidation = [
+  query("temporal").optional().isIn(["current", "past"]).withMessage("Temporal filter must be current or past"),
   query("page")
     .optional()
     .isInt({ min: 1 })

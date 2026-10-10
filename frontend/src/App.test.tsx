@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
+import { authService } from './services/authService';
+import { api } from './services/apiClient';
 
 jest.mock('./services/authService', () => ({
   authService: {
@@ -40,9 +42,15 @@ jest.mock('lenis', () => {
   return { __esModule: true, default: MockLenis };
 });
 
-test('renders the app shell with the StackFoundry brand', async () => {
+beforeEach(() => {
+  // CRA resets mock implementations before each test.
+  (authService.getMe as jest.Mock).mockRejectedValue(new Error('not authenticated'));
+  (api.get as jest.Mock).mockResolvedValue({ data: { data: [] } });
+});
+
+test('renders the app shell with the current InHub brand', async () => {
   render(<App />);
   await waitFor(() => {
-    expect(screen.getAllByText(/StackFoundry/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/InHub/i).length).toBeGreaterThan(0);
   });
 });

@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import { authService } from '../services/authService';
 import OtpModal from '../components/common/OtpModal';
 import styles from './ChangePassword.module.css';
+import { BOTHO_EMAIL_ERROR, isBothoUniversityEmail } from '../utils/emailValidation';
 
 const RESET_TOKEN_KEY = 'prf_reset_token';
 
@@ -18,6 +19,7 @@ const ForgotPassword: React.FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!isBothoUniversityEmail(email)) { setError(BOTHO_EMAIL_ERROR); return; }
     setSubmitting(true);
     try {
       await authService.requestPasswordReset(email.trim());

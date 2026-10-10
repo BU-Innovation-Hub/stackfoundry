@@ -1,10 +1,9 @@
-export const BOTHO_EMAIL_DOMAIN = "@bothouniversity.com";
-export const BOTHO_EMAIL_ERROR = "Email must be from botho domain";
+export const BOTHO_EMAIL_ERROR = "Email must use @bothouniversity.com or @bothouniversity.ac.bw";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[A-Z0-9]+(?:[._%+-][A-Z0-9]+)*@(?:bothouniversity\.com|bothouniversity\.ac\.bw)$/i;
 
 export const isBothoUniversityEmail = (email: string): boolean => {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  return EMAIL_REGEX.test(normalized) && normalized.endsWith(BOTHO_EMAIL_DOMAIN);
+  return EMAIL_REGEX.test(normalized);
 };
