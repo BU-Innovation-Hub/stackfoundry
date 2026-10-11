@@ -23,7 +23,7 @@ export const getProfile = async (id: string): Promise<IStudent> => {
 
 export const updateProfile = async (id: string, updates: ProfileUpdates): Promise<IStudent> => {
   if (updates.email && !isBothoEmail(updates.email)) {
-    throw new ApiError(400, "Email must use a Botho University domain");
+    throw new ApiError(400, "Email must use @bothouniversity.com or @bothouniversity.ac.bw");
   }
   const user = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
     .populate("roles").exec();

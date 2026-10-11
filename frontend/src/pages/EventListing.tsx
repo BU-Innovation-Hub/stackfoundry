@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { getEvents } from '../services/eventService';
 import { IEvent, EVENT_TYPES, EventType } from '../types/event';
 import Loader from '../components/common/Loader';
 import styles from './EventListing.module.css';
+import { isPastEvent, isOngoingEvent } from '../utils/eventLifecycle';
+import { useEventClock } from '../hooks/useEventClock';
 
 const EventListing: React.FC = () => {
     const [events, setEvents] = useState<IEvent[]>([]);
@@ -20,8 +23,11 @@ const EventListing: React.FC = () => {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const result = await getEvents({ limit: 50 });
-                setEvents(result.data);
+                const [current, past] = await Promise.all([
+                    getEvents({ limit: 50, temporal: 'current' }),
+                    getEvents({ limit: 50, temporal: 'past' }),
+                ]);
+                setEvents([...current.data, ...past.data]);
             } catch (error) {
                 console.error('Error fetching events:', error);
             } finally {
@@ -41,9 +47,7 @@ const EventListing: React.FC = () => {
         return colors[type];
     };
 
-    const isPastEvent = (eventDate: string) => {
-        return new Date(eventDate) < new Date();
-    };
+    const now = useEventClock(events);
 
     const filtered = useMemo(() => {
         let result = events;
@@ -61,8 +65,8 @@ const EventListing: React.FC = () => {
         return result;
     }, [events, activeType, search]);
 
-    const upcomingEvents = filtered.filter(e => !isPastEvent(e.eventDate));
-    const pastEvents = filtered.filter(e => isPastEvent(e.eventDate));
+    const upcomingEvents = filtered.filter(e => !isPastEvent(e, now));
+    const pastEvents = filtered.filter(e => isPastEvent(e, now));
 
     const typeFilters = ['all', ...EVENT_TYPES];
 
@@ -166,24 +170,16 @@ const EventListing: React.FC = () => {
                                             <div className={styles.cardMeta}>
                                                 <span>{event.date}</span>
                                                 <span>•</span>
-                                                <span>{event.time}</span>
+                                                <span>{event.time}{isOngoingEvent(event, now) ? ' · In progress' : ''}</span>
                                             </div>
                                             <h3 className={styles.cardTitle}>{event.title}</h3>
                                             <p className={styles.cardExcerpt}>{event.description}</p>
-                                            {event.location && (
-                                                <span className={styles.cardLocation}>
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                                        <circle cx="12" cy="10" r="3" />
-                                                    </svg>
-                                                    {event.location}
-                                                </span>
-                                            )}
-                                            <span className={styles.cardRegister}>
-                                                Register Now
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M5 12h14M12 5l7 7-7 7" />
-                                                </svg>
+                                            <span
+                                                className={styles.cardRegister}
+                                                title="View details"
+                                                aria-label="View details"
+                                            >
+                                                <Eye size={18} />
                                             </span>
                                         </div>
                                     </Link>

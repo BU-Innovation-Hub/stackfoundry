@@ -10,6 +10,7 @@
  */
 
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import { PUBLIC_EVENT_PROJECTION } from "../utils/event-contract";
 
 // ============================================
 // Constants
@@ -24,6 +25,7 @@ const EVENT_TYPES = [
 
 type EventType = (typeof EVENT_TYPES)[number];
 type EventStatus = "draft" | "published" | "archived";
+type EventLocationType = "physical" | "virtual";
 
 // ============================================
 // Interface
@@ -37,9 +39,16 @@ export interface IEvent extends Document {
     date: string; // Display date e.g., "Feb 15, 2026"
     time: string; // Display time e.g., "10:00 AM - 4:00 PM"
     eventDate: Date; // Actual date for sorting/filtering
+    startDate?: Date;
+    endDate?: Date;
     type: EventType;
     image?: string;
-    location?: string;
+    locationType: EventLocationType;
+    requireApproval: boolean;
+    capacity?: number | null;
+    attendeeCount: number;
+    googleCalendarEventId?: string | null;
+    googleMeetLink?: string | null;
     registrationLink?: string;
     author: Types.ObjectId; // Reference to Student (admin)
     authorName: string; // Denormalized for display
@@ -48,6 +57,10 @@ export interface IEvent extends Document {
     publishedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
+    revision: number;
+    calendarRevision: number;
+    deletedAt?: Date | null;
+    calendarSyncStatus: "disabled" | "pending" | "synced" | "failed";
 }
 
 // ============================================
@@ -82,6 +95,10 @@ const generateSlug = (title: string): string => {
 
 const EventSchema: Schema<IEvent> = new Schema(
     {
+        revision: { type: Number, default: 0 },
+        calendarRevision: { type: Number, default: 0 },
+        deletedAt: { type: Date, default: null },
+        calendarSyncStatus: { type: String, enum: ["disabled", "pending", "synced", "failed"], default: "disabled" },
         title: {
             type: String,
             required: [true, "Title is required"],
@@ -115,6 +132,14 @@ const EventSchema: Schema<IEvent> = new Schema(
             required: [true, "Event date is required"],
             index: true,
         },
+        startDate: {
+            type: Date,
+            index: true,
+        },
+        endDate: {
+            type: Date,
+            index: true,
+        },
         type: {
             type: String,
             required: [true, "Event type is required"],
@@ -128,10 +153,31 @@ const EventSchema: Schema<IEvent> = new Schema(
             type: String,
             default: null,
         },
-        location: {
+        locationType: {
             type: String,
-            trim: true,
-            maxlength: [500, "Location cannot exceed 500 characters"],
+            enum: ["physical", "virtual"],
+            default: "physical",
+        },
+        requireApproval: {
+            type: Boolean,
+            default: false,
+        },
+        capacity: {
+            type: Number,
+            min: [1, "Capacity must be greater than zero"],
+            default: null,
+        },
+        attendeeCount: {
+            type: Number,
+            min: 0,
+            default: 0,
+        },
+        googleCalendarEventId: {
+            type: String,
+            default: null,
+        },
+        googleMeetLink: {
+            type: String,
             default: null,
         },
         registrationLink: {
@@ -179,6 +225,9 @@ const EventSchema: Schema<IEvent> = new Schema(
 
 // Compound index for listing published events (most common query)
 EventSchema.index({ status: 1, eventDate: -1 });
+EventSchema.index({ deletedAt: 1, status: 1, eventDate: 1, _id: 1 });
+EventSchema.index({ deletedAt: 1, status: 1, endDate: 1, startDate: 1, _id: 1 });
+EventSchema.index({ author: 1, deletedAt: 1, updatedAt: -1 });
 
 // Text index for search functionality
 EventSchema.index({ title: "text", description: "text" });
@@ -188,6 +237,8 @@ EventSchema.index({ title: "text", description: "text" });
 // ============================================
 
 EventSchema.pre("save", async function () {
+    if (!this.startDate) this.startDate = this.eventDate;
+    if (this.startDate) this.eventDate = this.startDate;
     // Generate slug only for new documents without an existing slug
     if (!this.slug) {
         const baseSlug = generateSlug(this.title);
@@ -225,10 +276,11 @@ EventSchema.statics.findPublished = function (
 ) {
     const { limit = 10, skip = 0, type } = options;
 
-    const query: Record<string, unknown> = { status: "published" };
+    const query: Record<string, unknown> = { status: "published", deletedAt: null };
     if (type) query.type = type;
 
     return this.find(query)
+        .select(PUBLIC_EVENT_PROJECTION)
         .sort({ eventDate: 1 }) // Upcoming events first
         .skip(skip)
         .limit(limit)
@@ -239,7 +291,9 @@ EventSchema.statics.findPublished = function (
  * Find event by slug (for public viewing)
  */
 EventSchema.statics.findBySlug = function (slug: string) {
-    return this.findOne({ slug, status: "published" })
+    // Archived events stay viewable so links to ended events never 404.
+    return this.findOne({ slug, deletedAt: null, status: { $in: ["published", "archived"] } })
+        .select(PUBLIC_EVENT_PROJECTION)
         .populate("author", "name surname")
         .lean();
 };
@@ -264,4 +318,4 @@ const Event: EventModel =
     mongoose.model<IEvent, EventModel>("Event", EventSchema);
 
 export default Event;
-export { EVENT_TYPES, EventType, EventStatus };
+export { EVENT_TYPES, EventType, EventStatus, EventLocationType };

@@ -47,9 +47,10 @@ const Register: React.FC = () => {
       const { confirmPassword, ...data } = formData;
       await register({ ...data, email: normalizedEmail });
       // Redirect back to the page the user came from (e.g., event registration)
-      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+      let candidate: string | null = null;
+      try { candidate = sessionStorage.getItem('redirectAfterLogin'); sessionStorage.removeItem('redirectAfterLogin'); } catch { /* storage can be disabled */ }
+      const redirectUrl = candidate && /^\/(?!\/)/.test(candidate) && !candidate.includes('\\') && Array.from(candidate).every(character => character.charCodeAt(0) >= 32) ? candidate : null;
       if (redirectUrl) {
-        sessionStorage.removeItem('redirectAfterLogin');
         navigate(redirectUrl);
       } else {
         navigate('/dashboard');

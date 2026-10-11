@@ -18,16 +18,35 @@
 
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
+import { Types } from "mongoose";
 import * as EventService from "../services/event.service";
 import { ApiError } from "../middleware/errorHandler";
 import { RequestWithUser } from "../types";
 import { EVENT_TYPES, EventType, EventStatus } from "../models/event.model";
+import { canManageEvent as actorCanManageEvent } from "../utils/event-contract";
 
 // ============================================
 // Constants
 // ============================================
 
 const VALID_EVENT_STATUSES: EventStatus[] = ["draft", "published", "archived"];
+
+const canManageEvent = (req: Request, authorId: string): boolean => {
+    const user = (req as RequestWithUser).user;
+    return actorCanManageEvent(authorId, user);
+};
+
+/**
+ * Resolve an event's author id whether `author` is a raw ObjectId
+ * or a populated author document (getEventById populates it).
+ */
+const resolveAuthorId = (author: unknown): string => {
+    if (author instanceof Types.ObjectId) return author.toString();
+    if (author && typeof author === "object" && "_id" in author) {
+        return String((author as { _id: unknown })._id);
+    }
+    return String(author);
+};
 
 // ============================================
 // Helpers
@@ -97,10 +116,15 @@ export const createEvent = async (
             date,
             time,
             eventDate,
+            startDate,
+            endDate,
             type,
             image,
-            location,
+            locationType,
+            requireApproval,
+            capacity,
             registrationLink,
+            googleMeetLink,
             status
         } = req.body;
 
@@ -116,10 +140,15 @@ export const createEvent = async (
                 date,
                 time,
                 eventDate: new Date(eventDate),
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined,
                 type,
                 image,
-                location,
+                locationType,
+                requireApproval,
+                capacity: capacity === undefined || capacity === null || capacity === "" ? null : Number(capacity),
                 registrationLink,
+                googleMeetLink,
                 status
             },
             { id: user.id, name: user.name, surname: user.surname }
@@ -149,6 +178,8 @@ export const getEventById = async (
 
         const event = await EventService.getEventById(req.params.id);
 
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
+
         res.status(200).json({
             success: true,
             data: event,
@@ -176,10 +207,15 @@ export const updateEvent = async (
             date,
             time,
             eventDate,
+            startDate,
+            endDate,
             type,
             image,
-            location,
+            locationType,
+            requireApproval,
+            capacity,
             registrationLink,
+            googleMeetLink,
             status
         } = req.body;
 
@@ -190,8 +226,11 @@ export const updateEvent = async (
             time,
             type,
             image,
-            location,
+            locationType,
+            requireApproval,
+            capacity: capacity === undefined ? undefined : capacity === null ? null : Number(capacity),
             registrationLink,
+            googleMeetLink,
             status,
         };
 
@@ -199,8 +238,13 @@ export const updateEvent = async (
         if (eventDate) {
             updateData.eventDate = new Date(eventDate);
         }
+        if (startDate) updateData.startDate = new Date(startDate);
+        if (endDate) updateData.endDate = new Date(endDate);
 
-        const event = await EventService.updateEvent(req.params.id, updateData);
+        const existingEvent = await EventService.getEventById(req.params.id);
+        if (!canManageEvent(req, resolveAuthorId(existingEvent.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
+        const event = await EventService.updateEvent(req.params.id, updateData, req.body.revision ?? existingEvent.revision ?? 0);
+
 
         res.status(200).json({
             success: true,
@@ -224,6 +268,8 @@ export const deleteEvent = async (
     try {
         handleValidationErrors(req);
 
+        const event = await EventService.getEventById(req.params.id);
+        if (!canManageEvent(req, resolveAuthorId(event.author))) throw new ApiError(403, "You do not have permission to manage this event", { code: "EVENT_MANAGEMENT_FORBIDDEN" });
         await EventService.deleteEvent(req.params.id);
 
         res.status(200).json({
@@ -247,7 +293,12 @@ export const listEventsAdmin = async (
     try {
         handleValidationErrors(req);
 
+        // Lazy sweep so the Archived tab is always accurate on open,
+        // even if the process was down when events went overdue.
+        await EventService.archiveStaleEvents().catch(() => undefined);
+
         const { page, limit, type, status, search } = req.query;
+        const user = (req as RequestWithUser).user;
 
         // Validate type and status against valid enum values
         const validatedType = parseEventType(type);
@@ -260,6 +311,7 @@ export const listEventsAdmin = async (
                 type: validatedType,
                 status: validatedStatus,
                 search: search as string,
+                authorId: user.roleNames?.includes("innovation_hub_admin") ? undefined : user.role === "mentor" || user.roleNames?.includes("mentor") ? user.id : undefined,
             },
             true // isAdmin
         );
@@ -279,12 +331,14 @@ export const listEventsAdmin = async (
  * GET /api/v1/events/stats
  */
 export const getEventStats = async (
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction
 ): Promise<void> => {
     try {
-        const stats = await EventService.getEventStats();
+        const user = (req as RequestWithUser).user;
+        const authorId = user.roleNames?.includes("innovation_hub_admin") ? undefined : user.role === "mentor" || user.roleNames?.includes("mentor") ? user.id : undefined;
+        const stats = await EventService.getEventStats(authorId);
 
         res.status(200).json({
             success: true,
@@ -311,7 +365,7 @@ export const listEventsPublic = async (
     try {
         handleValidationErrors(req);
 
-        const { page, limit, type, search } = req.query;
+        const { page, limit, type, search, temporal } = req.query;
 
         // Validate type against valid enum values
         const validatedType = parseEventType(type);
@@ -322,6 +376,7 @@ export const listEventsPublic = async (
                 limit: limit ? parseInt(limit as string) : undefined,
                 type: validatedType,
                 search: search as string,
+                temporal: temporal as "current" | "past" | undefined,
             },
             false // not admin
         );
@@ -350,11 +405,10 @@ export const getFeaturedEvents = async (
         const MAX_LIMIT = 10;
 
         let limit = DEFAULT_LIMIT;
-        if (req.query.limit) {
-            const parsed = parseInt(req.query.limit as string, 10);
-            if (!Number.isNaN(parsed) && parsed > 0 && parsed <= MAX_LIMIT) {
-                limit = parsed;
-            }
+        if (req.query.limit !== undefined) {
+            const parsed = Number(req.query.limit);
+            if (typeof req.query.limit !== "string" || !Number.isInteger(parsed) || parsed < 1 || parsed > MAX_LIMIT) throw new ApiError(400, "Featured limit must be between 1 and 10");
+            limit = parsed;
         }
 
         const events = await EventService.getFeaturedEvents(limit);

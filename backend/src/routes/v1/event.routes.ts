@@ -20,7 +20,11 @@
 
 import { Router } from "express";
 import * as EventController from "../../controllers/event.controller";
+import * as AttendanceController from "../../controllers/event-attendance.controller";
+import * as CheckInController from "../../controllers/event-checkin.controller";
 import { requireAuth, requireRole } from "../../middleware/auth";
+import rateLimit from "express-rate-limit";
+import * as GuestController from "../../controllers/event-guest.controller";
 import {
   createEventValidation,
   updateEventValidation,
@@ -30,6 +34,7 @@ import {
 } from "../../utils/eventValidation";
 
 const router = Router();
+const guestLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 
 // ============================================
 // Static Routes First (to avoid /:id conflicts)
@@ -43,7 +48,7 @@ const router = Router();
 router.post(
   "/",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   createEventValidation,
   EventController.createEvent
 );
@@ -63,7 +68,7 @@ router.get("/", listEventsValidation, EventController.listEventsPublic);
 router.get(
   "/admin",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   listEventsValidation,
   EventController.listEventsAdmin
 );
@@ -74,10 +79,10 @@ router.get(
  * @access  Private (admin only)
  */
 router.get(
-  "/stats",
-  requireAuth,
-  requireRole(["innovation_hub_admin"]),
-  EventController.getEventStats
+    "/stats",
+    requireAuth,
+    requireRole(["innovation_hub_admin", "mentor"]),
+    EventController.getEventStats
 );
 
 /**
@@ -94,9 +99,16 @@ router.get("/featured", EventController.getFeaturedEvents);
  */
 router.get("/slug/:slug", eventSlugValidation, EventController.getEventBySlug);
 
+router.post("/:id/guest/session", guestLimiter, GuestController.createSession);
+router.get("/:id/guest/session", GuestController.getSession);
+router.post("/:id/guest/join", guestLimiter, GuestController.join);
+router.post("/:id/guest/cancel", guestLimiter, GuestController.cancel);
+
 // ============================================
 // Parameterized Routes (after static routes)
 // ============================================
+
+router.get("/mine", requireAuth, requireRole(["student", "member"]), AttendanceController.listMine);
 
 /**
  * @route   GET /api/v1/events/:id
@@ -106,7 +118,7 @@ router.get("/slug/:slug", eventSlugValidation, EventController.getEventBySlug);
 router.get(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   eventIdValidation,
   EventController.getEventById
 );
@@ -119,7 +131,7 @@ router.get(
 router.put(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   updateEventValidation,
   EventController.updateEvent
 );
@@ -132,9 +144,20 @@ router.put(
 router.delete(
   "/:id",
   requireAuth,
-  requireRole(["innovation_hub_admin"]),
+  requireRole(["innovation_hub_admin", "mentor"]),
   eventIdValidation,
   EventController.deleteEvent
 );
+
+router.get("/:id/attendance", requireAuth, requireRole(["student", "member"]), AttendanceController.mine);
+router.post("/:id/join", requireAuth, requireRole(["student", "member"]), AttendanceController.join);
+router.post("/:id/cancel", requireAuth, requireRole(["student", "member"]), AttendanceController.cancel);
+router.get("/:id/attendees", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.list);
+router.get("/:id/insights", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.insights);
+router.patch("/:id/attendees/:attendanceId", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), AttendanceController.decide);
+
+router.get("/:id/check-in/session", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), CheckInController.protectCheckIn, CheckInController.session);
+router.post("/:id/check-in/session", requireAuth, requireRole(["innovation_hub_admin", "mentor"]), CheckInController.protectCheckIn, CheckInController.setSession);
+router.post("/:id/check-in", requireAuth, requireRole(["student"]), CheckInController.protectCheckIn, CheckInController.submit);
 
 export default router;

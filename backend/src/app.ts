@@ -107,6 +107,16 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Liveness remains /health; readiness also checks durable-delivery capacity.
+app.get("/ready", async (_req, res) => {
+  const mongoose = (await import("mongoose")).default;
+  try {
+    if (mongoose.connection.readyState !== 1) throw new Error("Database unavailable");
+    const worker = await mongoose.connection.collection("event_worker_state").findOne({ heartbeatAt: { $gte: new Date(Date.now() - 45000) } });
+    res.status(worker ? 200 : 503).json({ success: Boolean(worker), database: true, worker: Boolean(worker) });
+  } catch { res.status(503).json({ success: false, database: false, worker: false }); }
+});
+
 // API routes
 app.use("/api", apiRouter);
 

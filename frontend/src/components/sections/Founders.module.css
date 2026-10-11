@@ -45,6 +45,43 @@
   gap: var(--spacing-xl);
 }
 
+.teamAction {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-2xl);
+}
+
+.teamButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  transition: background var(--transition-base), color var(--transition-base), transform var(--transition-base);
+}
+
+.teamButton:hover {
+  background: #ffffff;
+  color: var(--color-accent-primary);
+  transform: translateY(-2px);
+}
+
+.teamButton:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .card {
   text-align: center;
   padding: var(--spacing-2xl) var(--spacing-lg);
@@ -100,35 +137,6 @@
   margin-bottom: var(--spacing-lg);
 }
 
-.social {
-  display: flex;
-  justify-content: center;
-  gap: var(--spacing-sm);
-}
-
-.socialLink {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg-light);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  color: var(--color-text-dark-secondary);
-  transition: all var(--transition-fast);
-}
-
-.socialLink svg {
-  width: 16px;
-  height: 16px;
-}
-
-.socialLink:hover {
-  background: var(--color-accent-primary);
-  border-color: var(--color-accent-primary);
-  color: white;
-}
 
 @media (max-width: 1024px) {
   .grid {

@@ -1,0 +1,30 @@
+.card, .success { padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; color: #24252b; margin: 1.5rem 0; min-width: 0; overflow-wrap: anywhere; }
+.heading, .success { display: flex; align-items: flex-start; gap: .9rem; }
+.heading h3, .success h3 { margin: 0 0 .35rem; font-size: 1.05rem; color: #24252b; }
+.card p, .dialog p, .success p { font-size: .875rem; line-height: 1.65; margin: 0; color: #626775; }
+.icon { display: inline-flex; flex-shrink: 0; padding: .65rem; border-radius: 10px; background: #fdf0eb; color: #bd3e23; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .7rem 1rem; border-radius: 9px; border: 1px solid transparent; font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.primary { background: #d64a2a; color: #fff; }
+.primary:hover:not(:disabled) { background: #b93d22; }
+.secondary { background: #fff; border-color: #d7dce4; color: #384152; }
+.secondary:hover:not(:disabled) { background: #f4f6f9; }
+.card button:disabled, .dialog button:disabled { opacity: .55; cursor: not-allowed; }
+.card button:focus-visible, .dialog :is(button, input):focus-visible { outline: 3px solid #d64a2a; outline-offset: 3px; }
+.card .note { margin-top: 1rem; font-size: .75rem; }
+.card .error, .dialog .error { color: #94312b; background: #fcece9; padding: .8rem; border-radius: 8px; margin-top: 1rem; }
+.success { background: #edf8f1; border-color: #c4e4ce; }
+.success > svg { flex-shrink: 0; color: #267347; }
+.camera { max-width: 480px; margin-top: 1.25rem; }
+.camera video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #19202c; border-radius: 10px; }
+.camera p { margin-top: .5rem; }
+.scanResult { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; background: #edf8f1; padding: 1rem; border-radius: 10px; margin-top: 1rem; }
+.dialog { position: fixed; inset: 0; width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 16px; color: #24252b; background: #fff; box-shadow: 0 24px 80px #15203033; }
+.dialog::backdrop { background: #11182799; }
+.modalHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .75rem; }
+.modalHeader h2 { font-size: 1.2rem; margin: .5rem 0 0; color: #24252b; }
+.close { display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; width: 44px; height: 44px; border: 0; border-radius: 8px; background: #f4f6f9; color: #4b5563; cursor: pointer; }
+.dialog label { display: block; margin: 1.25rem 0 .6rem; font-size: .85rem; font-weight: 600; }
+.codeInput { width: 100%; padding: .85rem; border: 1px solid #a6afbf; border-radius: 10px; background: #fff; color: #24252b; text-align: center; font-size: 2rem; font-variant-numeric: tabular-nums; letter-spacing: .4em; }
+.dialog .actions { justify-content: flex-end; }
+@media (max-width: 480px) { .actions > button { flex: 1 1 100%; } .dialog { padding: 1.1rem; } }

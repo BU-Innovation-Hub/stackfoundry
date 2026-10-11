@@ -1,18 +1,23 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
    Shield, KeyRound, Loader2, AlertCircle, RefreshCw,
    BookOpen, Calendar, FileText, ArrowRight, Clock, Tag,
-  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers,
+  Home, ChevronLeft, MapPin, User, Eye, ExternalLink, CheckCircle, Layers, Menu, X, LogOut,
 } from 'lucide-react';
 import { lmsGetCourses, lmsGetMyEnrollments, lmsEnroll, lmsGetLevels, lmsGetMaterials, lmsGetProgress } from '../services/lmsService';
 import { LmsCourse, LmsEnrollment, LmsProgress } from '../types/lms';
 import { api as apiClient } from '../services/apiClient';
 import { IBlog } from '../types/blog';
-import { getEvents, getEventBySlug } from '../services/eventService';
+import { getEvents, getEventBySlug, getMyEventAttendance, joinEvent, cancelEventAttendance, EventAttendance, getMyEvents } from '../services/eventService';
 import { IEvent } from '../types/event';
 import styles from './Dashboard.module.css';
+import Loader from '../components/common/Loader';
+import Pagination, { PaginationMeta } from '../components/common/Pagination';
+import { isPastEvent, isOngoingEvent } from '../utils/eventLifecycle';
+import { useEventClock } from '../hooks/useEventClock';
+import AttendanceCheckIn from '../components/events/AttendanceCheckIn';
 
 type View = 'home' | 'courses' | 'blogs' | 'blog-detail' | 'events' | 'event-detail';
 
@@ -24,6 +29,22 @@ const Dashboard: React.FC = () => {
   // Navigation — honour incoming state (e.g. back from CourseLearn)
   const initialView = (location.state as { view?: View } | null)?.view || 'home';
   const [activeView, setActiveView] = useState<View>(initialView);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMenuOpen(false); menuButton.current?.focus(); }
+    };
+    const outside = (event: PointerEvent) => {
+      if (!sidebar.current?.contains(event.target as Node) && !menuButton.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', dismiss);
+    document.addEventListener('pointerdown', outside);
+    return () => { document.removeEventListener('keydown', dismiss); document.removeEventListener('pointerdown', outside); };
+  }, [menuOpen]);
 
   // Data
   const [courses, setCourses] = useState<LmsCourse[]>([]);
@@ -46,6 +67,16 @@ const Dashboard: React.FC = () => {
   // Event filter
   const [eventSearch, setEventSearch] = useState('');
   const [eventType, setEventType] = useState('all');
+  const [eventTab, setEventTab] = useState<'upcoming' | 'going' | 'past'>('upcoming');
+  const [goingEvents, setGoingEvents] = useState<IEvent[]>([]);
+  const [eventAttendance, setEventAttendance] = useState<EventAttendance | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [eventPage, setEventPage] = useState(1);
+  const [eventMeta, setEventMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, pages: 0 });
+  const [eventError, setEventError] = useState('');
+  const [eventListLoading, setEventListLoading] = useState(false);
+  const [attendanceError, setAttendanceError] = useState('');
+  const eventNow = useEventClock(selectedEvent ? [...allEvents, selectedEvent] : allEvents);
 
   // Course stats: materialCount + progress %
   const [courseStats, setCourseStats] = useState<Record<string, { total: number; completed: number; percent: number }>>({});
@@ -63,7 +94,7 @@ const Dashboard: React.FC = () => {
         lmsGetCourses(),
         lmsGetMyEnrollments(),
         apiClient.get('/blogs').then(r => r.data.data as IBlog[]).catch(() => [] as IBlog[]),
-        getEvents({ limit: 50 }).then(r => r.data).catch(() => [] as IEvent[]),
+        getEvents({ limit: 50, temporal: 'current' }).then(r => r.data).catch(() => [] as IEvent[]),
       ]);
       setCourses(coursesData);
       setEnrollments(enrollmentsData);
@@ -142,9 +173,16 @@ const Dashboard: React.FC = () => {
     return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const formatTime = (date?: Date | string | null) => {
+    if (!date) return '';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  };
+
+
   const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = { workshop: '#4f46e5', hackathon: '#D64A2A', meetup: '#8b5cf6', conference: '#0d9488' };
-    return colors[type] || '#888';
+    return '#D64A2A';
   };
 
   /* -------- Blog detail -------- */
@@ -163,17 +201,42 @@ const Dashboard: React.FC = () => {
 
   /* -------- Event detail -------- */
   const openEvent = async (slug: string) => {
+    setEventAttendance(null);
+    setAttendanceError('');
     setDetailLoading(true);
     setActiveView('event-detail');
     try {
       const data = await getEventBySlug(slug);
       setSelectedEvent(data);
+      try {
+        const attendance = await getMyEventAttendance(data._id);
+        setEventAttendance(attendance);
+      } catch {
+        setAttendanceError('Unable to load your attendance. Please reopen this event to retry.');
+      }
     } catch {
       setSelectedEvent(null);
     } finally {
       setDetailLoading(false);
     }
   };
+
+  const eventStart = (event: IEvent) => event.startDate || event.eventDate;
+
+  useEffect(() => {
+    if (activeView !== 'events') return;
+    let cancelled = false;
+    setEventError('');
+    setEventListLoading(true);
+    const timer = setTimeout(() => { getMyEvents(eventTab, eventPage, 20, { search: eventSearch, type: eventType === 'all' ? undefined : eventType }).then(result => {
+      if (cancelled) return;
+      setGoingEvents(result.data);
+      if (result.pagination) setEventMeta({ ...result.pagination, hasPrevious: result.pagination.hasPrev });
+    }).catch(() => { if (!cancelled) setEventError('Unable to load events. Please try again.'); })
+      .finally(() => { if (!cancelled) setEventListLoading(false); }); }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [activeView, eventTab, eventPage, eventSearch, eventType]);
+  useEffect(() => { setEventPage(1); }, [eventTab, eventSearch, eventType]);
 
   /* -------- Filtered lists -------- */
   const filteredBlogs = useMemo(() => {
@@ -187,19 +250,28 @@ const Dashboard: React.FC = () => {
   }, [allBlogs, blogCategory, blogSearch]);
 
   const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    return allEvents.filter(e => new Date(e.eventDate) >= now);
-  }, [allEvents]);
+    return allEvents.filter(e => !isPastEvent(e, eventNow));
+  }, [allEvents, eventNow]);
 
-  const filteredEvents = useMemo(() => {
-    let result = allEvents;
-    if (eventType !== 'all') result = result.filter(e => e.type === eventType);
-    if (eventSearch.trim()) {
-      const q = eventSearch.toLowerCase();
-      result = result.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
-    }
-    return result;
-  }, [allEvents, eventType, eventSearch]);
+  const filteredEvents = goingEvents;
+
+  const handleAttendance = async () => {
+    if (!selectedEvent) return;
+    setAttendanceLoading(true);
+    try {
+      const next = eventAttendance?.status === 'approved' || eventAttendance?.status === 'pending'
+        ? await cancelEventAttendance(selectedEvent._id)
+        : await joinEvent(selectedEvent._id);
+      setEventAttendance(next);
+      const fresh = await getEventBySlug(selectedEvent.slug);
+      setSelectedEvent(fresh);
+      setAllEvents(prev => prev.map(event => event._id === fresh._id ? fresh : event));
+      const result = await getMyEvents(eventTab, eventPage);
+      setGoingEvents(result.data);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Unable to update attendance');
+    } finally { setAttendanceLoading(false); }
+  };
 
   const blogCategories = ['all', 'technology', 'entrepreneurship', 'events', 'tutorials', 'news', 'community'];
   const eventTypes = ['all', 'workshop', 'hackathon', 'meetup', 'conference'];
@@ -219,6 +291,9 @@ const Dashboard: React.FC = () => {
     <div className={styles.page}>
       {/* Top header */}
       <header className={styles.header}>
+        <button ref={menuButton} className={styles.menuToggle} type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-controls="student-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)}>
+          {menuOpen ? <X size={23} /> : <Menu size={23} />}
+        </button>
         <h1 className={styles.logo}>StackFoundry</h1>
         <div className={styles.userSection}>
           <span className={styles.greeting}>Hi, {user?.name} {user?.surname}</span>
@@ -228,7 +303,7 @@ const Dashboard: React.FC = () => {
 
       <div className={styles.shell}>
         {/* ===== SIDEBAR ===== */}
-        <aside className={styles.sidebar}>
+        <aside ref={sidebar} id="student-navigation" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
           <div className={styles.sidebarProfile}>
             <div className={styles.avatar}>{user?.name?.charAt(0)}{user?.surname?.charAt(0)}</div>
             <div>
@@ -237,12 +312,12 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <nav className={styles.nav}>
+          <nav className={styles.nav} aria-label="Student dashboard">
             {navItems.map(item => (
               <button
                 key={item.key}
                 className={`${styles.navItem} ${activeView === item.key || (activeView === 'blog-detail' && item.key === 'blogs') || (activeView === 'event-detail' && item.key === 'events') ? styles.navActive : ''}`}
-                onClick={() => setActiveView(item.key)}
+                onClick={() => { setActiveView(item.key); setMenuOpen(false); if (menuOpen) menuButton.current?.focus(); }}
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -256,6 +331,7 @@ const Dashboard: React.FC = () => {
             )}
             <Link to="/profile" className={styles.sidebarLink}><User size={16} /> My Profile</Link>
             <Link to="/change-password" className={styles.sidebarLink}><KeyRound size={16} /> Change Password</Link>
+            <button onClick={handleLogout} className={`${styles.sidebarLink} ${styles.mobileLogout}`}><LogOut size={16} /> Sign Out</button>
           </div>
         </aside>
 
@@ -398,8 +474,8 @@ const Dashboard: React.FC = () => {
                         {upcomingEvents.slice(0, 3).map(event => (
                           <div key={event._id} className={styles.eventCard} onClick={() => openEvent(event.slug)}>
                             <div className={styles.eventDate}>
-                              <span className={styles.eventDay}>{new Date(event.eventDate).getDate()}</span>
-                              <span className={styles.eventMonth}>{new Date(event.eventDate).toLocaleString(undefined, { month: 'short' })}</span>
+                               <span className={styles.eventDay}>{new Date(eventStart(event)).getDate()}</span>
+                               <span className={styles.eventMonth}>{new Date(eventStart(event)).toLocaleString(undefined, { month: 'short' })}</span>
                             </div>
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
@@ -613,14 +689,21 @@ const Dashboard: React.FC = () => {
                     <p className={styles.welcomeSub}>{allEvents.length} events &middot; {upcomingEvents.length} upcoming</p>
                   </div>
 
-                  {/* Filters */}
-                  <div className={styles.filterBar}>
-                    <input
-                      className={styles.searchInput}
-                      placeholder="Search events..."
-                      value={eventSearch}
-                      onChange={e => setEventSearch(e.target.value)}
-                    />
+                  {/* Tabs */}
+                  <div className={styles.courseTabs}>
+                    {(['upcoming', 'going', 'past'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={`${styles.courseTabBtn} ${eventTab === tab ? styles.courseTabActive : ''}`}
+                        onClick={() => setEventTab(tab)}
+                      >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Filters + search */}
+                  <div className={`${styles.filterBar} ${styles.filterBarRow}`}>
                     <div className={styles.filterTabs}>
                       {eventTypes.map(t => (
                         <button
@@ -632,25 +715,35 @@ const Dashboard: React.FC = () => {
                         </button>
                       ))}
                     </div>
+                    <input
+                      className={`${styles.searchInput} ${styles.searchInputRight}`}
+                      placeholder="Search events..."
+                      value={eventSearch}
+                      onChange={e => setEventSearch(e.target.value)}
+                    />
                   </div>
 
-                  {filteredEvents.length === 0 ? (
+
+                  {eventError && <p role="alert">{eventError}</p>}
+                  <Pagination meta={eventMeta} onPageChange={setEventPage} />
+                  {eventListLoading ? <Loader text="Loading events..." /> : eventError ? null : filteredEvents.length === 0 ? (
                     <p className={styles.emptyText}>No events match your search.</p>
                   ) : (
                     <div className={styles.eventGrid}>
                       {filteredEvents.map(event => {
-                        const past = new Date(event.eventDate) < new Date();
+                         const past = isPastEvent(event, eventNow);
+                         const ongoing = isOngoingEvent(event, eventNow);
                         return (
                           <div key={event._id} className={`${styles.eventCard} ${past ? styles.pastCard : ''}`} onClick={() => openEvent(event.slug)}>
                             <div className={styles.eventDate}>
-                              <span className={styles.eventDay}>{new Date(event.eventDate).getDate()}</span>
-                              <span className={styles.eventMonth}>{new Date(event.eventDate).toLocaleString(undefined, { month: 'short' })}</span>
+                               <span className={styles.eventDay}>{new Date(eventStart(event)).getDate()}</span>
+                               <span className={styles.eventMonth}>{new Date(eventStart(event)).toLocaleString(undefined, { month: 'short' })}</span>
                             </div>
                             <div className={styles.eventCardBody}>
                               <div className={styles.eventType} style={{ color: getTypeColor(event.type) }}><Tag size={12} /> {event.type}</div>
                               <h4>{event.title}</h4>
-                              <p className={styles.eventInfo}>{event.date} &middot; {event.time}</p>
-                              {event.location && <p className={styles.eventLocation}><MapPin size={11} /> {event.location}</p>}
+                              <p className={styles.eventInfo}>{formatDate(eventStart(event))} &middot; {formatTime(eventStart(event))}{ongoing ? ' · In progress' : ''}</p>
+                              <span className={styles.eventViews}><Eye size={12} /> {event.views} views</span>
                             </div>
                           </div>
                         );
@@ -671,42 +764,55 @@ const Dashboard: React.FC = () => {
                     <div className={styles.loadingState}><Loader2 className={styles.spinner} size={28} /> Loading event...</div>
                   ) : selectedEvent ? (
                     <div className={styles.eventDetailView}>
+                      <div className={styles.eventDetailHeader}>
                       <div className={styles.eventType} style={{ color: getTypeColor(selectedEvent.type), fontSize: '0.75rem' }}>
                         <Tag size={13} /> {selectedEvent.type}
+                      </div>
+                        {new Date(eventStart(selectedEvent)) >= new Date() && (
+                          <button className={styles.registerEventBtn} onClick={handleAttendance} disabled={attendanceLoading || Boolean(attendanceError) || eventAttendance?.status === 'rejected'}>
+                            {attendanceLoading ? 'Updating...' : eventAttendance?.status === 'approved' ? 'Cancel Attendance' : eventAttendance?.status === 'pending' ? 'Cancel Request' : selectedEvent.capacity !== null && selectedEvent.capacity !== undefined && selectedEvent.attendeeCount >= selectedEvent.capacity ? 'Event Full' : 'Join Event'}
+                          </button>
+                        )}
                       </div>
                       <h1 className={styles.articleTitle}>{selectedEvent.title}</h1>
 
                       <div className={styles.articleMeta}>
-                        <span><Calendar size={14} /> {selectedEvent.date}</span>
-                        <span><Clock size={14} /> {selectedEvent.time}</span>
-                        {selectedEvent.location && <span><MapPin size={14} /> {selectedEvent.location}</span>}
+                         <span><Calendar size={14} /> {formatDate(eventStart(selectedEvent))}</span>
+                        <span><Clock size={14} /> {formatTime(eventStart(selectedEvent))}</span>
+                        <span><MapPin size={14} /> {selectedEvent.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span>
                         <span><Eye size={14} /> {selectedEvent.views} views</span>
                       </div>
 
-                      {selectedEvent.image && (
-                        <div className={styles.articleImage}>
-                          <img src={selectedEvent.image} alt={selectedEvent.title} />
-                        </div>
-                      )}
-
-                      <div className={styles.eventDetailBody}>
+                      <div className={`${styles.eventOverview} ${!selectedEvent.image ? styles.eventOverviewTextOnly : ''} ${eventAttendance?.checkedInAt ? styles.eventOverviewConfirmed : ''}`}>
+                        {selectedEvent.image && <div className={styles.eventCover}><img src={selectedEvent.image} alt={selectedEvent.title} /></div>}
                         <div className={styles.detailSection}>
                           <h3>About This Event</h3>
                           <p>{selectedEvent.description}</p>
                         </div>
+                      {user?.role === 'student' && selectedEvent.locationType === 'physical' && !selectedEvent.registrationLink && eventAttendance?.status === 'approved' && (!isPastEvent(selectedEvent, eventNow) || eventAttendance.checkedInAt) && (
+                        <div className={styles.eventAttendance}>
+                          <AttendanceCheckIn key={selectedEvent._id} eventId={selectedEvent._id} slug={selectedEvent.slug} checkedInAt={eventAttendance.checkedInAt} onConfirmed={result => setEventAttendance(previous => previous ? { ...previous, ...result } : previous)} />
+                        </div>
+                      )}
+                      </div>
 
+                      <div className={styles.eventDetailBody}>
                         <div className={styles.detailCard}>
                           <h4>Event Details</h4>
                           <div className={styles.detailGrid}>
-                            <div><span className={styles.detailLabel}>Date</span><span>{selectedEvent.date}</span></div>
-                            <div><span className={styles.detailLabel}>Time</span><span>{selectedEvent.time}</span></div>
+                             <div><span className={styles.detailLabel}>Date</span><span>{formatDate(eventStart(selectedEvent))}</span></div>
+                             <div><span className={styles.detailLabel}>Time</span><span>{formatTime(eventStart(selectedEvent))}</span></div>
                             <div><span className={styles.detailLabel}>Type</span><span style={{ textTransform: 'capitalize' }}>{selectedEvent.type}</span></div>
-                            {selectedEvent.location && <div><span className={styles.detailLabel}>Location</span><span>{selectedEvent.location}</span></div>}
+                            <div><span className={styles.detailLabel}>Location type</span><span>{selectedEvent.locationType === 'virtual' ? 'Virtual' : 'Physical'}</span></div>
                             <div><span className={styles.detailLabel}>Organized by</span><span>{selectedEvent.authorName}</span></div>
                           </div>
                         </div>
 
-                        {selectedEvent.registrationLink && new Date(selectedEvent.eventDate) >= new Date() && (
+                         {attendanceError && <p role="alert">{attendanceError}</p>}
+                         {eventAttendance?.googleMeetLink && eventAttendance.status === 'approved' && (
+                           <a href={eventAttendance.googleMeetLink} target="_blank" rel="noreferrer" className={styles.registerEventBtn}>Join meeting <ExternalLink size={14} /></a>
+                         )}
+                         {selectedEvent.registrationLink && new Date(eventStart(selectedEvent)) >= new Date() && (
                           <a href={selectedEvent.registrationLink} target="_blank" rel="noopener noreferrer" className={styles.registerEventBtn}>
                             Register Now <ExternalLink size={14} />
                           </a>
