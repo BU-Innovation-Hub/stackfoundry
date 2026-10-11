@@ -1,6 +1,6 @@
 /**
- * Environment Configuration
- * Loads and validates all required environment variables
+ * Environment Configuration.
+ * Loads and validates all required environment variables.
  */
 
 export interface Env {
