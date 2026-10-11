@@ -74,23 +74,43 @@ export const loadEnv = (): Env => {
   const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "dev_refresh_secret_change_me_in_production";
 
   if (isProduction) {
-    if (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET) {
-      throw new Error("JWT secrets must be set in production!");
+    const errors: string[] = [];
+    const required = [
+      "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "MONGO_URI",
+      "EMAIL_SMTP_HOST", "EMAIL_SMTP_USER", "EMAIL_SMTP_PASS", "EMAIL_FROM",
+      "CLIENT_URL", "ADMIN_EMAIL", "ADMIN_PASSWORD",
+    ];
+    const missing = required.filter((key) => !process.env[key]);
+    if (missing.length) errors.push(`Missing environment variables: ${missing.join(", ")}`);
+
+    if (process.env.EMAIL_FROM) {
+      const mailbox = process.env.EMAIL_FROM.trim().match(/^(?:[^<>]*<([^<>\s,@]+@[^<>\s,@]+)>|([^<>\s,@]+@[^<>\s,@]+))$/);
+      const fromAddress = (mailbox?.[1] || mailbox?.[2])?.toLowerCase();
+      const fromDomain = fromAddress?.split("@")[1];
+      // Gmail can authenticate its own sender; do not allow an unrelated account
+      // or SMTP host to bypass the existing production sender policy.
+      const authenticatedGoogleSender = Boolean(
+        fromAddress && ["gmail.com", "googlemail.com"].includes(fromDomain || "") &&
+        process.env.EMAIL_SMTP_HOST?.trim().toLowerCase() === "smtp.gmail.com" &&
+        fromAddress === process.env.EMAIL_SMTP_USER?.trim().toLowerCase()
+      );
+      if (!fromDomain || (!authenticatedGoogleSender && ["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "example.invalid", "example.com"].includes(fromDomain))) {
+        errors.push("Production EMAIL_FROM must use your verified sending domain, or match EMAIL_SMTP_USER when using smtp.gmail.com");
+      }
     }
-    if (!process.env.MONGO_URI) {
-      throw new Error("MONGO_URI must be set in production!");
+    if (process.env.CLIENT_URL) {
+      try {
+        const client = new URL(process.env.CLIENT_URL);
+        if (client.protocol !== "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(client.hostname)) {
+          errors.push("Production CLIENT_URL must be a public HTTPS URL");
+        }
+      } catch {
+        errors.push("Production CLIENT_URL must be a valid public HTTPS URL");
+      }
     }
-    if (!process.env.EMAIL_SMTP_HOST || !process.env.EMAIL_SMTP_USER || !process.env.EMAIL_SMTP_PASS || !process.env.EMAIL_FROM) {
-      throw new Error("Production requires explicit SMTP credentials and a verified EMAIL_FROM");
-    }
-    const fromDomain = process.env.EMAIL_FROM.match(/@([^>\s]+)/)?.[1]?.toLowerCase();
-    if (!fromDomain || ["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com", "example.invalid", "example.com"].includes(fromDomain)) {
-      throw new Error("Production EMAIL_FROM must use your verified sending domain");
-    }
-    const client = new URL(process.env.CLIENT_URL || "http://localhost");
-    if (client.protocol !== "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(client.hostname)) throw new Error("Production CLIENT_URL must be a public HTTPS URL");
-    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-     throw new Error("Admin credentials must be set in production!");
+    if (errors.length) {
+      // Report all configuration problems together, without printing secret values.
+      throw new Error(`Invalid production configuration:\n- ${errors.join("\n- ")}`);
     }
   }
 
