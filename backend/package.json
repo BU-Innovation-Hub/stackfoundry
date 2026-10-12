@@ -13,6 +13,7 @@
     "build": "tsc",
     "test": "node --max-old-space-size=4096 test-runner.cjs",
     "seed": "ts-node src/scripts/seed.ts",
+    "bootstrap": "node dist/scripts/bootstrap.js",
     "migrate:users": "ts-node src/scripts/migrate-users.ts",
     "migrate:event-guests": "ts-node src/scripts/migrate-event-guest-attendance.ts"
   },

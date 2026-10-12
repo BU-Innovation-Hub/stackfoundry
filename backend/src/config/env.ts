@@ -56,9 +56,6 @@ export interface Env {
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
 
-  // Admin seed
-  ADMIN_EMAIL: string;
-  ADMIN_PASSWORD: string;
 }
 
 /**
@@ -89,9 +86,6 @@ export const loadEnv = (): Env => {
     }
     const client = new URL(process.env.CLIENT_URL || "http://localhost");
     if (client.protocol !== "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(client.hostname)) throw new Error("Production CLIENT_URL must be a public HTTPS URL");
-    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-     throw new Error("Admin credentials must be set in production!");
-    }
   }
 
   return {
@@ -146,9 +140,6 @@ export const loadEnv = (): Env => {
     RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
     RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 500,
 
-    // Admin seed
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@bothouniversity.ac.bw",
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "Admin@123456",
   };
 };
 
