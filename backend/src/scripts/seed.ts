@@ -17,6 +17,7 @@ import Level from "../models/level.model";
 import Topic from "../models/topic.model";
 import Material from "../models/material.model";
 import Enrollment from "../models/enrollment.model";
+import { INITIAL_ROLES as ROLES } from "../config/roles";
 
 // Load environment variables
 dotenv.config();
@@ -27,29 +28,6 @@ dotenv.config();
 
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/innovation_hub";
-
-const ROLES = [
-  {
-    name: "student" as const,
-    description: "Regular student with basic access to courses and materials",
-  },
-  {
-    name: "member" as const,
-    description: "Member with additional access to community features",
-  },
-  {
-    name: "mentor" as const,
-    description: "Mentor who can support innovation hub users",
-  },
-  {
-    name: "system_admin" as const,
-    description: "Administrator with full system access",
-  },
-  {
-    name: "innovation_hub_admin" as const,
-    description: "Innovation Hub administrator who manages hub operations",
-  },
-];
 
 const ADMIN_USER = {
   studentId: "ADMIN-001",
@@ -425,7 +403,6 @@ async function seedUsers(): Promise<void> {
       isActive: true,
     });
     console.log(`   ✓ Created ${userData.role} account "${userData.email}"`);
-    console.log(`     Password: ${userData.password}`);
   }
   console.log("   ⚠️ Change seeded passwords outside development environments.");
 }
@@ -622,8 +599,12 @@ async function seedLMS(): Promise<void> {
 // ============================================
 
 async function main(): Promise<void> {
+  if (!["development", "test"].includes(process.env.NODE_ENV || "")) {
+    console.error("Demo seeding requires NODE_ENV=development or test. For production, build the backend and run npm run bootstrap.");
+    process.exitCode = 1;
+    return;
+  }
   console.log("🌱 Starting database seed...");
-  console.log(`   Database: ${MONGO_URI}`);
 
   try {
     // Connect to MongoDB
@@ -661,8 +642,8 @@ async function main(): Promise<void> {
     console.log(`   - Materials: ${materialCount}`);
     console.log(`   - Enrollments: ${enrollmentCount}`);
   } catch (error) {
-    console.error("\n❌ Seed failed:", error);
-    process.exit(1);
+    console.error("Demo seed failed. Check development database connectivity and data constraints; database error details were withheld to protect secrets.");
+    process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
     console.log("\n   ✓ Disconnected from MongoDB");
